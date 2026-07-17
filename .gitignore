@@ -1,8 +1,14 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+*.pem
 
-# dependencies
-/node_modules
-/.pnp
+# Dependencies
+node_modules/
+.pnp
 .pnp.*
 .yarn/*
 !.yarn/patches
@@ -10,32 +16,36 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
+# Env / secrets
+.env
+.env.*
+!.env*.example
 
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
+# Logs / debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+*.log
 
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
-
-# typescript
+# Next.js (web)
+cus-compliance-web/.next/
+cus-compliance-web/out/
+cus-compliance-web/.vercel/
+cus-compliance-web/next-env.d.ts
 *.tsbuildinfo
-next-env.d.ts
+
+# Build / coverage
+/build
+/coverage
+dist/
+target/
+
+# Tauri / Rust (software)
+cus-compliance-software/src-tauri/target/
+cus-compliance-software/dist/
+*.exe
+*.dmg
+*.AppImage
+*.msi
+*.deb
