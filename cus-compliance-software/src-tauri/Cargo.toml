@@ -1,6 +1,6 @@
 [package]
 name = "cus-compliance-software"
-version = "0.1.0"
+version = "1.1.0"
 description = "CareerUS Compliance CRM desktop app"
 authors = ["CareerUS Solutions"]
 edition = "2021"

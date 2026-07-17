@@ -297,9 +297,16 @@ export function Dashboard() {
           onClick={() => openMaster({ status: "Inactive" })}
         />
         <Stat
-          label="RunAway Candidates"
+          label="Run Away Candidates"
           value={stats.runaway}
           sub="Status: Run Away"
+          cls="warning"
+          onClick={() => openMaster({ status: "Run Away" })}
+        />
+        <Stat
+          label="Run Away Loss"
+          value={money(stats.runawayLoss)}
+          sub="Unpaid balance from run away candidates"
           cls="warning"
           onClick={() => openMaster({ status: "Run Away" })}
         />
@@ -336,13 +343,6 @@ export function Dashboard() {
         <Stat
           label="Yatin Incentive"
           value={money(stats.yatinIncentive)}
-          sub={incentiveSub}
-          cls="info"
-          onClick={() => navigate("incentive")}
-        />
-        <Stat
-          label="Jayraj Incentive"
-          value={money(stats.jayrajIncentive)}
           sub={incentiveSub}
           cls="info"
           onClick={() => navigate("incentive")}

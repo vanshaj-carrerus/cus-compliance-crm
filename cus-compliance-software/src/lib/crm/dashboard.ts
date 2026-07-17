@@ -6,7 +6,7 @@ import {
   paymentDateFor,
   statusExcluded,
 } from "./calc";
-import { incentiveByAssignee } from "./incentive";
+import { calculateYatinIncentive } from "./incentive";
 import { todayIso, validDateString, currentCycleStart, addDaysDate } from "./dates";
 
 export type DashboardPeriodMode = "all" | "month" | "range";
@@ -126,12 +126,12 @@ export interface DashboardStats {
   active: number;
   inactive: number;
   runaway: number;
+  runawayLoss: number;
   totalFee: number;
   paid: number;
   remain: number;
   overdue: number;
   yatinIncentive: number;
-  jayrajIncentive: number;
   followups: number;
   followOverdue: number;
   pct: number;
@@ -159,7 +159,12 @@ export function computeDashboardStats(
   const inactive = scoped.filter(
     (x) => x.status === "Inactive" || getRemaining(x) <= 0
   ).length;
-  const runaway = scoped.filter((x) => x.status === "Run Away").length;
+  const runawayCandidates = scoped.filter((x) => x.status === "Run Away");
+  const runaway = runawayCandidates.length;
+  const runawayLoss = runawayCandidates.reduce(
+    (sum, candidate) => sum + getRemaining(candidate),
+    0
+  );
   const totalFee = scoped.reduce((s, x) => s + (Number(x.totalServiceFee) || 0), 0);
 
   const paid = bounds
@@ -175,19 +180,14 @@ export function computeDashboardStats(
   ).length;
 
   let yatinIncentive = 0;
-  let jayrajIncentive = 0;
   if (bounds) {
     const start = new Date(bounds.from + "T00:00:00");
     const end = new Date(bounds.to + "T00:00:00");
-    const cy = incentiveByAssignee(candidates, start, end);
-    yatinIncentive = cy.Yatin;
-    jayrajIncentive = cy.Jayraj;
+    yatinIncentive = calculateYatinIncentive(candidates, start, end);
   } else {
     const start = currentCycleStart();
     const end = addDaysDate(start, 31);
-    const cy = incentiveByAssignee(candidates, start, end);
-    yatinIncentive = cy.Yatin;
-    jayrajIncentive = cy.Jayraj;
+    yatinIncentive = calculateYatinIncentive(candidates, start, end);
   }
 
   const t = todayIso();
@@ -244,12 +244,12 @@ export function computeDashboardStats(
     active,
     inactive,
     runaway,
+    runawayLoss,
     totalFee,
     paid,
     remain,
     overdue,
     yatinIncentive,
-    jayrajIncentive,
     followups,
     followOverdue,
     pct,

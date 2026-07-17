@@ -289,6 +289,13 @@ export function Dashboard() {
           onClick={() => openMaster({ status: "Inactive" })}
         />
         <Stat
+          label="Run Away Candidates"
+          value={stats.runaway}
+          sub="Status: Run Away"
+          cls="warning"
+          onClick={() => openMaster({ status: "Run Away" })}
+        />
+        <Stat
           label="Run Away Loss"
           value={money(stats.runawayLoss)}
           sub="Unpaid balance from run away candidates"

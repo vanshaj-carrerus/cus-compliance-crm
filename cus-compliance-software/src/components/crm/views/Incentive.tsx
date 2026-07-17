@@ -34,14 +34,7 @@ export function Incentive() {
   const { page, pageSize, pageCount, pageItems, setPage, setPageSize } =
     usePagination(rows, 50);
   const totalPayments = rows.reduce((s, r) => s + r.amount, 0);
-  const totals = rows.reduce(
-    (a, r) => {
-      a[r.assignedTo as "Yatin" | "Jayraj"] =
-        (a[r.assignedTo as "Yatin" | "Jayraj"] || 0) + r.incentive;
-      return a;
-    },
-    { Yatin: 0, Jayraj: 0 }
-  );
+  const totalIncentive = rows.reduce((sum, row) => sum + row.incentive, 0);
   const applyRange = (fromVal: string, toVal: string) => {
     updateSettings({ incentiveFrom: fromVal, incentiveTo: toVal });
   };
@@ -112,21 +105,9 @@ export function Incentive() {
         />
         <StatCard
           label="Yatin Incentive"
-          value={money(totals.Yatin)}
+          value={money(totalIncentive)}
           sub="Payment ÷ 2"
           tone="info"
-        />
-        <StatCard
-          label="Jayraj Incentive"
-          value={money(totals.Jayraj)}
-          sub="Payment ÷ 2"
-          tone="info"
-        />
-        <StatCard
-          label="Overall Incentive"
-          value={money(totals.Yatin + totals.Jayraj)}
-          sub="Yatin + Jayraj"
-          tone="warning"
         />
       </div>
 

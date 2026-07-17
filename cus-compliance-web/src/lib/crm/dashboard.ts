@@ -125,6 +125,7 @@ export interface DashboardStats {
   total: number;
   active: number;
   inactive: number;
+  runaway: number;
   runawayLoss: number;
   totalFee: number;
   paid: number;
@@ -158,9 +159,12 @@ export function computeDashboardStats(
   const inactive = scoped.filter(
     (x) => x.status === "Inactive" || getRemaining(x) <= 0
   ).length;
-  const runawayLoss = scoped
-    .filter((x) => x.status === "Run Away")
-    .reduce((sum, candidate) => sum + getRemaining(candidate), 0);
+  const runawayCandidates = scoped.filter((x) => x.status === "Run Away");
+  const runaway = runawayCandidates.length;
+  const runawayLoss = runawayCandidates.reduce(
+    (sum, candidate) => sum + getRemaining(candidate),
+    0
+  );
   const totalFee = scoped.reduce((s, x) => s + (Number(x.totalServiceFee) || 0), 0);
 
   const paid = bounds
@@ -239,6 +243,7 @@ export function computeDashboardStats(
     total,
     active,
     inactive,
+    runaway,
     runawayLoss,
     totalFee,
     paid,
