@@ -1,0 +1,76 @@
+name: Release Desktop App
+
+# Builds the Windows installer/exe and publishes a GitHub Release
+# whenever you push a version tag like v1.2.3.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (e.g. v0.1.0). Leave empty to build without publishing."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: cus-compliance-software
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: cus-compliance-software/package-lock.json
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: cus-compliance-software/src-tauri -> target
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Sync app version from tag
+        shell: pwsh
+        run: |
+          $tag = if ($env:GITHUB_REF_NAME -and "${{ github.event_name }}" -eq "push") { $env:GITHUB_REF_NAME } else { "${{ inputs.tag }}" }
+          if (-not $tag) { Write-Host "No tag provided; keeping existing version."; exit 0 }
+          $version = $tag.TrimStart("v")
+          Write-Host "Setting app version to $version"
+
+          $confPath = "src-tauri/tauri.conf.json"
+          $conf = Get-Content $confPath -Raw | ConvertFrom-Json
+          $conf.version = $version
+          $conf | ConvertTo-Json -Depth 100 | Set-Content $confPath -Encoding utf8
+
+          $cargoPath = "src-tauri/Cargo.toml"
+          $cargo = Get-Content $cargoPath -Raw
+          $cargo = [regex]::Replace($cargo, '(?m)^version = ".*"', "version = ""$version""", 1)
+          Set-Content $cargoPath $cargo -Encoding utf8
+
+      - name: Build app and publish release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: cus-compliance-software
+          tagName: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          releaseName: "CareerUS Compliance CRM ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}"
+          releaseBody: "Automated build. See assets below for the Windows installer (.exe)."
+          releaseDraft: false
+          prerelease: false

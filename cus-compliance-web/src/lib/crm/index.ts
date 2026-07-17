@@ -9,3 +9,4 @@ export * from "./demo-data";
 export * from "./daily";
 export * from "./backup-meta";
 export * from "./dashboard";
+export * from "./excel";

@@ -153,8 +153,8 @@ export function Workflows() {
           </thead>
           <tbody>
             {pageItems.length ? (
-              pageItems.map((x) => (
-                <tr key={x.id}>
+              pageItems.map((x, i) => (
+                <tr key={`${x.id}-${x.timestamp}-${i}`}>
                   <td className="muted">
                     {new Date(x.timestamp).toLocaleString()}
                   </td>

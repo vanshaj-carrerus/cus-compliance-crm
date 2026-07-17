@@ -1,6 +1,11 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { save, open } from "@tauri-apps/plugin-dialog";
-import { writeTextFile, readTextFile } from "@tauri-apps/plugin-fs";
+import {
+  writeFile,
+  writeTextFile,
+  readFile,
+  readTextFile,
+} from "@tauri-apps/plugin-fs";
 import {
   isPermissionGranted,
   requestPermission,
@@ -105,6 +110,78 @@ export async function downloadTextFile(
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function fileExtensions(filename: string): string[] {
+  const extension = filename.split(".").pop()?.toLowerCase();
+  return extension ? [extension] : ["*"];
+}
+
+async function toBytes(content: BlobPart): Promise<Uint8Array<ArrayBuffer>> {
+  if (typeof content === "string") {
+    return new TextEncoder().encode(content);
+  }
+  const blob = content instanceof Blob ? content : new Blob([content]);
+  return new Uint8Array(await blob.arrayBuffer());
+}
+
+export async function downloadFile(
+  content: BlobPart,
+  filename: string,
+  type = "application/octet-stream"
+): Promise<boolean> {
+  if (isTauri()) {
+    const path = await save({
+      defaultPath: filename,
+      filters: [{ name: "Files", extensions: fileExtensions(filename) }],
+    });
+    if (!path) return false;
+    await writeFile(path, await toBytes(content));
+    return true;
+  }
+
+  const blob = content instanceof Blob ? content : new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+  return true;
+}
+
+export async function pickAndReadBinaryFile(
+  extensions: string[]
+): Promise<{ name: string; content: ArrayBuffer } | null> {
+  if (isTauri()) {
+    const path = await open({
+      multiple: false,
+      filters: [{ name: "Import", extensions }],
+    });
+    if (!path || Array.isArray(path)) return null;
+    const bytes = await readFile(path);
+    const content = bytes.buffer.slice(
+      bytes.byteOffset,
+      bytes.byteOffset + bytes.byteLength
+    );
+    const name = path.split(/[/\\]/).pop() || "import";
+    return { name, content };
+  }
+
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = extensions.map((extension) => `.${extension}`).join(",");
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      resolve(
+        file
+          ? { name: file.name, content: await file.arrayBuffer() }
+          : null
+      );
+    };
+    input.click();
+  });
 }
 
 export async function pickAndReadTextFile(extensions: string[]): Promise<{

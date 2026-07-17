@@ -353,9 +353,13 @@ function roundMoney(n: number): number {
   return Math.round((Number(n) || 0) * 100) / 100;
 }
 
-export function downloadBlob(content: string, filename: string, type: string) {
-  void import("@/lib/native").then(({ downloadTextFile }) =>
-    downloadTextFile(content, filename, type)
+export function downloadBlob(
+  content: BlobPart,
+  filename: string,
+  type: string
+): Promise<boolean> {
+  return import("@/lib/native").then(({ downloadFile }) =>
+    downloadFile(content, filename, type)
   );
 }
 

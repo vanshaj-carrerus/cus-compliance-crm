@@ -23,6 +23,7 @@ import { Workflows } from "./views/Workflows";
 import { Backup } from "./views/Backup";
 import { downloadBlob } from "@/lib/crm/csv";
 import { markBackupDownloaded } from "@/lib/crm/backup-meta";
+import { createCrmWorkbook, EXCEL_MIME } from "@/lib/crm/excel";
 
 function CrmShellInner() {
   const {
@@ -57,21 +58,26 @@ function CrmShellInner() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const handleExport = () => {
-    const data = {
-      version: "3.0",
-      exportedAt: new Date().toISOString(),
-      candidates,
-      history,
-      settings,
-    };
-    downloadBlob(
-      JSON.stringify(data, null, 2),
-      "careerus_crm_backup_" + new Date().toISOString().slice(0, 10) + ".json",
-      "application/json"
-    );
-    markBackupDownloaded();
-    toast("Backup downloaded", "success");
+  const handleExport = async () => {
+    try {
+      const blob = await createCrmWorkbook({
+        version: "3.0",
+        exportedAt: new Date().toISOString(),
+        candidates,
+        history,
+        settings,
+      });
+      downloadBlob(
+        blob,
+        "careerus_crm_backup_" + new Date().toISOString().slice(0, 10) + ".xlsx",
+        EXCEL_MIME
+      );
+      markBackupDownloaded();
+      toast("Excel backup downloaded", "success");
+    } catch (err) {
+      console.error("Excel backup failed:", err);
+      toast("Could not create Excel backup", "error");
+    }
   };
 
   const openWhatsApp = (id: number | number[], template?: string) => {

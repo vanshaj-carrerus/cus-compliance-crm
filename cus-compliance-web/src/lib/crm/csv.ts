@@ -353,8 +353,12 @@ function roundMoney(n: number): number {
   return Math.round((Number(n) || 0) * 100) / 100;
 }
 
-export function downloadBlob(content: string, filename: string, type: string) {
-  const blob = new Blob([content], { type });
+export function downloadBlob(
+  content: BlobPart,
+  filename: string,
+  type: string
+) {
+  const blob = content instanceof Blob ? content : new Blob([content], { type });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

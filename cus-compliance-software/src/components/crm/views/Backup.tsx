@@ -4,6 +4,7 @@ import { useCrm } from "../CrmProvider";
 import { ChartCard } from "../shared";
 import { downloadBlob } from "@/lib/crm/csv";
 import { markBackupDownloaded } from "@/lib/crm/backup-meta";
+import { createCrmWorkbook, EXCEL_MIME } from "@/lib/crm/excel";
 
 export function Backup() {
   const {
@@ -18,21 +19,27 @@ export function Backup() {
     undoCount,
   } = useCrm();
 
-  const downloadBackup = () => {
-    const data = {
-      version: "3.0",
-      exportedAt: new Date().toISOString(),
-      candidates,
-      history,
-      settings,
-    };
-    downloadBlob(
-      JSON.stringify(data, null, 2),
-      "careerus_crm_backup_" + new Date().toISOString().slice(0, 10) + ".json",
-      "application/json"
-    );
-    markBackupDownloaded();
-    toast("Backup downloaded", "success");
+  const downloadBackup = async () => {
+    try {
+      const blob = await createCrmWorkbook({
+        version: "3.0",
+        exportedAt: new Date().toISOString(),
+        candidates,
+        history,
+        settings,
+      });
+      const saved = await downloadBlob(
+        blob,
+        "careerus_crm_backup_" + new Date().toISOString().slice(0, 10) + ".xlsx",
+        EXCEL_MIME
+      );
+      if (!saved) return;
+      markBackupDownloaded();
+      toast("Excel backup downloaded", "success");
+    } catch (err) {
+      console.error("Excel backup failed:", err);
+      toast("Could not create Excel backup", "error");
+    }
   };
 
   return (
@@ -40,7 +47,7 @@ export function Backup() {
       <div className="backup-panel">
         <div className="backup-panel-title">Backup & Restore</div>
         <p className="backup-panel-desc">
-          Data auto-saves to MongoDB. Download JSON backups and keep them safe.
+          Data auto-saves to MongoDB. Download Excel backups and keep them safe.
         </p>
         <div className="backup-actions">
           <button
@@ -48,7 +55,7 @@ export function Backup() {
             className="btn btn-primary"
             onClick={downloadBackup}
           >
-            📥 Download Backup JSON
+            📥 Download Backup Excel
           </button>
           <button
             type="button"
