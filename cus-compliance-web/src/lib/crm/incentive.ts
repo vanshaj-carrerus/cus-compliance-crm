@@ -88,6 +88,7 @@ export function incentiveRows(
   endBound.setHours(23, 59, 59, 999);
   const rows: IncentiveRow[] = [];
   filterCandidates(candidates, searchQuery, activeFilters).forEach((c) => {
+    if (c.assignedTo !== "Yatin") return;
     if (!isIncentiveEligible(c)) return;
     c.installments.forEach((i, idx) => {
       if (i.paid && i.date) {
@@ -114,18 +115,14 @@ export function incentiveRows(
   );
 }
 
-export function incentiveByAssignee(
+export function calculateYatinIncentive(
   candidates: Candidate[],
   start: Date,
   end: Date
-): { Yatin: number; Jayraj: number } {
+): number {
   return incentiveRows(candidates, start, end).reduce(
-    (a, r) => {
-      a[r.assignedTo as "Yatin" | "Jayraj"] =
-        (a[r.assignedTo as "Yatin" | "Jayraj"] || 0) + r.incentive;
-      return a;
-    },
-    { Yatin: 0, Jayraj: 0 }
+    (total, row) => total + row.incentive,
+    0
   );
 }
 
