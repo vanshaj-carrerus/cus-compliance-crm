@@ -1,38 +1,52 @@
 # CUS Compliance Web
 
-Next.js Compliance CRM application.
+Next.js Compliance CRM with MongoDB, email verification login, and a shared API used by the desktop app.
 
 ## Getting started
 
-From this folder (`cus-compliance-web`):
-
 ```bash
+cd cus-compliance-web
 npm install
+cp .env.local.example .env.local
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
-Copy `.env.local.example` to `.env.local` and fill in the required values before running.
+## Required environment variables
 
-You can start editing the app from `src/app/page.tsx`. The page auto-updates as you edit the file.
+See [`.env.local.example`](.env.local.example):
+
+- `MONGODB_URI`
+- `JWT_SECRET`
+- `ALLOWED_EMAILS`
+- `EMAIL_USER`
+- `EMAIL_PASS`
+- optional `CORS_ALLOWED_ORIGINS`
+
+## Desktop API support
+
+Auth routes return bearer tokens for the Tauri desktop client while browsers continue using HTTP-only cookies:
+
+- `verifiedToken` from `/api/auth/verify-code`
+- `sessionToken` from `/api/auth/login` and `/api/auth/set-password`
+- `Authorization: Bearer <sessionToken>` accepted on protected APIs
+
+Deployed production URL:
+
+```text
+https://cus-compliance-crm.vercel.app
+```
 
 ## Scripts
 
 ```bash
-npm run dev    # development server
-npm run build  # production build
-npm run start  # start production server
-npm run lint   # run ESLint
+npm run dev
+npm run build
+npm run start
+npm run lint
 ```
 
-## Stack
+## Deploy (Vercel)
 
-- Next.js (App Router)
-- React
-- Tailwind CSS
-- MongoDB / Mongoose
-
-## Deploy
-
-Set the deployment root / working directory to `cus-compliance-web` when hosting this app (for example on Vercel).
+Set the project root to `cus-compliance-web` and configure the environment variables above. After auth/CORS changes, redeploy before testing the desktop app.

@@ -1,11 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { CandidateModel } from "@/lib/models/Candidate";
 import { normalizeCandidate, demoData } from "@/lib/crm";
+import { corsPreflightResponse, jsonWithCors } from "@/lib/cors";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function OPTIONS(request: Request) {
+  return corsPreflightResponse(request);
+}
+
+export async function GET(request: Request) {
   try {
     await connectDB();
     let docs = await CandidateModel.find({}).lean();
@@ -17,10 +22,11 @@ export async function GET() {
     const candidates = docs.map((d) =>
       normalizeCandidate(d as Record<string, unknown>)
     );
-    return NextResponse.json({ candidates });
+    return jsonWithCors(request, { candidates });
   } catch (e) {
     console.error(e);
-    return NextResponse.json(
+    return jsonWithCors(
+      request,
       { error: e instanceof Error ? e.message : "Failed to load candidates" },
       { status: 500 }
     );
@@ -37,10 +43,11 @@ export async function POST(req: NextRequest) {
       candidate,
       { upsert: true, new: true }
     );
-    return NextResponse.json({ candidate });
+    return jsonWithCors(req, { candidate });
   } catch (e) {
     console.error(e);
-    return NextResponse.json(
+    return jsonWithCors(
+      req,
       { error: e instanceof Error ? e.message : "Failed to create candidate" },
       { status: 500 }
     );
@@ -57,10 +64,11 @@ export async function PUT(req: NextRequest) {
     );
     await CandidateModel.deleteMany({});
     if (candidates.length) await CandidateModel.insertMany(candidates);
-    return NextResponse.json({ candidates, ok: true });
+    return jsonWithCors(req, { candidates, ok: true });
   } catch (e) {
     console.error(e);
-    return NextResponse.json(
+    return jsonWithCors(
+      req,
       { error: e instanceof Error ? e.message : "Failed to replace candidates" },
       { status: 500 }
     );

@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { VerificationCode } from "@/lib/models/VerificationCode";
 import { User } from "@/lib/models/User";
@@ -9,6 +8,11 @@ import {
   setVerifiedCookie,
   signVerifiedToken,
 } from "@/lib/auth";
+import { corsPreflightResponse, jsonWithCors } from "@/lib/cors";
+
+export async function OPTIONS(request: Request) {
+  return corsPreflightResponse(request);
+}
 
 export async function POST(request: Request) {
   try {
@@ -18,14 +22,16 @@ export async function POST(request: Request) {
     const code = String(body.code || "").trim();
 
     if (!isValidEmail(email) || !code) {
-      return NextResponse.json(
+      return jsonWithCors(
+        request,
         { error: "Email and code are required" },
         { status: 400 }
       );
     }
 
     if (!isEmailAllowed(email)) {
-      return NextResponse.json(
+      return jsonWithCors(
+        request,
         { error: "This email is not authorized" },
         { status: 403 }
       );
@@ -33,7 +39,8 @@ export async function POST(request: Request) {
 
     const stored = await VerificationCode.findOne({ email });
     if (!stored) {
-      return NextResponse.json(
+      return jsonWithCors(
+        request,
         { error: "No verification code found for this email" },
         { status: 400 }
       );
@@ -41,14 +48,16 @@ export async function POST(request: Request) {
 
     if (stored.expires < Date.now()) {
       await VerificationCode.deleteOne({ email });
-      return NextResponse.json(
+      return jsonWithCors(
+        request,
         { error: "Verification code expired" },
         { status: 400 }
       );
     }
 
     if (stored.code !== code) {
-      return NextResponse.json(
+      return jsonWithCors(
+        request,
         { error: "Invalid verification code" },
         { status: 400 }
       );
@@ -58,16 +67,18 @@ export async function POST(request: Request) {
 
     const user = await User.findOne({ email });
     const verifiedToken = await signVerifiedToken(email);
-    const res = NextResponse.json({
+    const res = jsonWithCors(request, {
       message: "Verification successful",
       hasAccount: Boolean(user),
       email,
+      verifiedToken,
     });
     setVerifiedCookie(res, verifiedToken);
     return res;
   } catch (error) {
     console.error("verify-code error:", error);
-    return NextResponse.json(
+    return jsonWithCors(
+      request,
       { error: "Verification failed" },
       { status: 500 }
     );

@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
 import { connectDB } from "@/lib/mongodb";
@@ -8,6 +7,11 @@ import {
   isValidEmail,
   normalizeEmail,
 } from "@/lib/auth";
+import { corsPreflightResponse, jsonWithCors } from "@/lib/cors";
+
+export async function OPTIONS(request: Request) {
+  return corsPreflightResponse(request);
+}
 
 export async function POST(request: Request) {
   try {
@@ -16,14 +20,16 @@ export async function POST(request: Request) {
     const email = normalizeEmail(body.email || "");
 
     if (!isValidEmail(email)) {
-      return NextResponse.json(
+      return jsonWithCors(
+        request,
         { error: "Invalid email format" },
         { status: 400 }
       );
     }
 
     if (!isEmailAllowed(email)) {
-      return NextResponse.json(
+      return jsonWithCors(
+        request,
         { error: "This email is not authorized to access the CRM" },
         { status: 403 }
       );
@@ -85,10 +91,11 @@ export async function POST(request: Request) {
 </html>`,
     });
 
-    return NextResponse.json({ message: "Verification code sent" });
+    return jsonWithCors(request, { message: "Verification code sent" });
   } catch (error) {
     console.error("send-code error:", error);
-    return NextResponse.json(
+    return jsonWithCors(
+      request,
       {
         error: "Failed to send verification code",
         details: error instanceof Error ? error.message : "Unknown error",

@@ -55,6 +55,12 @@ export function clearAuthCookies(res: NextResponse) {
   res.cookies.set(VERIFIED_COOKIE, "", { ...cookieBase, maxAge: 0 });
 }
 
+export function getBearerToken(request: Request | NextRequest): string | null {
+  const header = request.headers.get("authorization") || "";
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  return match?.[1]?.trim() || null;
+}
+
 export async function getSessionFromCookies(): Promise<SessionPayload | null> {
   const jar = await cookies();
   const token = jar.get(SESSION_COOKIE)?.value;
@@ -69,10 +75,41 @@ export async function getVerifiedFromCookies(): Promise<VerifiedPayload | null> 
   return verifyVerifiedToken(token);
 }
 
-export function getSessionFromRequest(
-  req: NextRequest
+/** Cookie session or Authorization Bearer session token. */
+export async function getSessionFromRequest(
+  req: Request | NextRequest
 ): Promise<SessionPayload | null> {
-  const token = req.cookies.get(SESSION_COOKIE)?.value;
-  if (!token) return Promise.resolve(null);
-  return verifySessionToken(token);
+  const bearer = getBearerToken(req);
+  if (bearer) return verifySessionToken(bearer);
+
+  if ("cookies" in req && typeof req.cookies?.get === "function") {
+    const token = req.cookies.get(SESSION_COOKIE)?.value;
+    if (token) return verifySessionToken(token);
+  }
+
+  return getSessionFromCookies();
+}
+
+/** Cookie verified-step or body/header verifiedToken for desktop clients. */
+export async function getVerifiedFromRequest(
+  req: Request | NextRequest,
+  bodyToken?: string | null
+): Promise<VerifiedPayload | null> {
+  const bearer = getBearerToken(req);
+  if (bearer) {
+    const fromBearer = await verifyVerifiedToken(bearer);
+    if (fromBearer) return fromBearer;
+  }
+
+  if (bodyToken) {
+    const fromBody = await verifyVerifiedToken(bodyToken);
+    if (fromBody) return fromBody;
+  }
+
+  if ("cookies" in req && typeof req.cookies?.get === "function") {
+    const token = req.cookies.get(VERIFIED_COOKIE)?.value;
+    if (token) return verifyVerifiedToken(token);
+  }
+
+  return getVerifiedFromCookies();
 }

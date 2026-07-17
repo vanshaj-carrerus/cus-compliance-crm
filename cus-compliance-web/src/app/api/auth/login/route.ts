@@ -1,28 +1,40 @@
-import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/lib/models/User";
 import {
   clearAuthCookies,
-  getVerifiedFromCookies,
+  getVerifiedFromRequest,
   setSessionCookie,
   signSessionToken,
 } from "@/lib/auth";
+import { corsPreflightResponse, jsonWithCors } from "@/lib/cors";
+
+export async function OPTIONS(request: Request) {
+  return corsPreflightResponse(request);
+}
 
 export async function POST(request: Request) {
   try {
-    const verified = await getVerifiedFromCookies();
+    const body = (await request.json()) as {
+      password?: string;
+      verifiedToken?: string;
+    };
+    const verified = await getVerifiedFromRequest(
+      request,
+      body.verifiedToken || null
+    );
     if (!verified) {
-      return NextResponse.json(
+      return jsonWithCors(
+        request,
         { error: "Email not verified. Please enter your code first." },
         { status: 401 }
       );
     }
 
-    const body = (await request.json()) as { password?: string };
     const password = String(body.password || "");
     if (!password) {
-      return NextResponse.json(
+      return jsonWithCors(
+        request,
         { error: "Password is required" },
         { status: 400 }
       );
@@ -31,7 +43,8 @@ export async function POST(request: Request) {
     await connectDB();
     const user = await User.findOne({ email: verified.email });
     if (!user) {
-      return NextResponse.json(
+      return jsonWithCors(
+        request,
         { error: "No account found. Please create a password first." },
         { status: 404 }
       );
@@ -39,7 +52,8 @@ export async function POST(request: Request) {
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
-      return NextResponse.json(
+      return jsonWithCors(
+        request,
         { error: "Incorrect password" },
         { status: 401 }
       );
@@ -50,15 +64,16 @@ export async function POST(request: Request) {
       email: user.email,
     });
 
-    const res = NextResponse.json({
+    const res = jsonWithCors(request, {
       message: "Signed in",
       user: { email: user.email, name: user.name },
+      sessionToken,
     });
     clearAuthCookies(res);
     setSessionCookie(res, sessionToken);
     return res;
   } catch (error) {
     console.error("login error:", error);
-    return NextResponse.json({ error: "Login failed" }, { status: 500 });
+    return jsonWithCors(request, { error: "Login failed" }, { status: 500 });
   }
 }

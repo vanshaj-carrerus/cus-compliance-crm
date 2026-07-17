@@ -1,0 +1,1048 @@
+@import "tailwindcss";
+
+:root {
+  --background: #eaf5f5;
+  --foreground: #203a40;
+  --primary: #15999a;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f7f7;
+  --secondary-foreground: #203a40;
+  --accent: #15999a;
+  --accent-hover: #117e7f;
+  --muted: #70868b;
+  --border: #dcebea;
+  --card: #ffffff;
+  --card-foreground: #203a40;
+  --input: #f1f7f7;
+  --danger: #e95761;
+  --warning: #d68a25;
+  --success: #1c9a68;
+  --info: #2f83dc;
+  --shadow: 0 14px 34px rgba(63, 103, 108, 0.09);
+  --radius: 12px;
+  --sidebar: #ffffff;
+  --topbar: #ffffff;
+  --row-active: #e8f5f5;
+  --row-paid: #eef8ff;
+  --row-cancelled: #fff4f5;
+  --row-runaway: #fff8ea;
+  --row-lost: #fff4ee;
+  --freeze-bg: #edf4f7;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-input: var(--input);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-success: var(--success);
+  --color-info: var(--info);
+  --color-sidebar: var(--sidebar);
+  --font-sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), "Segoe UI", system-ui, sans-serif;
+  overflow: hidden;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--secondary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.badge-success {
+  background: rgba(28, 154, 104, 0.15);
+  color: var(--success);
+}
+.badge-warning {
+  background: rgba(214, 138, 37, 0.15);
+  color: var(--warning);
+}
+.badge-danger {
+  background: rgba(233, 87, 97, 0.15);
+  color: var(--danger);
+}
+.badge-info {
+  background: rgba(47, 131, 220, 0.15);
+  color: var(--info);
+}
+.badge-default {
+  background: var(--secondary);
+  color: var(--muted);
+}
+
+.excel-grid {
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  min-width: 4300px;
+  width: max-content;
+  background: var(--card);
+}
+.excel-grid th,
+.excel-grid td {
+  border-bottom: 1px solid var(--border);
+  padding: 6px 8px;
+  vertical-align: middle;
+  min-height: 44px;
+  white-space: nowrap;
+  box-sizing: border-box;
+  background-clip: padding-box;
+}
+.excel-grid thead th {
+  background: var(--freeze-bg);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+/* Keep scrolling cells under freeze columns */
+.excel-grid tbody td {
+  position: relative;
+  z-index: 1;
+}
+.excel-grid td.inst-col {
+  white-space: normal;
+  overflow: hidden;
+  vertical-align: top;
+  z-index: 1 !important;
+}
+
+/* Sticky freeze columns ? high z-index so fully-paid / scrolled content cannot paint over them */
+.excel-grid .row-head,
+.excel-grid .freeze-check,
+.excel-grid .sticky-priority,
+.excel-grid .freeze-name,
+.excel-grid .freeze-phone,
+.excel-grid .freeze-total,
+.excel-grid .freeze-paid,
+.excel-grid .freeze-remaining {
+  position: sticky !important;
+  z-index: 320 !important;
+  overflow: hidden !important;
+  background-color: #ffffff !important;
+  background-image: none !important;
+  box-shadow: 1px 0 0 var(--border);
+}
+.excel-grid .row-head {
+  left: 0 !important;
+  z-index: 330 !important;
+  min-width: 46px !important;
+  width: 46px !important;
+  max-width: 46px !important;
+  text-align: center;
+  font-weight: 700;
+  color: var(--muted);
+}
+.excel-grid .freeze-check {
+  left: 46px !important;
+  z-index: 329 !important;
+  min-width: 44px !important;
+  width: 44px !important;
+  max-width: 44px !important;
+  text-align: center;
+}
+.excel-grid .freeze-name {
+  left: 90px !important;
+  z-index: 328 !important;
+  min-width: 220px !important;
+  width: 220px !important;
+  max-width: 220px !important;
+}
+.excel-grid .freeze-phone {
+  left: 310px !important;
+  z-index: 327 !important;
+  min-width: 150px !important;
+  width: 150px !important;
+  max-width: 150px !important;
+}
+.excel-grid .freeze-total {
+  left: 460px !important;
+  z-index: 326 !important;
+  min-width: 120px !important;
+  width: 120px !important;
+  max-width: 120px !important;
+}
+.excel-grid .freeze-paid {
+  left: 580px !important;
+  z-index: 325 !important;
+  min-width: 120px !important;
+  width: 120px !important;
+  max-width: 120px !important;
+}
+.excel-grid .freeze-remaining {
+  left: 700px !important;
+  z-index: 324 !important;
+  min-width: 130px !important;
+  width: 130px !important;
+  max-width: 130px !important;
+  box-shadow: 3px 0 12px rgba(64, 98, 102, 0.12) !important;
+}
+.excel-grid thead .row-head,
+.excel-grid thead .freeze-check,
+.excel-grid thead .freeze-name,
+.excel-grid thead .freeze-phone,
+.excel-grid thead .freeze-total,
+.excel-grid thead .freeze-paid,
+.excel-grid thead .freeze-remaining {
+  background-color: var(--freeze-bg) !important;
+  z-index: 350 !important;
+  top: 0;
+}
+.excel-grid .freeze-name .sheet-cell,
+.excel-grid .freeze-phone .sheet-cell {
+  position: relative;
+  z-index: 2;
+  min-width: 0 !important;
+  width: 100%;
+  max-width: 100%;
+}
+.excel-grid .freeze-total span,
+.excel-grid .freeze-paid span,
+.excel-grid .freeze-remaining span {
+  position: relative;
+  z-index: 2;
+}
+.excel-grid .sheet-cell {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--foreground);
+  border-radius: 6px;
+  padding: 7px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  width: 100%;
+  min-width: 92px;
+  font-family: inherit;
+  outline: none;
+}
+.excel-grid .sheet-cell:hover {
+  background: rgba(21, 153, 154, 0.08);
+  border-color: rgba(21, 153, 154, 0.25);
+}
+.excel-grid .sheet-cell:focus,
+.excel-grid .sheet-cell.selected-cell {
+  background: var(--input);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(21, 153, 154, 0.22);
+}
+.excel-grid .calc-cell {
+  font-weight: 700;
+}
+.excel-grid .remarks-editor {
+  min-width: 180px;
+  max-width: 260px;
+  height: 34px;
+  resize: vertical;
+  white-space: normal;
+  font-weight: 500;
+}
+.excel-grid .inst-cell {
+  min-width: 200px;
+  max-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.excel-grid .inst-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+.excel-grid .inst-row input[type="text"] {
+  min-width: 0;
+  flex: 1 1 auto;
+  width: 100%;
+}
+.excel-grid .inst-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  accent-color: var(--success);
+}
+.excel-grid .inst-status {
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+}
+
+.row-active td {
+  background-color: var(--row-active);
+}
+.row-fully-paid td {
+  background-color: var(--row-paid);
+}
+.row-cancelled td {
+  background-color: var(--row-cancelled);
+}
+.row-run-away td {
+  background-color: var(--row-runaway);
+}
+.row-job-lost td {
+  background-color: var(--row-lost);
+}
+.row-refunded td,
+.row-closed td,
+.row-inactive td,
+.row-neutral td {
+  background-color: var(--card);
+}
+
+/* Freeze columns keep opaque row color ? critical for fully-paid (near-white) rows */
+.excel-grid tbody tr.row-active > td.row-head,
+.excel-grid tbody tr.row-active > td.freeze-check,
+.excel-grid tbody tr.row-active > td.sticky-priority,
+.excel-grid tbody tr.row-active > td.freeze-name,
+.excel-grid tbody tr.row-active > td.freeze-phone,
+.excel-grid tbody tr.row-active > td.freeze-total,
+.excel-grid tbody tr.row-active > td.freeze-paid,
+.excel-grid tbody tr.row-active > td.freeze-remaining {
+  background-color: var(--row-active) !important;
+}
+.excel-grid tbody tr.row-fully-paid > td.row-head,
+.excel-grid tbody tr.row-fully-paid > td.freeze-check,
+.excel-grid tbody tr.row-fully-paid > td.sticky-priority,
+.excel-grid tbody tr.row-fully-paid > td.freeze-name,
+.excel-grid tbody tr.row-fully-paid > td.freeze-phone,
+.excel-grid tbody tr.row-fully-paid > td.freeze-total,
+.excel-grid tbody tr.row-fully-paid > td.freeze-paid,
+.excel-grid tbody tr.row-fully-paid > td.freeze-remaining {
+  background-color: #eef8ff !important;
+}
+.excel-grid tbody tr.row-cancelled > td.row-head,
+.excel-grid tbody tr.row-cancelled > td.freeze-check,
+.excel-grid tbody tr.row-cancelled > td.sticky-priority,
+.excel-grid tbody tr.row-cancelled > td.freeze-name,
+.excel-grid tbody tr.row-cancelled > td.freeze-phone,
+.excel-grid tbody tr.row-cancelled > td.freeze-total,
+.excel-grid tbody tr.row-cancelled > td.freeze-paid,
+.excel-grid tbody tr.row-cancelled > td.freeze-remaining {
+  background-color: var(--row-cancelled) !important;
+}
+.excel-grid tbody tr.row-run-away > td.row-head,
+.excel-grid tbody tr.row-run-away > td.freeze-check,
+.excel-grid tbody tr.row-run-away > td.sticky-priority,
+.excel-grid tbody tr.row-run-away > td.freeze-name,
+.excel-grid tbody tr.row-run-away > td.freeze-phone,
+.excel-grid tbody tr.row-run-away > td.freeze-total,
+.excel-grid tbody tr.row-run-away > td.freeze-paid,
+.excel-grid tbody tr.row-run-away > td.freeze-remaining {
+  background-color: var(--row-runaway) !important;
+}
+.excel-grid tbody tr.row-job-lost > td.row-head,
+.excel-grid tbody tr.row-job-lost > td.freeze-check,
+.excel-grid tbody tr.row-job-lost > td.sticky-priority,
+.excel-grid tbody tr.row-job-lost > td.freeze-name,
+.excel-grid tbody tr.row-job-lost > td.freeze-phone,
+.excel-grid tbody tr.row-job-lost > td.freeze-total,
+.excel-grid tbody tr.row-job-lost > td.freeze-paid,
+.excel-grid tbody tr.row-job-lost > td.freeze-remaining {
+  background-color: var(--row-lost) !important;
+}
+.excel-grid tbody tr.row-refunded > td.row-head,
+.excel-grid tbody tr.row-refunded > td.freeze-check,
+.excel-grid tbody tr.row-refunded > td.sticky-priority,
+.excel-grid tbody tr.row-refunded > td.freeze-name,
+.excel-grid tbody tr.row-refunded > td.freeze-phone,
+.excel-grid tbody tr.row-refunded > td.freeze-total,
+.excel-grid tbody tr.row-refunded > td.freeze-paid,
+.excel-grid tbody tr.row-refunded > td.freeze-remaining,
+.excel-grid tbody tr.row-closed > td.row-head,
+.excel-grid tbody tr.row-closed > td.freeze-check,
+.excel-grid tbody tr.row-closed > td.sticky-priority,
+.excel-grid tbody tr.row-closed > td.freeze-name,
+.excel-grid tbody tr.row-closed > td.freeze-phone,
+.excel-grid tbody tr.row-closed > td.freeze-total,
+.excel-grid tbody tr.row-closed > td.freeze-paid,
+.excel-grid tbody tr.row-closed > td.freeze-remaining,
+.excel-grid tbody tr.row-inactive > td.row-head,
+.excel-grid tbody tr.row-inactive > td.freeze-check,
+.excel-grid tbody tr.row-inactive > td.sticky-priority,
+.excel-grid tbody tr.row-inactive > td.freeze-name,
+.excel-grid tbody tr.row-inactive > td.freeze-phone,
+.excel-grid tbody tr.row-inactive > td.freeze-total,
+.excel-grid tbody tr.row-inactive > td.freeze-paid,
+.excel-grid tbody tr.row-inactive > td.freeze-remaining,
+.excel-grid tbody tr.row-neutral > td.row-head,
+.excel-grid tbody tr.row-neutral > td.freeze-check,
+.excel-grid tbody tr.row-neutral > td.sticky-priority,
+.excel-grid tbody tr.row-neutral > td.freeze-name,
+.excel-grid tbody tr.row-neutral > td.freeze-phone,
+.excel-grid tbody tr.row-neutral > td.freeze-total,
+.excel-grid tbody tr.row-neutral > td.freeze-paid,
+.excel-grid tbody tr.row-neutral > td.freeze-remaining {
+  background-color: #ffffff !important;
+}
+
+#masterScroll {
+  isolation: isolate;
+  transform: none !important;
+  contain: none;
+}
+#masterScroll .excel-grid tbody td:not(.row-head):not(.freeze-check):not(.sticky-priority):not(.freeze-name):not(.freeze-phone):not(.freeze-total):not(.freeze-paid):not(.freeze-remaining) {
+  z-index: 1 !important;
+}
+/* CRM data views */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease;
+  background: var(--secondary);
+  color: var(--foreground);
+}
+.btn:hover:not(:disabled) {
+  filter: brightness(0.98);
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.btn-primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+}
+.btn-secondary {
+  background: var(--secondary);
+}
+.btn-danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 10px;
+}
+
+.accent-text {
+  color: var(--primary);
+  font-weight: 700;
+}
+.success-text {
+  color: var(--success);
+  font-weight: 700;
+}
+.danger-text {
+  color: var(--danger);
+  font-weight: 700;
+}
+.warning-text {
+  color: var(--warning);
+  font-weight: 700;
+}
+.info-text {
+  color: var(--info);
+  font-weight: 700;
+}
+.muted {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.filters-bar {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+@media (min-width: 640px) {
+  .filters-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+  }
+}
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  min-width: 0;
+}
+@media (min-width: 640px) {
+  .filter-group {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+}
+.filter-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.filters-bar select,
+.filter-group select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--input);
+  color: var(--foreground);
+  padding: 7px 10px;
+  font-size: 13px;
+  outline: none;
+}
+@media (min-width: 640px) {
+  .filters-bar select,
+  .filter-group select {
+    width: auto;
+    min-width: 120px;
+  }
+}
+.filters-bar select:focus,
+.filter-group select:focus {
+  border-color: var(--primary);
+}
+.filters-bar .btn {
+  width: 100%;
+}
+@media (min-width: 640px) {
+  .filters-bar .btn {
+    width: auto;
+  }
+}
+
+.month-selector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 14px 20px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+.month-display {
+  min-width: 180px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--primary);
+  letter-spacing: -0.02em;
+}
+
+.date-range-bar {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: end;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+@media (min-width: 640px) {
+  .date-range-bar {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 16px;
+  }
+}
+.date-range-bar label,
+.date-range-bar .period-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  min-width: 0;
+  width: 100%;
+}
+@media (min-width: 640px) {
+  .date-range-bar label,
+  .date-range-bar .period-field {
+    width: auto;
+    min-width: 140px;
+  }
+}
+.date-range-bar select,
+.date-range-bar input[type="date"] {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--input);
+  color: var(--foreground);
+  padding: 8px 10px;
+  font-size: 13px;
+  outline: none;
+}
+.date-range-bar select:focus,
+.date-range-bar input[type="date"]:focus {
+  border-color: var(--primary);
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.stat-card {
+  position: relative;
+  overflow: hidden;
+  padding: 19px;
+  min-height: 110px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+.stat-card::after {
+  content: "";
+  position: absolute;
+  right: -18px;
+  top: -18px;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: rgba(21, 153, 154, 0.1);
+  pointer-events: none;
+}
+.stat-card.info::after {
+  background: rgba(47, 131, 220, 0.12);
+}
+.stat-card.warning::after {
+  background: rgba(214, 138, 37, 0.14);
+}
+.stat-card.danger::after {
+  background: rgba(233, 87, 97, 0.13);
+}
+.stat-card.success::after {
+  background: rgba(28, 154, 104, 0.12);
+}
+.stat-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+.stat-value {
+  margin-top: 8px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--foreground);
+}
+.stat-card.success .stat-value {
+  color: var(--success);
+}
+.stat-card.info .stat-value {
+  color: var(--info);
+}
+.stat-card.warning .stat-value {
+  color: var(--warning);
+}
+.stat-card.danger .stat-value {
+  color: var(--danger);
+}
+.stat-change {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.chart-card {
+  padding: 20px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--card);
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+}
+.chart-card .table-title {
+  margin-bottom: 4px;
+}
+
+.data-table-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--card);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(21, 153, 154, 0.04), transparent);
+  min-height: 68px;
+}
+.table-title {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--foreground);
+}
+.table-subtitle {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.table-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--secondary);
+}
+.table-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  font-size: 12px;
+  color: var(--muted);
+}
+.table-scroll {
+  overflow: auto;
+  max-height: calc(100vh - 280px);
+  scroll-behavior: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  color: var(--foreground);
+}
+.data-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 11px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  background: var(--freeze-bg);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.data-table td {
+  padding: 11px 14px;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+}
+.data-table tbody tr:hover {
+  background: rgba(21, 153, 154, 0.05);
+}
+.data-table .empty-row {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--muted);
+}
+.remarks {
+  max-width: 240px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.target-input {
+  min-width: 110px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--input);
+  padding: 6px 8px;
+  font-size: 12px;
+  outline: none;
+}
+.target-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(21, 153, 154, 0.15);
+}
+.target-input.date {
+  min-width: 130px;
+}
+.target-input.remarks {
+  min-width: 160px;
+}
+
+.backup-layout {
+  max-width: 720px;
+  margin: 0 auto;
+}
+.backup-panel {
+  padding: 20px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--card);
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+}
+.backup-panel-title {
+  font-size: 16px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+.backup-panel-desc {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+.backup-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.backup-actions .btn {
+  width: 100%;
+  padding: 12px 16px;
+}
+.backup-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+@media (min-width: 768px) {
+  .backup-stats {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+.backup-stat-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+.backup-stat-value {
+  font-size: 28px;
+  font-weight: 800;
+  margin-top: 4px;
+}
+
+.workflow-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.workflow-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+@media (min-width: 1024px) {
+  .workflow-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.workflow-rule-card {
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+.workflow-rule-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.workflow-toggle {
+  position: relative;
+  display: inline-flex;
+  width: 48px;
+  height: 28px;
+  cursor: pointer;
+  align-items: center;
+}
+.workflow-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.workflow-toggle-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--border);
+  transition: background 0.2s;
+}
+.workflow-toggle input:checked + .workflow-toggle-track {
+  background: var(--success);
+}
+.workflow-toggle-thumb {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+.workflow-toggle input:checked ~ .workflow-toggle-thumb {
+  transform: translateX(20px);
+}
+
+.installment-card {
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--secondary);
+  padding: 16px;
+}
+.installment-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.installment-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+@media (max-width: 767px) {
+  body {
+    overflow: auto !important;
+    height: auto !important;
+  }
+  .table-scroll {
+    max-height: none;
+  }
+  .table-header {
+    padding: 12px 14px;
+    min-height: 0;
+  }
+  .table-title {
+    font-size: 15px;
+  }
+  .table-toolbar {
+    padding: 10px 12px;
+  }
+  .stat-grid {
+    grid-template-columns: 1fr;
+  }
+  .month-selector {
+    flex-wrap: wrap;
+  }
+  .month-display {
+    min-width: 0;
+    width: 100%;
+    order: -1;
+  }
+  .target-input.date,
+  .target-input.remarks {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+@media (max-width: 1023px) {
+  .stat-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+}

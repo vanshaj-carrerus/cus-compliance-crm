@@ -1,22 +1,34 @@
-import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/lib/models/User";
-import { getSessionFromCookies } from "@/lib/auth";
+import { getSessionFromRequest } from "@/lib/auth";
+import { corsPreflightResponse, jsonWithCors } from "@/lib/cors";
 
-export async function GET() {
+export async function OPTIONS(request: Request) {
+  return corsPreflightResponse(request);
+}
+
+export async function GET(request: Request) {
   try {
-    const session = await getSessionFromCookies();
+    const session = await getSessionFromRequest(request);
     if (!session) {
-      return NextResponse.json({ authenticated: false }, { status: 401 });
+      return jsonWithCors(
+        request,
+        { authenticated: false },
+        { status: 401 }
+      );
     }
 
     await connectDB();
     const user = await User.findById(session.sub).lean();
     if (!user || user.email !== session.email) {
-      return NextResponse.json({ authenticated: false }, { status: 401 });
+      return jsonWithCors(
+        request,
+        { authenticated: false },
+        { status: 401 }
+      );
     }
 
-    return NextResponse.json({
+    return jsonWithCors(request, {
       authenticated: true,
       user: {
         email: user.email,
@@ -25,6 +37,10 @@ export async function GET() {
     });
   } catch (error) {
     console.error("auth/me error:", error);
-    return NextResponse.json({ authenticated: false }, { status: 500 });
+    return jsonWithCors(
+      request,
+      { authenticated: false },
+      { status: 500 }
+    );
   }
 }

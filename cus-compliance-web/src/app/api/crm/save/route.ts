@@ -1,11 +1,16 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { CandidateModel } from "@/lib/models/Candidate";
 import { PaymentHistoryModel } from "@/lib/models/PaymentHistory";
 import { SettingsModel } from "@/lib/models/Settings";
 import { normalizeCandidate, mergeSettings } from "@/lib/crm";
+import { corsPreflightResponse, jsonWithCors } from "@/lib/cors";
 
 export const dynamic = "force-dynamic";
+
+export async function OPTIONS(request: Request) {
+  return corsPreflightResponse(request);
+}
 
 /** Full snapshot save — used by debounced queueSave / undo restore */
 export async function PUT(req: NextRequest) {
@@ -28,10 +33,11 @@ export async function PUT(req: NextRequest) {
       { upsert: true }
     );
 
-    return NextResponse.json({ ok: true });
+    return jsonWithCors(req, { ok: true });
   } catch (e) {
     console.error(e);
-    return NextResponse.json(
+    return jsonWithCors(
+      req,
       { error: e instanceof Error ? e.message : "Save failed" },
       { status: 500 }
     );

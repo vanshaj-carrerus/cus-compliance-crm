@@ -1,29 +1,41 @@
-import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/lib/models/User";
 import {
   clearAuthCookies,
-  getVerifiedFromCookies,
+  getVerifiedFromRequest,
   setSessionCookie,
   signSessionToken,
 } from "@/lib/auth";
+import { corsPreflightResponse, jsonWithCors } from "@/lib/cors";
+
+export async function OPTIONS(request: Request) {
+  return corsPreflightResponse(request);
+}
 
 export async function POST(request: Request) {
   try {
-    const verified = await getVerifiedFromCookies();
+    const body = (await request.json()) as {
+      password?: string;
+      verifiedToken?: string;
+    };
+    const verified = await getVerifiedFromRequest(
+      request,
+      body.verifiedToken || null
+    );
     if (!verified) {
-      return NextResponse.json(
+      return jsonWithCors(
+        request,
         { error: "Email not verified. Please enter your code first." },
         { status: 401 }
       );
     }
 
-    const body = (await request.json()) as { password?: string };
     const password = String(body.password || "");
 
     if (password.length < 8) {
-      return NextResponse.json(
+      return jsonWithCors(
+        request,
         { error: "Password must be at least 8 characters" },
         { status: 400 }
       );
@@ -32,7 +44,8 @@ export async function POST(request: Request) {
     await connectDB();
     const existing = await User.findOne({ email: verified.email });
     if (existing) {
-      return NextResponse.json(
+      return jsonWithCors(
+        request,
         { error: "Account already exists. Please sign in with your password." },
         { status: 400 }
       );
@@ -50,16 +63,18 @@ export async function POST(request: Request) {
       email: user.email,
     });
 
-    const res = NextResponse.json({
+    const res = jsonWithCors(request, {
       message: "Account created",
       user: { email: user.email, name: user.name },
+      sessionToken,
     });
     clearAuthCookies(res);
     setSessionCookie(res, sessionToken);
     return res;
   } catch (error) {
     console.error("set-password error:", error);
-    return NextResponse.json(
+    return jsonWithCors(
+      request,
       { error: "Failed to create account" },
       { status: 500 }
     );
