@@ -15,6 +15,18 @@ import {
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 
+function barClass(cls: string) {
+  return cls === "success"
+    ? "bg-success"
+    : cls === "danger"
+      ? "bg-danger"
+      : cls === "warning"
+        ? "bg-warning"
+        : cls === "info"
+          ? "bg-info"
+          : "bg-primary";
+}
+
 function Stat({
   label,
   value,
@@ -28,16 +40,6 @@ function Stat({
   cls?: string;
   onClick?: () => void;
 }) {
-  const bar =
-    cls === "success"
-      ? "bg-success"
-      : cls === "danger"
-        ? "bg-danger"
-        : cls === "warning"
-          ? "bg-warning"
-          : cls === "info"
-            ? "bg-info"
-            : "bg-primary";
   return (
     <button
       type="button"
@@ -46,7 +48,7 @@ function Stat({
         onClick ? "cursor-pointer hover:border-primary" : "cursor-default"
       }`}
     >
-      <div className={`absolute inset-x-0 top-0 h-[3px] ${bar}`} />
+      <div className={`absolute inset-x-0 top-0 h-[3px] ${barClass(cls)}`} />
       <div className="mb-2 text-xs uppercase tracking-wide text-muted">
         {label}
       </div>
@@ -55,6 +57,72 @@ function Stat({
       </div>
       <div className="mt-1.5 text-xs leading-snug text-success">{sub}</div>
     </button>
+  );
+}
+
+function FloorFilterStat({
+  label,
+  value,
+  sub,
+  cls = "",
+  floors,
+  floor,
+  onFloorChange,
+  onClick,
+}: {
+  label: string;
+  value: string | number;
+  sub: string;
+  cls?: string;
+  floors: string[];
+  floor: string;
+  onFloorChange: (floor: string) => void;
+  onClick?: () => void;
+}) {
+  return (
+    <div
+      className={`relative overflow-hidden rounded-[var(--radius)] border border-border bg-card p-4 text-left shadow-sm sm:p-5 ${
+        onClick ? "cursor-pointer hover:border-primary" : "cursor-default"
+      }`}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (!onClick) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+    >
+      <div className={`absolute inset-x-0 top-0 h-[3px] ${barClass(cls)}`} />
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <div className="min-w-0 text-xs uppercase tracking-wide text-muted">
+          {label}
+        </div>
+        <select
+          value={floor}
+          aria-label={`${label} floor`}
+          className="max-w-[9.5rem] shrink-0 rounded-md border border-border bg-secondary px-2 py-1 text-[11px] font-semibold text-foreground"
+          onClick={(e) => e.stopPropagation()}
+          onChange={(e) => {
+            e.stopPropagation();
+            onFloorChange(e.target.value);
+          }}
+        >
+          <option value="">All floors</option>
+          {floors.map((f) => (
+            <option key={f} value={f}>
+              {f}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="text-[24px] font-bold leading-none tracking-tight sm:text-[28px]">
+        {value}
+      </div>
+      <div className="mt-1.5 text-xs leading-snug text-success">{sub}</div>
+    </div>
   );
 }
 
@@ -76,6 +144,7 @@ export function Dashboard() {
   const [displayName, setDisplayName] = useState("");
   const [period, setPeriod] = useState<DashboardPeriod>(defaultDashboardPeriod);
   const [periodReady, setPeriodReady] = useState(false);
+  const [runawayFloor, setRunawayFloor] = useState("");
 
   useEffect(() => {
     setPeriod(loadDashboardPeriod());
@@ -117,6 +186,41 @@ export function Dashboard() {
     [candidates, period]
   );
 
+  const floors = useMemo(
+    () =>
+      [
+        ...new Set(
+          candidates
+            .map((c) => String(c.floor || "").trim())
+            .filter(Boolean)
+        ),
+      ].sort((a, b) => a.localeCompare(b)),
+    [candidates]
+  );
+
+  useEffect(() => {
+    if (runawayFloor && !floors.includes(runawayFloor)) {
+      setRunawayFloor("");
+    }
+  }, [floors, runawayFloor]);
+
+  const runawayFloorStat = useMemo(() => {
+    if (!runawayFloor) return null;
+    return (
+      stats.byFloor.find(
+        (f) => f.floor.toLowerCase() === runawayFloor.toLowerCase()
+      ) ?? null
+    );
+  }, [stats.byFloor, runawayFloor]);
+
+  const runawayCount = runawayFloor
+    ? (runawayFloorStat?.runaway ?? 0)
+    : stats.runaway;
+  const runawayLossAmount = runawayFloor
+    ? (runawayFloorStat?.runawayLoss ?? 0)
+    : stats.runawayLoss;
+  const runawayFloorLabel = runawayFloor || "All floors";
+
   const date = new Intl.DateTimeFormat(undefined, {
     weekday: "long",
     day: "numeric",
@@ -141,7 +245,16 @@ export function Dashboard() {
     });
   };
 
-  const openMaster = (filters: { status?: string } = {}, smart?: string) => {
+  const openMaster = (
+    filters: {
+      status?: string;
+      floor?: string;
+      assignedTo?: string;
+      po?: string;
+      poMonth?: string;
+    } = {},
+    smart?: string
+  ) => {
     setActiveFilters(filters);
     setSmartFilter(smart ? { type: smart } : null);
     navigate("master");
@@ -296,19 +409,35 @@ export function Dashboard() {
           cls="info"
           onClick={() => openMaster({ status: "Inactive" })}
         />
-        <Stat
+        <FloorFilterStat
           label="Run Away Candidates"
-          value={stats.runaway}
-          sub="Status: Run Away"
+          value={runawayCount}
+          sub={`${runawayFloorLabel} · Status: Run Away`}
           cls="warning"
-          onClick={() => openMaster({ status: "Run Away" })}
+          floors={floors}
+          floor={runawayFloor}
+          onFloorChange={setRunawayFloor}
+          onClick={() =>
+            openMaster({
+              status: "Run Away",
+              ...(runawayFloor ? { floor: runawayFloor } : {}),
+            })
+          }
         />
-        <Stat
+        <FloorFilterStat
           label="Run Away Loss"
-          value={money(stats.runawayLoss)}
-          sub="Unpaid balance from run away candidates"
+          value={money(runawayLossAmount)}
+          sub={`${runawayFloorLabel} · Unpaid balance`}
           cls="warning"
-          onClick={() => openMaster({ status: "Run Away" })}
+          floors={floors}
+          floor={runawayFloor}
+          onFloorChange={setRunawayFloor}
+          onClick={() =>
+            openMaster({
+              status: "Run Away",
+              ...(runawayFloor ? { floor: runawayFloor } : {}),
+            })
+          }
         />
         <Stat
           label="Total Service Fee"
@@ -367,7 +496,74 @@ export function Dashboard() {
             navigate("daily");
           }}
         />
+        {stats.byFloor.slice(0, 2).map((floor) => (
+          <Stat
+            key={`floor-paid-${floor.floor}`}
+            label={`${floor.floor} Collected`}
+            value={money(floor.paid)}
+            sub={
+              stats.filtered
+                ? `Collected in ${stats.periodLabel} · ${money(floor.remain)} remaining`
+                : `${floor.count} candidates · ${money(floor.remain)} remaining`
+            }
+            cls="success"
+            onClick={() => {
+              setActiveFilters(
+                floor.floor === "Unknown" ? {} : { floor: floor.floor }
+              );
+              setSmartFilter(null);
+              navigate("master");
+            }}
+          />
+        ))}
       </div>
+
+      {stats.byFloor.length > 0 && (
+        <div className="mb-5 rounded-[var(--radius)] border border-border bg-card p-4 sm:mb-6 sm:p-5">
+          <div className="mb-1 text-base font-semibold">Floor-wise Amount</div>
+          <div className="mb-3.5 text-xs text-muted">
+            Collected and remaining by floor
+            {stats.filtered ? ` · ${stats.periodLabel}` : ""}
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {stats.byFloor.map((floor) => (
+              <button
+                key={floor.floor}
+                type="button"
+                className="rounded-[var(--radius)] border border-border bg-secondary/40 p-3.5 text-left hover:border-primary"
+                onClick={() => {
+                  setActiveFilters(
+                    floor.floor === "Unknown" ? {} : { floor: floor.floor }
+                  );
+                  setSmartFilter(null);
+                  navigate("master");
+                }}
+              >
+                <div className="mb-2 text-sm font-semibold text-foreground">
+                  {floor.floor}
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <div className="text-muted">Collected</div>
+                    <div className="mt-0.5 text-sm font-bold text-success">
+                      {money(floor.paid)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-muted">Remaining</div>
+                    <div className="mt-0.5 text-sm font-bold text-danger">
+                      {money(floor.remain)}
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-2 text-[11px] text-muted">
+                  {floor.count} candidates · fee {money(floor.fee)}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mb-16 rounded-[var(--radius)] border border-border bg-card p-4 sm:mb-6 sm:p-5">
         <div className="mb-3.5 text-base font-semibold">Quick Health Check</div>

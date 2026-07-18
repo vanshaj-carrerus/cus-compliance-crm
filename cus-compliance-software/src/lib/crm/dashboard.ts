@@ -121,6 +121,16 @@ export function getPaidInRange(
   }, 0);
 }
 
+export interface FloorAmountStat {
+  floor: string;
+  count: number;
+  fee: number;
+  paid: number;
+  remain: number;
+  runaway: number;
+  runawayLoss: number;
+}
+
 export interface DashboardStats {
   total: number;
   active: number;
@@ -137,6 +147,7 @@ export interface DashboardStats {
   pct: number;
   periodLabel: string;
   filtered: boolean;
+  byFloor: FloorAmountStat[];
 }
 
 export function computeDashboardStats(
@@ -239,6 +250,51 @@ export function computeDashboardStats(
     }
   }
 
+  const floorMap = new Map<string, FloorAmountStat>();
+  const touchFloor = (floor: string) => {
+    const key = String(floor || "").trim() || "Unknown";
+    let row = floorMap.get(key);
+    if (!row) {
+      row = {
+        floor: key,
+        count: 0,
+        fee: 0,
+        paid: 0,
+        remain: 0,
+        runaway: 0,
+        runawayLoss: 0,
+      };
+      floorMap.set(key, row);
+    }
+    return row;
+  };
+
+  for (const c of scoped) {
+    const row = touchFloor(c.floor);
+    row.count += 1;
+    row.fee += Number(c.totalServiceFee) || 0;
+    row.remain += getRemaining(c);
+    if (!bounds) row.paid += getTotalPaid(c);
+    if (c.status === "Run Away") {
+      row.runaway += 1;
+      row.runawayLoss += getRemaining(c);
+    }
+  }
+
+  if (bounds) {
+    for (const c of candidates) {
+      const amount = getPaidInRange(c, bounds.from, bounds.to);
+      if (amount <= 0) continue;
+      touchFloor(c.floor).paid += amount;
+    }
+  }
+
+  const byFloor = [...floorMap.values()].sort((a, b) => {
+    if (b.paid !== a.paid) return b.paid - a.paid;
+    if (b.fee !== a.fee) return b.fee - a.fee;
+    return a.floor.localeCompare(b.floor);
+  });
+
   return {
     total,
     active,
@@ -255,5 +311,6 @@ export function computeDashboardStats(
     pct,
     periodLabel,
     filtered,
+    byFloor,
   };
 }
