@@ -2,12 +2,12 @@ import { connectDB } from "@/lib/mongodb";
 import { VerificationCode } from "@/lib/models/VerificationCode";
 import { User } from "@/lib/models/User";
 import {
-  isEmailAllowed,
   isValidEmail,
   normalizeEmail,
   setVerifiedCookie,
   signVerifiedToken,
 } from "@/lib/auth";
+import { canAccessCrm, normalizeRole } from "@/lib/roles";
 import { corsPreflightResponse, jsonWithCors } from "@/lib/cors";
 
 export async function OPTIONS(request: Request) {
@@ -26,14 +26,6 @@ export async function POST(request: Request) {
         request,
         { error: "Email and code are required" },
         { status: 400 }
-      );
-    }
-
-    if (!isEmailAllowed(email)) {
-      return jsonWithCors(
-        request,
-        { error: "This email is not authorized" },
-        { status: 403 }
       );
     }
 
@@ -66,10 +58,14 @@ export async function POST(request: Request) {
     await VerificationCode.deleteOne({ email });
 
     const user = await User.findOne({ email });
+    const hasAccount = Boolean(user?.passwordHash);
+    const role = user ? normalizeRole(user.role) : null;
+    const canResetPassword = Boolean(role && canAccessCrm(role));
     const verifiedToken = await signVerifiedToken(email);
     const res = jsonWithCors(request, {
       message: "Verification successful",
-      hasAccount: Boolean(user),
+      hasAccount,
+      canResetPassword,
       email,
       verifiedToken,
     });

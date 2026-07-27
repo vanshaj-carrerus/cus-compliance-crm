@@ -29,6 +29,11 @@ import { getRemaining, nextUnpaid } from "@/lib/crm/calc";
 import { todayIso, addDays } from "@/lib/crm/dates";
 import { filterCandidates } from "@/lib/crm/incentive";
 import { runWorkflows as runWorkflowsFn } from "@/lib/crm/workflows";
+import {
+  ensureCrmBootstrap,
+  peekCrmCache,
+  setCrmCache,
+} from "@/lib/crm-cache";
 
 interface Snapshot {
   candidates: Candidate[];
@@ -137,11 +142,18 @@ export function CrmProvider({
   routeView?: CrmView;
   onNavigate?: (view: CrmView) => void;
 }) {
-  const [ready, setReady] = useState(false);
+  const boot = peekCrmCache();
+  const [ready, setReady] = useState(Boolean(boot));
   const [error, setError] = useState<string | null>(null);
-  const [candidates, setCandidatesState] = useState<Candidate[]>([]);
-  const [history, setHistoryState] = useState<PaymentHistory[]>([]);
-  const [settings, setSettingsState] = useState<CrmSettings>(defaultSettings());
+  const [candidates, setCandidatesState] = useState<Candidate[]>(
+    boot?.candidates ?? []
+  );
+  const [history, setHistoryState] = useState<PaymentHistory[]>(
+    boot?.history ?? []
+  );
+  const [settings, setSettingsState] = useState<CrmSettings>(
+    boot?.settings ?? defaultSettings()
+  );
   const [currentView, setCurrentView] = useState<CrmView>(initialView);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<ActiveFilters>({});
@@ -183,6 +195,20 @@ export function CrmProvider({
     // Only react to URL changes — not to local currentView updates from navigate().
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeView]);
+
+  // Browser back/forward after client-side pushState (no Next.js navigation).
+  useEffect(() => {
+    const onPopState = () => {
+      const segment =
+        window.location.pathname.replace(/^\//, "").split("/")[0] ||
+        "dashboard";
+      setCurrentView(segment as CrmView);
+      setSidebarOpen(false);
+      setSidebarCollapsed(true);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
 
   useEffect(() => {
     try {
@@ -294,29 +320,19 @@ export function CrmProvider({
 
   useEffect(() => {
     let cancelled = false;
+    if (peekCrmCache()) {
+      setReady(true);
+      return;
+    }
     (async () => {
       try {
-        const [cRes, hRes, sRes] = await Promise.all([
-          fetch("/api/candidates"),
-          fetch("/api/history"),
-          fetch("/api/settings"),
-        ]);
-        if (!cRes.ok || !hRes.ok || !sRes.ok) {
-          throw new Error("Failed to load CRM data from MongoDB");
-        }
-        const cData = await cRes.json();
-        const hData = await hRes.json();
-        const sData = await sRes.json();
+        const data = await ensureCrmBootstrap();
         if (cancelled) return;
-        const c = (cData.candidates || []).map((x: Candidate) =>
-          normalizeCandidate(x)
-        );
-        setCandidatesState(c);
-        setHistoryState(hData.history || []);
-        setSettingsState(mergeSettings(sData.settings));
+        setCandidatesState(data.candidates);
+        setHistoryState(data.history);
+        setSettingsState(data.settings);
         setReady(true);
         setSaveState("saved");
-        toast("CRM loaded successfully", "success");
       } catch (e) {
         console.error(e);
         if (!cancelled) {
@@ -332,7 +348,7 @@ export function CrmProvider({
     return () => {
       cancelled = true;
     };
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -680,6 +696,7 @@ export function CrmProvider({
     setHistory(h);
     setSettings(s);
     stateRef.current = { candidates: c, history: h, settings: s };
+    setCrmCache({ candidates: c, history: h, settings: s });
     await persist(stateRef.current);
     toast("Backup restored", "success");
   };
@@ -688,9 +705,15 @@ export function CrmProvider({
     if (!confirm("Delete ALL CRM data?")) return;
     if (!confirm("Final confirmation: this cannot be undone.")) return;
     snapshot();
+    const emptySettings = defaultSettings();
     setCandidates([]);
     setHistory([]);
-    setSettings(defaultSettings());
+    setSettings(emptySettings);
+    setCrmCache({
+      candidates: [],
+      history: [],
+      settings: emptySettings,
+    });
     queueSave();
     toast("All data reset", "info");
   };
@@ -717,11 +740,15 @@ export function CrmProvider({
     1024
   ).toFixed(1);
 
-  const navigate = (view: CrmView) => {
-    setCurrentView(view);
-    setSidebarOpen(false);
-    onNavigate?.(view);
-  };
+  const navigate = useCallback(
+    (view: CrmView) => {
+      setCurrentView(view);
+      setSidebarOpen(false);
+      setSidebarCollapsed(true);
+      onNavigate?.(view);
+    },
+    [onNavigate]
+  );
 
   const value: CrmContextValue = {
     ready,

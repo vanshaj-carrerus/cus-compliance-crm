@@ -17,7 +17,8 @@ export type CrmView =
   | "history"
   | "reports"
   | "workflows"
-  | "backup";
+  | "backup"
+  | "admin";
 
 export interface Installment {
   amount: string;

@@ -2,11 +2,7 @@ import crypto from "crypto";
 import nodemailer from "nodemailer";
 import { connectDB } from "@/lib/mongodb";
 import { VerificationCode } from "@/lib/models/VerificationCode";
-import {
-  isEmailAllowed,
-  isValidEmail,
-  normalizeEmail,
-} from "@/lib/auth";
+import { isValidEmail, normalizeEmail } from "@/lib/auth";
 import { corsPreflightResponse, jsonWithCors } from "@/lib/cors";
 
 export async function OPTIONS(request: Request) {
@@ -24,14 +20,6 @@ export async function POST(request: Request) {
         request,
         { error: "Invalid email format" },
         { status: 400 }
-      );
-    }
-
-    if (!isEmailAllowed(email)) {
-      return jsonWithCors(
-        request,
-        { error: "This email is not authorized to access the CRM" },
-        { status: 403 }
       );
     }
 

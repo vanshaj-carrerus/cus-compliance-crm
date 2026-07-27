@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth-edge";
 import { applyCorsHeaders, corsPreflightResponse } from "@/lib/cors";
+import { canAccessCrm, normalizeRole } from "@/lib/roles";
 
 const PUBLIC_PATHS = ["/login"];
 const PUBLIC_API_PREFIXES = [
@@ -9,6 +10,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/auth/verify-code",
   "/api/auth/login",
   "/api/auth/set-password",
+  "/api/auth/reset-password",
   "/api/auth/logout",
   "/api/auth/me",
 ];
@@ -62,7 +64,7 @@ export async function middleware(request: NextRequest) {
     return pathname.startsWith("/api/") ? applyCorsHeaders(request, res) : res;
   }
 
-  if (!authed) {
+  if (!authed || !session) {
     if (pathname.startsWith("/api/")) {
       return applyCorsHeaders(
         request,
@@ -72,6 +74,37 @@ export async function middleware(request: NextRequest) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  const role = normalizeRole(session.role);
+
+  // Any signed-in user may submit/check their own access request.
+  if (
+    pathname === "/api/access-requests" ||
+    pathname.startsWith("/api/access-requests/")
+  ) {
+    const res = NextResponse.next();
+    return applyCorsHeaders(request, res);
+  }
+
+  // Admin APIs: soft role gate; requireAdmin (DB features) is source of truth.
+  if (pathname.startsWith("/api/admin")) {
+    if (!canAccessCrm(role)) {
+      return applyCorsHeaders(
+        request,
+        NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      );
+    }
+  } else if (
+    pathname.startsWith("/api/") &&
+    !pathname.startsWith("/api/auth")
+  ) {
+    if (!canAccessCrm(role)) {
+      return applyCorsHeaders(
+        request,
+        NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      );
+    }
   }
 
   const res = NextResponse.next();

@@ -1,5 +1,6 @@
 "use client";
 
+import { useAuth } from "./AuthProvider";
 import { useCrm } from "./CrmProvider";
 import type { CrmView } from "@/lib/crm/types";
 import { todayIso, statusExcluded } from "@/lib/crm";
@@ -15,10 +16,13 @@ const NAV: { view: CrmView; icon: string; label: string }[] = [
   { view: "reports", icon: "📈", label: "Reports" },
   { view: "workflows", icon: "⚙️", label: "Workflows" },
   { view: "backup", icon: "💾", label: "Backup & Restore" },
+  { view: "admin", icon: "👥", label: "Admin Users" },
 ];
 
 export function Sidebar() {
+  const { canView } = useAuth();
   const {
+    ready,
     currentView,
     navigate,
     sidebarCollapsed,
@@ -28,12 +32,16 @@ export function Sidebar() {
     dbSizeKb,
   } = useCrm();
 
-  const overdueFollowups = candidates.filter(
-    (c) =>
-      c.nextFollowUpDate &&
-      c.nextFollowUpDate < todayIso() &&
-      !statusExcluded(c.status)
-  ).length;
+  const navItems = NAV.filter((item) => canView(item.view));
+
+  const overdueFollowups = ready
+    ? candidates.filter(
+        (c) =>
+          c.nextFollowUpDate &&
+          c.nextFollowUpDate < todayIso() &&
+          !statusExcluded(c.status)
+      ).length
+    : 0;
 
   /** Absolute overlay drawer — open when not collapsed. */
   const open = !sidebarCollapsed;
@@ -85,7 +93,7 @@ export function Sidebar() {
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-1.5 py-1.5">
-          {NAV.map((item) => {
+          {navItems.map((item) => {
             const active = currentView === item.view;
             return (
               <button

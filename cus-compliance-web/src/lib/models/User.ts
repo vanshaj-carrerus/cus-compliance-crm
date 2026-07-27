@@ -1,4 +1,5 @@
 import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
+import { USER_ROLES } from "@/lib/roles";
 
 const UserSchema = new Schema(
   {
@@ -9,8 +10,21 @@ const UserSchema = new Schema(
       lowercase: true,
       trim: true,
     },
-    passwordHash: { type: String, required: true },
+    /** Empty until the invited user sets a password. */
+    passwordHash: { type: String, default: "" },
     name: { type: String, default: "" },
+    role: {
+      type: String,
+      enum: USER_ROLES,
+      // No default: missing role is treated as normal "user" (no CRM access).
+    },
+    status: {
+      type: String,
+      enum: ["invited", "active"],
+      default: "active",
+    },
+    /** Per-user page access. Undefined = derive from role (legacy). */
+    features: { type: [String], default: undefined },
     createdAt: { type: Date, default: Date.now },
   },
   { collection: "users" }

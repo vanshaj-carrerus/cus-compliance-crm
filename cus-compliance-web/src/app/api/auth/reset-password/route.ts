@@ -7,8 +7,8 @@ import {
   setSessionCookie,
   signSessionToken,
 } from "@/lib/auth";
-import { normalizeRole } from "@/lib/roles";
-import { defaultFeaturesForRole, normalizeFeatures } from "@/lib/features";
+import { canAccessCrm, normalizeRole } from "@/lib/roles";
+import { normalizeFeatures } from "@/lib/features";
 import { corsPreflightResponse, jsonWithCors } from "@/lib/cors";
 
 export async function OPTIONS(request: Request) {
@@ -34,7 +34,6 @@ export async function POST(request: Request) {
     }
 
     const password = String(body.password || "");
-
     if (password.length < 8) {
       return jsonWithCors(
         request,
@@ -44,41 +43,31 @@ export async function POST(request: Request) {
     }
 
     await connectDB();
-    const existing = await User.findOne({ email: verified.email });
-
-    if (existing?.passwordHash) {
+    const user = await User.findOne({ email: verified.email });
+    if (!user?.passwordHash) {
       return jsonWithCors(
         request,
-        { error: "Account already exists. Please sign in with your password." },
-        { status: 400 }
+        { error: "No account found for this email" },
+        { status: 404 }
       );
     }
 
-    const passwordHash = await bcrypt.hash(password, 12);
-
-    let user = existing;
-    if (user) {
-      user.passwordHash = passwordHash;
-      user.status = "active";
-      if (!user.name) user.name = verified.email.split("@")[0] || "";
-      const role = normalizeRole(user.role);
-      if (user.features === undefined || user.features === null) {
-        user.features = defaultFeaturesForRole(role);
-      }
-      await user.save();
-    } else {
-      // Open signup — starts as normal user with no CRM access.
-      user = await User.create({
-        email: verified.email,
-        passwordHash,
-        name: verified.email.split("@")[0] || "",
-        role: "user",
-        features: [],
-        status: "active",
-      });
+    const role = normalizeRole(user.role);
+    if (!canAccessCrm(role)) {
+      return jsonWithCors(
+        request,
+        {
+          error:
+            "Password reset is only available for Compliance Admin and Compliance User accounts",
+        },
+        { status: 403 }
+      );
     }
 
-    const role = normalizeRole(user.role);
+    user.passwordHash = await bcrypt.hash(password, 12);
+    if (user.status === "invited") user.status = "active";
+    await user.save();
+
     const features = normalizeFeatures(
       (user as { features?: unknown }).features,
       role
@@ -91,7 +80,7 @@ export async function POST(request: Request) {
     });
 
     const res = jsonWithCors(request, {
-      message: "Account created",
+      message: "Password updated",
       user: {
         email: user.email,
         name: user.name,
@@ -104,10 +93,10 @@ export async function POST(request: Request) {
     setSessionCookie(res, sessionToken);
     return res;
   } catch (error) {
-    console.error("set-password error:", error);
+    console.error("reset-password error:", error);
     return jsonWithCors(
       request,
-      { error: "Failed to create account" },
+      { error: "Failed to reset password" },
       { status: 500 }
     );
   }

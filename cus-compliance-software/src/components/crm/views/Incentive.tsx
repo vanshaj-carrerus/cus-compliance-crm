@@ -35,6 +35,7 @@ export function Incentive() {
     usePagination(rows, 50);
   const totalPayments = rows.reduce((s, r) => s + r.amount, 0);
   const totalIncentive = rows.reduce((sum, row) => sum + row.incentive, 0);
+
   const applyRange = (fromVal: string, toVal: string) => {
     updateSettings({ incentiveFrom: fromVal, incentiveTo: toVal });
   };

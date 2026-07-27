@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "../AuthProvider";
 import { useCrm } from "../CrmProvider";
 import {
   money,
@@ -133,6 +134,8 @@ const YEAR_OPTIONS = (() => {
 })();
 
 export function Dashboard() {
+  const { user, isAdmin, isComplianceAdminRole, canView } = useAuth();
+  const showAdminMetrics = isComplianceAdminRole || isAdmin;
   const {
     candidates,
     navigate,
@@ -140,7 +143,7 @@ export function Dashboard() {
     setActiveFilters,
     setSmartFilter,
   } = useCrm();
-  const [displayName, setDisplayName] = useState("");
+  const displayName = user?.name || user?.email || "";
   const [period, setPeriod] = useState<DashboardPeriod>(defaultDashboardPeriod);
   const [periodReady, setPeriodReady] = useState(false);
   const [runawayFloor, setRunawayFloor] = useState("");
@@ -154,25 +157,6 @@ export function Dashboard() {
     if (!periodReady) return;
     saveDashboardPeriod(period);
   }, [period, periodReady]);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/auth/me");
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!cancelled && data.user) {
-          setDisplayName(data.user.name || data.user.email || "");
-        }
-      } catch {
-        /* ignore */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const stats = useMemo(
     () => computeDashboardStats(candidates, period),
@@ -418,58 +402,74 @@ export function Dashboard() {
             })
           }
         />
-        <FloorFilterStat
-          label="Run Away Loss"
-          value={money(runawayLossAmount)}
-          sub={`${runawayFloorLabel} · Unpaid balance`}
-          cls="warning"
-          floors={floors}
-          floor={runawayFloor}
-          onFloorChange={setRunawayFloor}
-          onClick={() =>
-            openMaster({
-              status: "Run Away",
-              ...(runawayFloor ? { floor: runawayFloor } : {}),
-            })
-          }
-        />
-        <Stat
-          label="Total Service Fee"
-          value={money(stats.totalFee)}
-          sub={stats.filtered ? "Candidates in period" : "All candidates"}
-          onClick={() => navigate("reports")}
-        />
-        <Stat
-          label="Total Collected"
-          value={money(stats.paid)}
-          sub={collectedSub}
-          cls="success"
-          onClick={() => navigate("reports")}
-        />
-        <Stat
-          label="Total Remaining"
-          value={money(stats.remain)}
-          sub={stats.filtered ? "Outstanding (period candidates)" : "Outstanding"}
-          cls="danger"
-          onClick={() => openMaster({ status: "Active" }, "focus")}
-        />
-        <Stat
-          label="Overdue Payments"
-          value={stats.overdue}
-          sub="Needs follow-up"
-          cls="warning"
-          onClick={() => {
-            setDailyCategory("overdue");
-            navigate("daily");
-          }}
-        />
-        <Stat
-          label="Yatin Incentive"
-          value={money(stats.yatinIncentive)}
-          sub={incentiveSub}
-          cls="info"
-          onClick={() => navigate("incentive")}
-        />
+        {showAdminMetrics && (
+          <FloorFilterStat
+            label="Run Away Loss"
+            value={money(runawayLossAmount)}
+            sub={`${runawayFloorLabel} · Unpaid balance`}
+            cls="warning"
+            floors={floors}
+            floor={runawayFloor}
+            onFloorChange={setRunawayFloor}
+            onClick={() =>
+              openMaster({
+                status: "Run Away",
+                ...(runawayFloor ? { floor: runawayFloor } : {}),
+              })
+            }
+          />
+        )}
+        {showAdminMetrics && (
+          <Stat
+            label="Total Service Fee"
+            value={money(stats.totalFee)}
+            sub={stats.filtered ? "Candidates in period" : "All candidates"}
+            onClick={() => navigate("reports")}
+          />
+        )}
+        {showAdminMetrics && (
+          <Stat
+            label="Total Collected"
+            value={money(stats.paid)}
+            sub={collectedSub}
+            cls="success"
+            onClick={() => navigate("reports")}
+          />
+        )}
+        {showAdminMetrics && (
+          <Stat
+            label="Total Remaining"
+            value={money(stats.remain)}
+            sub={
+              stats.filtered
+                ? "Outstanding (period candidates)"
+                : "Outstanding"
+            }
+            cls="danger"
+            onClick={() => openMaster({ status: "Active" }, "focus")}
+          />
+        )}
+        {showAdminMetrics && (
+          <Stat
+            label="Overdue Payments"
+            value={stats.overdue}
+            sub="Needs follow-up"
+            cls="warning"
+            onClick={() => {
+              setDailyCategory("overdue");
+              navigate("daily");
+            }}
+          />
+        )}
+        {canView("incentive") && (
+          <Stat
+            label="Yatin Incentive"
+            value={money(stats.yatinIncentive)}
+            sub={incentiveSub}
+            cls="info"
+            onClick={() => navigate("incentive")}
+          />
+        )}
         <Stat
           label={followLabel}
           value={stats.followups}

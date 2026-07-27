@@ -1,9 +1,13 @@
 "use client";
 
-import { useRouter, usePathname } from "next/navigation";
+import { useCallback } from "react";
+import { usePathname } from "next/navigation";
+import { AuthProvider, useAuth } from "./AuthProvider";
 import { CrmProvider } from "./CrmProvider";
 import { CrmBootEffects } from "./CrmBootEffects";
 import { CrmShell } from "./CrmShell";
+import { NoAccessScreen } from "./NoAccessScreen";
+import { AppShellSkeleton } from "./Skeleton";
 import type { CrmView } from "@/lib/crm/types";
 
 const ALLOWED: CrmView[] = [
@@ -17,6 +21,7 @@ const ALLOWED: CrmView[] = [
   "reports",
   "workflows",
   "backup",
+  "admin",
 ];
 
 function viewFromPath(pathname: string): CrmView {
@@ -26,20 +31,51 @@ function viewFromPath(pathname: string): CrmView {
     : "dashboard";
 }
 
+function AuthGate({ children }: { children: React.ReactNode }) {
+  const { ready, hasCrmAccess } = useAuth();
+
+  if (!ready) {
+    return <AppShellSkeleton />;
+  }
+
+  if (!hasCrmAccess) {
+    return <NoAccessScreen />;
+  }
+
+  return <>{children}</>;
+}
+
+/**
+ * Client-side view switch — updates the URL without a Next.js navigation
+ * (avoids middleware + RSC round-trips on every sidebar click).
+ */
+function pushCrmView(view: CrmView) {
+  if (typeof window === "undefined") return;
+  const path = "/" + view;
+  if (window.location.pathname === path) return;
+  window.history.pushState({ crmView: view }, "", path);
+}
+
 export function CrmLayoutClient({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const pathname = usePathname();
   const routeView = viewFromPath(pathname);
+  const onNavigate = useCallback((view: CrmView) => {
+    pushCrmView(view);
+  }, []);
 
   return (
-    <CrmProvider
-      initialView={routeView}
-      routeView={routeView}
-      onNavigate={(view) => router.push("/" + view)}
-    >
-      <CrmBootEffects />
-      <CrmShell />
-      {children}
-    </CrmProvider>
+    <AuthProvider>
+      <AuthGate>
+        <CrmProvider
+          initialView={routeView}
+          routeView={routeView}
+          onNavigate={onNavigate}
+        >
+          <CrmBootEffects />
+          <CrmShell />
+          {children}
+        </CrmProvider>
+      </AuthGate>
+    </AuthProvider>
   );
 }

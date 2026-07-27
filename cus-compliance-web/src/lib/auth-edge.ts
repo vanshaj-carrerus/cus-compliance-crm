@@ -1,4 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
+import { normalizeRole, type UserRole } from "./roles";
+import { sanitizeFeatures, type CrmFeature } from "./features";
 
 export const SESSION_COOKIE = "crm_session";
 export const VERIFIED_COOKIE = "crm_verified";
@@ -6,6 +8,9 @@ export const VERIFIED_COOKIE = "crm_verified";
 export type SessionPayload = {
   sub: string;
   email: string;
+  role: UserRole;
+  /** Page features — kept in JWT so /api/auth/me can skip Mongo on warm loads. */
+  features?: CrmFeature[];
 };
 
 export type VerifiedPayload = {
@@ -44,7 +49,12 @@ export function isEmailAllowed(email: string) {
 }
 
 export async function signSessionToken(payload: SessionPayload) {
-  return new SignJWT({ email: payload.email })
+  const features = sanitizeFeatures(payload.features ?? []);
+  return new SignJWT({
+    email: payload.email,
+    role: payload.role,
+    features,
+  })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(payload.sub)
     .setIssuedAt()
@@ -71,7 +81,15 @@ export async function verifySessionToken(
     const email = typeof payload.email === "string" ? payload.email : "";
     const sub = typeof payload.sub === "string" ? payload.sub : "";
     if (!email || !sub) return null;
-    return { email: normalizeEmail(email), sub };
+    const features = Array.isArray(payload.features)
+      ? sanitizeFeatures(payload.features)
+      : undefined;
+    return {
+      email: normalizeEmail(email),
+      sub,
+      role: normalizeRole(payload.role),
+      features,
+    };
   } catch {
     return null;
   }

@@ -7,6 +7,8 @@ import {
   setSessionCookie,
   signSessionToken,
 } from "@/lib/auth";
+import { normalizeRole } from "@/lib/roles";
+import { normalizeFeatures } from "@/lib/features";
 import { corsPreflightResponse, jsonWithCors } from "@/lib/cors";
 
 export async function OPTIONS(request: Request) {
@@ -42,7 +44,7 @@ export async function POST(request: Request) {
 
     await connectDB();
     const user = await User.findOne({ email: verified.email });
-    if (!user) {
+    if (!user?.passwordHash) {
       return jsonWithCors(
         request,
         { error: "No account found. Please create a password first." },
@@ -59,14 +61,31 @@ export async function POST(request: Request) {
       );
     }
 
+    if (user.status === "invited") {
+      user.status = "active";
+      await user.save();
+    }
+
+    const role = normalizeRole(user.role);
+    const features = normalizeFeatures(
+      (user as { features?: unknown }).features,
+      role
+    );
     const sessionToken = await signSessionToken({
       sub: user._id.toString(),
       email: user.email,
+      role,
+      features,
     });
 
     const res = jsonWithCors(request, {
       message: "Signed in",
-      user: { email: user.email, name: user.name },
+      user: {
+        email: user.email,
+        name: user.name,
+        role,
+        features,
+      },
       sessionToken,
     });
     clearAuthCookies(res);

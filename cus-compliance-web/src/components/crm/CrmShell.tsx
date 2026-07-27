@@ -1,7 +1,7 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useAuth } from "./AuthProvider";
 import { useCrm } from "./CrmProvider";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
@@ -21,11 +21,14 @@ import { History } from "./views/History";
 import { Reports } from "./views/Reports";
 import { Workflows } from "./views/Workflows";
 import { Backup } from "./views/Backup";
+import { AdminUsers } from "./views/AdminUsers";
+import { ViewDataSkeleton } from "./Skeleton";
 import { downloadBlob } from "@/lib/crm/csv";
 import { markBackupDownloaded } from "@/lib/crm/backup-meta";
 import { createCrmWorkbook, EXCEL_MIME } from "@/lib/crm/excel";
 
 function CrmShellInner() {
+  const { canView, isAdmin } = useAuth();
   const {
     ready,
     error,
@@ -35,7 +38,7 @@ function CrmShellInner() {
     settings,
     toast,
     setImportModalOpen,
-    sidebarCollapsed,
+    navigate,
   } = useCrm();
 
   const [smartOpen, setSmartOpen] = useState(false);
@@ -51,14 +54,28 @@ function CrmShellInner() {
         e.target.matches("input,textarea,select,[contenteditable='true']");
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k" && !typing) {
         e.preventDefault();
+        if (!ready) return;
         setSmartOpen(true);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [ready]);
+
+  useEffect(() => {
+    if (!ready) return;
+    if (!canView(currentView) && currentView !== "dashboard") {
+      navigate("dashboard");
+    }
+    // Intentionally omit navigate — stable enough; avoid re-running on identity churn.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, canView, currentView]);
 
   const handleExport = async () => {
+    if (!ready) {
+      toast("Still loading data — try export in a moment", "info");
+      return;
+    }
     try {
       const blob = await createCrmWorkbook({
         version: "3.0",
@@ -81,7 +98,9 @@ function CrmShellInner() {
   };
 
   const openWhatsApp = (id: number | number[], template?: string) => {
-    const ids = (Array.isArray(id) ? id : [id]).filter((n) => Number.isFinite(n));
+    const ids = (Array.isArray(id) ? id : [id]).filter((n) =>
+      Number.isFinite(n)
+    );
     if (!ids.length) return;
     setWaQueue(ids);
     setWaIndex(0);
@@ -103,53 +122,21 @@ function CrmShellInner() {
     }
   };
 
-  if (!ready) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="mb-3 text-2xl">⏳</div>
-          <div className="text-lg font-semibold text-primary">
-            Loading CareerUS CRM...
-          </div>
-          <div className="mt-1 flex items-center justify-center gap-3 text-sm text-muted">
-            Collecting Data <Loader2 className="h-4 w-4 animate-spin" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-6">
-        <div className="max-w-md rounded-[var(--radius)] border border-danger/30 bg-card p-6 text-center shadow-sm">
-          <div className="mb-2 text-2xl">⚠️</div>
-          <div className="text-lg font-semibold text-danger">
-            Failed to load CRM
-          </div>
-          <p className="mt-2 text-sm text-muted">{error}</p>
-          <p className="mt-3 text-xs text-muted">
-            Check that <code className="text-primary">MONGODB_URI</code> is set
-            in <code className="text-primary">.env.local</code> and MongoDB is
-            reachable.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const viewContent = {
-    dashboard: <Dashboard />,
-    daily: <DailyFollowUp onWhatsApp={openWhatsApp} />,
-    master: <MasterSheet />,
-    compliance: <Compliance />,
-    target: <PaymentTarget />,
-    incentive: <Incentive />,
-    history: <History />,
-    reports: <Reports />,
-    workflows: <Workflows />,
-    backup: <Backup />,
-  }[currentView];
+  const viewContent = canView(currentView)
+    ? {
+        dashboard: <Dashboard />,
+        daily: <DailyFollowUp onWhatsApp={openWhatsApp} />,
+        master: <MasterSheet />,
+        compliance: <Compliance />,
+        target: <PaymentTarget />,
+        incentive: <Incentive />,
+        history: <History />,
+        reports: <Reports />,
+        workflows: <Workflows />,
+        backup: <Backup />,
+        admin: isAdmin ? <AdminUsers /> : null,
+      }[currentView]
+    : null;
 
   return (
     <div className="relative flex h-screen overflow-hidden bg-background">
@@ -157,27 +144,68 @@ function CrmShellInner() {
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar
           onExport={handleExport}
-          onImport={() => setImportModalOpen(true)}
-          onSmartAssist={() => setSmartOpen(true)}
+          onImport={() => {
+            if (!ready) {
+              toast("Still loading data — try import in a moment", "info");
+              return;
+            }
+            setImportModalOpen(true);
+          }}
+          onSmartAssist={() => {
+            if (!ready) {
+              toast("Still loading data — try Smart Assist in a moment", "info");
+              return;
+            }
+            setSmartOpen(true);
+          }}
         />
         <main className="flex-1 overflow-auto overscroll-y-contain p-3 pb-[4.5rem] sm:p-4 sm:pb-6 md:p-6">
-          {viewContent}
+          {error ? (
+            <div className="mx-auto max-w-md rounded-[var(--radius)] border border-danger/30 bg-card p-6 text-center shadow-sm">
+              <div className="mb-2 text-2xl">⚠️</div>
+              <div className="text-lg font-semibold text-danger">
+                Failed to load CRM data
+              </div>
+              <p className="mt-2 text-sm text-muted">{error}</p>
+              <p className="mt-3 text-xs text-muted">
+                Check that MongoDB is reachable, then refresh the page.
+              </p>
+              <button
+                type="button"
+                className="mt-4 inline-flex h-9 items-center justify-center rounded-[var(--radius)] bg-primary px-4 text-sm font-semibold text-primary-foreground"
+                onClick={() => window.location.reload()}
+              >
+                Retry
+              </button>
+            </div>
+          ) : !ready ? (
+            <ViewDataSkeleton view={currentView} />
+          ) : (
+            viewContent
+          )}
         </main>
       </div>
       <SaveIndicator />
       <ToastContainer />
-      <CandidateModal />
-      <ImportModal />
-      <SmartAssistModal open={smartOpen} onClose={() => setSmartOpen(false)} />
-      <WhatsAppModal
-        open={waOpen}
-        candidateId={waQueue[waIndex] ?? null}
-        queueIndex={waIndex}
-        queueTotal={waQueue.length}
-        defaultTemplate={waTemplate}
-        onClose={closeWhatsApp}
-        onNext={advanceWhatsApp}
-      />
+      {ready && (
+        <>
+          <CandidateModal />
+          <ImportModal />
+          <SmartAssistModal
+            open={smartOpen}
+            onClose={() => setSmartOpen(false)}
+          />
+          <WhatsAppModal
+            open={waOpen}
+            candidateId={waQueue[waIndex] ?? null}
+            queueIndex={waIndex}
+            queueTotal={waQueue.length}
+            defaultTemplate={waTemplate}
+            onClose={closeWhatsApp}
+            onNext={advanceWhatsApp}
+          />
+        </>
+      )}
     </div>
   );
 }

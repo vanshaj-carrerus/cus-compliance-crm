@@ -60,6 +60,7 @@ function Stat({
   );
 }
 
+/** Stat card with a floor dropdown (floors come from candidate master data). */
 function FloorFilterStat({
   label,
   value,
@@ -186,6 +187,7 @@ export function Dashboard() {
     [candidates, period]
   );
 
+  /** Floors saved on each candidate in the master sheet. */
   const floors = useMemo(
     () =>
       [

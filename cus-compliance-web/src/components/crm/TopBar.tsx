@@ -1,7 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useAuth } from "./AuthProvider";
 import { useCrm } from "./CrmProvider";
+import { clearCrmCache } from "@/lib/crm-cache";
 import { todayIso, statusExcluded } from "@/lib/crm";
 
 export function TopBar({
@@ -14,6 +16,7 @@ export function TopBar({
   onSmartAssist: () => void;
 }) {
   const router = useRouter();
+  const { logoutLocal } = useAuth();
   const {
     searchQuery,
     setSearchQuery,
@@ -25,17 +28,22 @@ export function TopBar({
     candidates,
     setDailyCategory,
     navigate,
+    ready,
   } = useCrm();
 
-  const overdueFollowups = candidates.filter(
-    (c) =>
-      c.nextFollowUpDate &&
-      c.nextFollowUpDate < todayIso() &&
-      !statusExcluded(c.status)
-  ).length;
+  const overdueFollowups = ready
+    ? candidates.filter(
+        (c) =>
+          c.nextFollowUpDate &&
+          c.nextFollowUpDate < todayIso() &&
+          !statusExcluded(c.status)
+      ).length
+    : 0;
 
   const logout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
+    logoutLocal();
+    clearCrmCache();
     router.replace("/login");
     router.refresh();
   };
@@ -75,7 +83,7 @@ export function TopBar({
         <div className="flex max-w-[55%] shrink-0 items-center gap-1.5 overflow-x-auto overscroll-x-contain pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] sm:max-w-none [&::-webkit-scrollbar]:hidden">
           <button
             type="button"
-            className={`${btn} rounded-full`}
+            className={`${btn} rounded-full ${!ready ? "opacity-60" : ""}`}
             onClick={() => {
               setDailyCategory("followupsOverdue");
               navigate("daily");
@@ -89,26 +97,49 @@ export function TopBar({
               </span>
             )}
           </button>
-          <button type="button" className={btn} onClick={onSmartAssist}>
+          <button
+            type="button"
+            className={`${btn} ${!ready ? "opacity-60" : ""}`}
+            onClick={onSmartAssist}
+          >
             ✨ Smart
           </button>
-          <button type="button" className={btn} onClick={undo}>
+          <button
+            type="button"
+            className={`${btn} ${!ready ? "opacity-60" : ""}`}
+            disabled={!ready}
+            onClick={undo}
+          >
             ↩️ Undo
           </button>
-          <button type="button" className={btn} onClick={redo}>
+          <button
+            type="button"
+            className={`${btn} ${!ready ? "opacity-60" : ""}`}
+            disabled={!ready}
+            onClick={redo}
+          >
             ↪️ Redo
           </button>
           <button
             type="button"
-            className="inline-flex h-8 shrink-0 items-center justify-center whitespace-nowrap rounded-[var(--radius)] bg-primary px-2.5 text-xs font-semibold text-primary-foreground hover:opacity-90"
+            disabled={!ready}
+            className="inline-flex h-8 shrink-0 items-center justify-center whitespace-nowrap rounded-[var(--radius)] bg-primary px-2.5 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60"
             onClick={showAddModal}
           >
             + Add Candidate
           </button>
-          <button type="button" className={btn} onClick={onExport}>
+          <button
+            type="button"
+            className={`${btn} ${!ready ? "opacity-60" : ""}`}
+            onClick={onExport}
+          >
             📤 Export
           </button>
-          <button type="button" className={btn} onClick={onImport}>
+          <button
+            type="button"
+            className={`${btn} ${!ready ? "opacity-60" : ""}`}
+            onClick={onImport}
+          >
             📥 Import
           </button>
           <button
