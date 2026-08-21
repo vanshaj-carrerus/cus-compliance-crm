@@ -106,7 +106,14 @@ export function parseDate(str: string): string {
 export function validDateString(v?: string): string {
   if (!v) return "";
   const d = new Date(String(v) + "T00:00:00");
-  return isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
+  if (isNaN(d.getTime())) return "";
+  return (
+    d.getFullYear() +
+    "-" +
+    String(d.getMonth() + 1).padStart(2, "0") +
+    "-" +
+    String(d.getDate()).padStart(2, "0")
+  );
 }
 
 export function normalizeMonthLabel(v: string): string {

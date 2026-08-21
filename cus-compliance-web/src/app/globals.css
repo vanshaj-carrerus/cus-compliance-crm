@@ -116,9 +116,15 @@ body {
   border-collapse: separate;
   border-spacing: 0;
   table-layout: fixed;
-  min-width: 4300px;
+  min-width: 2900px;
   width: max-content;
   background: var(--card);
+  user-select: none;
+}
+.excel-grid input,
+.excel-grid select,
+.excel-grid textarea {
+  user-select: text;
 }
 .excel-grid th,
 .excel-grid td {
@@ -153,15 +159,9 @@ body {
   z-index: 1 !important;
 }
 
-/* Sticky freeze columns ? high z-index so fully-paid / scrolled content cannot paint over them */
+/* Sticky freeze columns - row number + checkbox stay pinned while scrolling */
 .excel-grid .row-head,
-.excel-grid .freeze-check,
-.excel-grid .sticky-priority,
-.excel-grid .freeze-name,
-.excel-grid .freeze-phone,
-.excel-grid .freeze-total,
-.excel-grid .freeze-paid,
-.excel-grid .freeze-remaining {
+.excel-grid .freeze-check {
   position: sticky !important;
   z-index: 320 !important;
   overflow: hidden !important;
@@ -187,70 +187,27 @@ body {
   max-width: 44px !important;
   text-align: center;
 }
-.excel-grid .freeze-name {
-  left: 90px !important;
-  z-index: 328 !important;
-  min-width: 220px !important;
-  width: 220px !important;
-  max-width: 220px !important;
-}
-.excel-grid .freeze-phone {
-  left: 310px !important;
-  z-index: 327 !important;
-  min-width: 150px !important;
-  width: 150px !important;
-  max-width: 150px !important;
-}
-.excel-grid .freeze-total {
-  left: 460px !important;
-  z-index: 326 !important;
-  min-width: 120px !important;
-  width: 120px !important;
-  max-width: 120px !important;
-}
-.excel-grid .freeze-paid {
-  left: 580px !important;
-  z-index: 325 !important;
-  min-width: 120px !important;
-  width: 120px !important;
-  max-width: 120px !important;
-}
-.excel-grid .freeze-remaining {
-  left: 700px !important;
-  z-index: 324 !important;
-  min-width: 130px !important;
-  width: 130px !important;
-  max-width: 130px !important;
-  box-shadow: 3px 0 12px rgba(64, 98, 102, 0.12) !important;
-}
 .excel-grid thead .row-head,
-.excel-grid thead .freeze-check,
-.excel-grid thead .freeze-name,
-.excel-grid thead .freeze-phone,
-.excel-grid thead .freeze-total,
-.excel-grid thead .freeze-paid,
-.excel-grid thead .freeze-remaining {
+.excel-grid thead .freeze-check {
   background-color: var(--freeze-bg) !important;
   z-index: 350 !important;
   top: 0;
 }
-.excel-grid .freeze-name .sheet-cell,
-.excel-grid .freeze-phone .sheet-cell {
-  position: relative;
-  z-index: 2;
-  min-width: 0 !important;
-  width: 100%;
-  max-width: 100%;
+.excel-grid .row-head-selectable,
+.excel-grid .col-head-selectable {
+  cursor: pointer;
 }
-.excel-grid .freeze-total span,
-.excel-grid .freeze-paid span,
-.excel-grid .freeze-remaining span {
-  position: relative;
-  z-index: 2;
+.excel-grid .row-head-selectable:hover,
+.excel-grid .col-head-selectable:hover {
+  background-color: rgba(21, 153, 154, 0.14) !important;
+}
+.excel-grid td.cell-selected {
+  background-color: rgba(21, 153, 154, 0.14) !important;
+  box-shadow: inset 0 0 0 1.5px var(--primary);
 }
 .excel-grid .sheet-cell {
+  display: block;
   background: transparent;
-  border: 1px solid transparent;
   color: var(--foreground);
   border-radius: 6px;
   padding: 7px 8px;
@@ -259,17 +216,15 @@ body {
   width: 100%;
   min-width: 92px;
   font-family: inherit;
-  outline: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.excel-grid .sheet-cell:hover {
+.excel-grid .inst-text {
+  cursor: pointer;
+}
+.excel-grid .inst-text:hover {
   background: rgba(21, 153, 154, 0.08);
-  border-color: rgba(21, 153, 154, 0.25);
-}
-.excel-grid .sheet-cell:focus,
-.excel-grid .sheet-cell.selected-cell {
-  background: var(--input);
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(21, 153, 154, 0.22);
 }
 .excel-grid .calc-cell {
   font-weight: 700;
@@ -335,89 +290,35 @@ body {
   background-color: var(--card);
 }
 
-/* Freeze columns keep opaque row color ? critical for fully-paid (near-white) rows */
+/* Freeze columns keep opaque row color - critical for fully-paid (near-white) rows */
 .excel-grid tbody tr.row-active > td.row-head,
-.excel-grid tbody tr.row-active > td.freeze-check,
-.excel-grid tbody tr.row-active > td.sticky-priority,
-.excel-grid tbody tr.row-active > td.freeze-name,
-.excel-grid tbody tr.row-active > td.freeze-phone,
-.excel-grid tbody tr.row-active > td.freeze-total,
-.excel-grid tbody tr.row-active > td.freeze-paid,
-.excel-grid tbody tr.row-active > td.freeze-remaining {
+.excel-grid tbody tr.row-active > td.freeze-check {
   background-color: var(--row-active) !important;
 }
 .excel-grid tbody tr.row-fully-paid > td.row-head,
-.excel-grid tbody tr.row-fully-paid > td.freeze-check,
-.excel-grid tbody tr.row-fully-paid > td.sticky-priority,
-.excel-grid tbody tr.row-fully-paid > td.freeze-name,
-.excel-grid tbody tr.row-fully-paid > td.freeze-phone,
-.excel-grid tbody tr.row-fully-paid > td.freeze-total,
-.excel-grid tbody tr.row-fully-paid > td.freeze-paid,
-.excel-grid tbody tr.row-fully-paid > td.freeze-remaining {
+.excel-grid tbody tr.row-fully-paid > td.freeze-check {
   background-color: #eef8ff !important;
 }
 .excel-grid tbody tr.row-cancelled > td.row-head,
-.excel-grid tbody tr.row-cancelled > td.freeze-check,
-.excel-grid tbody tr.row-cancelled > td.sticky-priority,
-.excel-grid tbody tr.row-cancelled > td.freeze-name,
-.excel-grid tbody tr.row-cancelled > td.freeze-phone,
-.excel-grid tbody tr.row-cancelled > td.freeze-total,
-.excel-grid tbody tr.row-cancelled > td.freeze-paid,
-.excel-grid tbody tr.row-cancelled > td.freeze-remaining {
+.excel-grid tbody tr.row-cancelled > td.freeze-check {
   background-color: var(--row-cancelled) !important;
 }
 .excel-grid tbody tr.row-run-away > td.row-head,
-.excel-grid tbody tr.row-run-away > td.freeze-check,
-.excel-grid tbody tr.row-run-away > td.sticky-priority,
-.excel-grid tbody tr.row-run-away > td.freeze-name,
-.excel-grid tbody tr.row-run-away > td.freeze-phone,
-.excel-grid tbody tr.row-run-away > td.freeze-total,
-.excel-grid tbody tr.row-run-away > td.freeze-paid,
-.excel-grid tbody tr.row-run-away > td.freeze-remaining {
+.excel-grid tbody tr.row-run-away > td.freeze-check {
   background-color: var(--row-runaway) !important;
 }
 .excel-grid tbody tr.row-job-lost > td.row-head,
-.excel-grid tbody tr.row-job-lost > td.freeze-check,
-.excel-grid tbody tr.row-job-lost > td.sticky-priority,
-.excel-grid tbody tr.row-job-lost > td.freeze-name,
-.excel-grid tbody tr.row-job-lost > td.freeze-phone,
-.excel-grid tbody tr.row-job-lost > td.freeze-total,
-.excel-grid tbody tr.row-job-lost > td.freeze-paid,
-.excel-grid tbody tr.row-job-lost > td.freeze-remaining {
+.excel-grid tbody tr.row-job-lost > td.freeze-check {
   background-color: var(--row-lost) !important;
 }
 .excel-grid tbody tr.row-refunded > td.row-head,
 .excel-grid tbody tr.row-refunded > td.freeze-check,
-.excel-grid tbody tr.row-refunded > td.sticky-priority,
-.excel-grid tbody tr.row-refunded > td.freeze-name,
-.excel-grid tbody tr.row-refunded > td.freeze-phone,
-.excel-grid tbody tr.row-refunded > td.freeze-total,
-.excel-grid tbody tr.row-refunded > td.freeze-paid,
-.excel-grid tbody tr.row-refunded > td.freeze-remaining,
 .excel-grid tbody tr.row-closed > td.row-head,
 .excel-grid tbody tr.row-closed > td.freeze-check,
-.excel-grid tbody tr.row-closed > td.sticky-priority,
-.excel-grid tbody tr.row-closed > td.freeze-name,
-.excel-grid tbody tr.row-closed > td.freeze-phone,
-.excel-grid tbody tr.row-closed > td.freeze-total,
-.excel-grid tbody tr.row-closed > td.freeze-paid,
-.excel-grid tbody tr.row-closed > td.freeze-remaining,
 .excel-grid tbody tr.row-inactive > td.row-head,
 .excel-grid tbody tr.row-inactive > td.freeze-check,
-.excel-grid tbody tr.row-inactive > td.sticky-priority,
-.excel-grid tbody tr.row-inactive > td.freeze-name,
-.excel-grid tbody tr.row-inactive > td.freeze-phone,
-.excel-grid tbody tr.row-inactive > td.freeze-total,
-.excel-grid tbody tr.row-inactive > td.freeze-paid,
-.excel-grid tbody tr.row-inactive > td.freeze-remaining,
 .excel-grid tbody tr.row-neutral > td.row-head,
-.excel-grid tbody tr.row-neutral > td.freeze-check,
-.excel-grid tbody tr.row-neutral > td.sticky-priority,
-.excel-grid tbody tr.row-neutral > td.freeze-name,
-.excel-grid tbody tr.row-neutral > td.freeze-phone,
-.excel-grid tbody tr.row-neutral > td.freeze-total,
-.excel-grid tbody tr.row-neutral > td.freeze-paid,
-.excel-grid tbody tr.row-neutral > td.freeze-remaining {
+.excel-grid tbody tr.row-neutral > td.freeze-check {
   background-color: #ffffff !important;
 }
 
@@ -426,7 +327,7 @@ body {
   transform: none !important;
   contain: none;
 }
-#masterScroll .excel-grid tbody td:not(.row-head):not(.freeze-check):not(.sticky-priority):not(.freeze-name):not(.freeze-phone):not(.freeze-total):not(.freeze-paid):not(.freeze-remaining) {
+#masterScroll .excel-grid tbody td:not(.row-head):not(.freeze-check) {
   z-index: 1 !important;
 }
 /* CRM data views */
@@ -500,9 +401,9 @@ body {
 .filters-bar {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 10px;
-  margin-bottom: 16px;
-  padding: 12px;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 10px;
   border-radius: var(--radius);
   border: 1px solid var(--border);
   background: var(--card);
@@ -513,8 +414,8 @@ body {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 12px;
-    padding: 14px 16px;
+    gap: 8px 10px;
+    padding: 8px 12px;
   }
 }
 .filter-group {
@@ -530,11 +431,11 @@ body {
   .filter-group {
     flex-direction: row;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
   }
 }
 .filter-label {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -544,18 +445,18 @@ body {
 .filter-group select {
   width: 100%;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 7px;
   background: var(--input);
   color: var(--foreground);
-  padding: 7px 10px;
-  font-size: 13px;
+  padding: 5px 8px;
+  font-size: 12.5px;
   outline: none;
 }
 @media (min-width: 640px) {
   .filters-bar select,
   .filter-group select {
     width: auto;
-    min-width: 120px;
+    min-width: 100px;
   }
 }
 .filters-bar select:focus,

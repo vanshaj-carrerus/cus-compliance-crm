@@ -1,9 +1,10 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useCrm } from "./CrmProvider";
 import { DEFAULT_STATUSES } from "@/lib/crm/types";
 
-export function FiltersBar() {
+export function FiltersBar({ children }: { children?: ReactNode }) {
   const { candidates, activeFilters, setActiveFilters } = useCrm();
   const floors = [...new Set(candidates.map((c) => c.floor).filter(Boolean))].sort();
   const pos = [...new Set(candidates.map((c) => c.po).filter(Boolean))].sort();
@@ -92,6 +93,7 @@ export function FiltersBar() {
       >
         Clear Filters
       </button>
+      {children}
     </div>
   );
 }

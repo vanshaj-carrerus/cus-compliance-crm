@@ -637,7 +637,7 @@ export function CrmProvider({
     let normalized = normalizeCandidate(c);
     if (paid && getRemaining(normalized) > 0) {
       const n = nextUnpaid(normalized);
-      if (n) normalized = { ...normalized, nextFollowUpDate: n.inst.date || normalized.nextFollowUpDate };
+      if (n) normalized = { ...normalized, nextFollowUpDate: addDays(i.paymentDate || todayIso(), 20) };
     }
     const next = [...candidates];
     next[ci] = normalized;

@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useCrm } from "../CrmProvider";
-import { Badge, TableShell } from "../shared";
+import {
+  Badge,
+  FullscreenButton,
+  FullscreenExitFab,
+  TableShell,
+  useFullscreen,
+} from "../shared";
 import {
   money,
   getTotalPaid,
@@ -93,8 +99,12 @@ export function DailyFollowUp({
     setDailySelected(next);
   };
 
+  const { fullscreen, toggleFullscreen, shellCls } = useFullscreen();
+
   return (
-    <div>
+    <div className={shellCls}>
+      {!fullscreen && (
+      <>
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         {CATEGORIES.map(({ key, label, cls }) => {
           const stats = priorityStats(candidates, key, dailyFilters);
@@ -209,50 +219,59 @@ export function DailyFollowUp({
           💬 Bulk Reminder ({dailySelected.size})
         </button>
       </div>
+      </>
+      )}
 
+      <FullscreenExitFab fullscreen={fullscreen} onExit={toggleFullscreen} />
       <TableShell
         title={title}
         subtitle={`${rows.length} candidates prioritized by due date`}
+        fullscreen={fullscreen}
+        actions={
+          <FullscreenButton fullscreen={fullscreen} onToggle={toggleFullscreen} />
+        }
       >
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className="rounded-full border border-border bg-secondary px-2.5 py-1 text-xs text-muted">
-            Showing {pageRows.length} of {rows.length} · Page {page + 1}/{pageCount}
-          </span>
-          <button
-            type="button"
-            className="rounded border border-border bg-secondary px-3 py-1.5 text-xs disabled:opacity-50"
-            disabled={page <= 0}
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
-          >
-            ◀ Prev
-          </button>
-          <button
-            type="button"
-            className="rounded border border-border bg-secondary px-3 py-1.5 text-xs disabled:opacity-50"
-            disabled={page >= pageCount - 1}
-            onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
-          >
-            Next ▶
-          </button>
-          <label className="ml-auto flex items-center gap-1 text-xs text-muted">
-            Rows
-            <select
-              className="rounded border border-border bg-input px-2 py-1 text-xs text-foreground"
-              value={pageSize}
-              onChange={(e) => {
-                const next = Number(e.target.value) as (typeof PAGE_SIZE_OPTIONS)[number];
-                setPageSize(next);
-                setPage(0);
-              }}
+        {!fullscreen && (
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-border bg-secondary px-2.5 py-1 text-xs text-muted">
+              Showing {pageRows.length} of {rows.length} · Page {page + 1}/{pageCount}
+            </span>
+            <button
+              type="button"
+              className="rounded border border-border bg-secondary px-3 py-1.5 text-xs disabled:opacity-50"
+              disabled={page <= 0}
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
             >
-              {PAGE_SIZE_OPTIONS.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+              ◀ Prev
+            </button>
+            <button
+              type="button"
+              className="rounded border border-border bg-secondary px-3 py-1.5 text-xs disabled:opacity-50"
+              disabled={page >= pageCount - 1}
+              onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+            >
+              Next ▶
+            </button>
+            <label className="ml-auto flex items-center gap-1 text-xs text-muted">
+              Rows
+              <select
+                className="rounded border border-border bg-input px-2 py-1 text-xs text-foreground"
+                value={pageSize}
+                onChange={(e) => {
+                  const next = Number(e.target.value) as (typeof PAGE_SIZE_OPTIONS)[number];
+                  setPageSize(next);
+                  setPage(0);
+                }}
+              >
+                {PAGE_SIZE_OPTIONS.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
         <table className="data-table w-full min-w-[1100px] text-sm">
           <thead>
             <tr>
@@ -277,7 +296,7 @@ export function DailyFollowUp({
             </tr>
           </thead>
           <tbody>
-            {pageRows.map((r) => {
+            {(fullscreen ? rows : pageRows).map((r) => {
               const c = r.candidate;
               const id = String(c.id);
               return (

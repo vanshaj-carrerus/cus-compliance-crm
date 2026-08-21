@@ -3,6 +3,71 @@
 import { useEffect, useState } from "react";
 import { badgeClass } from "@/lib/crm";
 
+// Shared fullscreen behaviour for the big data-table pages: hides the page's
+// filters/toolbar chrome and expands the table to fill the viewport. `shellCls`
+// goes on the page's outer wrapper div; the FiltersBar (and any other filter
+// controls above the table) should be conditionally rendered with
+// `{!fullscreen && (...)}`.
+export function useFullscreen() {
+  const [fullscreen, setFullscreen] = useState(false);
+  const toggleFullscreen = () => setFullscreen((f) => !f);
+
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFullscreen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [fullscreen]);
+
+  const shellCls = fullscreen
+    ? "fixed inset-0 z-[3000] flex flex-col overflow-hidden bg-background"
+    : "";
+  return { fullscreen, toggleFullscreen, shellCls };
+}
+
+export function FullscreenButton({
+  fullscreen,
+  onToggle,
+}: {
+  fullscreen: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="rounded border border-border bg-secondary px-3 py-1.5 text-xs"
+      onClick={onToggle}
+    >
+      {fullscreen ? "Exit Fullscreen" : "⛶ Fullscreen"}
+    </button>
+  );
+}
+
+// Floating exit control shown while fullscreen, since the page's normal
+// title/toolbar (where the Fullscreen button normally lives) is hidden so
+// only the table/data is visible. Also exits on Escape (see useFullscreen).
+export function FullscreenExitFab({
+  fullscreen,
+  onExit,
+}: {
+  fullscreen: boolean;
+  onExit: () => void;
+}) {
+  if (!fullscreen) return null;
+  return (
+    <button
+      type="button"
+      className="fixed right-4 top-4 z-[3100] rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold shadow-lg"
+      onClick={onExit}
+      title="Exit Fullscreen (Esc)"
+    >
+      ✕ Exit Fullscreen
+    </button>
+  );
+}
+
 export function Badge({ label }: { label: string }) {
   return <span className={`badge ${badgeClass(label)}`}>{label}</span>;
 }
@@ -110,6 +175,7 @@ export function DataTableContainer({
   actions,
   meta,
   toolbar,
+  fullscreen,
   children,
 }: {
   title: string;
@@ -117,22 +183,31 @@ export function DataTableContainer({
   actions?: React.ReactNode;
   meta?: React.ReactNode;
   toolbar?: React.ReactNode;
+  fullscreen?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <div className="data-table-container">
-      <div className="table-header">
-        <div>
-          <div className="table-title">{title}</div>
-          {subtitle && <div className="table-subtitle">{subtitle}</div>}
+    <div
+      className={`data-table-container ${fullscreen ? "flex-1 min-h-0 rounded-none border-0" : ""}`}
+    >
+      {!fullscreen && (
+        <div className="table-header">
+          <div>
+            <div className="table-title">{title}</div>
+            {subtitle && <div className="table-subtitle">{subtitle}</div>}
+          </div>
+          <div className="table-actions">
+            {meta}
+            {actions}
+          </div>
         </div>
-        <div className="table-actions">
-          {meta}
-          {actions}
-        </div>
+      )}
+      {!fullscreen && toolbar}
+      <div
+        className={`table-scroll ${fullscreen ? "flex-1 !max-h-none" : ""}`}
+      >
+        {children}
       </div>
-      {toolbar}
-      <div className="table-scroll">{children}</div>
     </div>
   );
 }
@@ -233,14 +308,21 @@ export function TableShell({
   subtitle,
   children,
   actions,
+  fullscreen,
 }: {
   title: string;
   subtitle?: string;
   children: React.ReactNode;
   actions?: React.ReactNode;
+  fullscreen?: boolean;
 }) {
   return (
-    <DataTableContainer title={title} subtitle={subtitle} actions={actions}>
+    <DataTableContainer
+      title={title}
+      subtitle={subtitle}
+      actions={actions}
+      fullscreen={fullscreen}
+    >
       {children}
     </DataTableContainer>
   );

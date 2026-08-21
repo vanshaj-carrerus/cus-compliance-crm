@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useCrm } from "../CrmProvider";
+import { MonthYearPicker } from "../MonthYearPicker";
+import { DatePicker } from "../DatePicker";
 import { money } from "@/lib/crm/calc";
 import {
   CONTACT_METHODS,
@@ -44,6 +46,10 @@ type FormState = {
 
 function emptyInstallment(): Installment {
   return normalizeInst(null);
+}
+
+function canMarkInstallmentPaid(inst: Installment): boolean {
+  return !!String(inst.amount || "").trim() && !!inst.date;
 }
 
 function installmentsFromCandidate(c: Candidate): Installment[] {
@@ -175,7 +181,14 @@ export function CandidateModal() {
   ) => {
     setForm((f) => {
       const installments = [...f.installments];
-      installments[idx] = { ...installments[idx], [key]: value };
+      const updated = { ...installments[idx], [key]: value };
+      if (
+        (key === "amount" || key === "date") &&
+        !canMarkInstallmentPaid(updated)
+      ) {
+        updated.paid = false;
+      }
+      installments[idx] = updated;
       return { ...f, installments };
     });
   };
@@ -232,8 +245,6 @@ export function CandidateModal() {
                   ["serviceFeePercent", "Service Fee %", "number"],
                   ["terms", "Terms", "text"],
                   ["po", "P.O Number", "text"],
-                  ["poMonth", "P.O Month", "text"],
-                  ["startDate", "Start Date", "date"],
                   ["installmentCount", "Installment Count", "number"],
                 ] as const
               ).map(([key, label, type]) => (
@@ -246,6 +257,20 @@ export function CandidateModal() {
                   />
                 </Field>
               ))}
+
+              <Field label="P.O Month">
+                <MonthYearPicker
+                  value={form.poMonth}
+                  onChange={(v) => setValue("poMonth", v)}
+                />
+              </Field>
+
+              <Field label="Start Date">
+                <DatePicker
+                  value={form.startDate}
+                  onChange={(v) => setValue("startDate", v)}
+                />
+              </Field>
 
               <Field label="Assigned To">
                 <select
@@ -299,11 +324,9 @@ export function CandidateModal() {
               </Field>
 
               <Field label="Expected Date">
-                <input
-                  type="date"
-                  className={inputCls}
+                <DatePicker
                   value={form.expectedDate}
-                  onChange={(e) => setValue("expectedDate", e.target.value)}
+                  onChange={(v) => setValue("expectedDate", v)}
                 />
               </Field>
 
@@ -340,19 +363,15 @@ export function CandidateModal() {
             </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
               <Field label="Last Contact Date">
-                <input
-                  type="date"
-                  className={inputCls}
+                <DatePicker
                   value={form.lastContactDate}
-                  onChange={(e) => setValue("lastContactDate", e.target.value)}
+                  onChange={(v) => setValue("lastContactDate", v)}
                 />
               </Field>
               <Field label="Next Follow-up Date">
-                <input
-                  type="date"
-                  className={inputCls}
+                <DatePicker
                   value={form.nextFollowUpDate}
-                  onChange={(e) => setValue("nextFollowUpDate", e.target.value)}
+                  onChange={(v) => setValue("nextFollowUpDate", v)}
                 />
               </Field>
               <Field label="Contact Method">
@@ -428,22 +447,16 @@ export function CandidateModal() {
                       />
                     </Field>
                     <Field label="Due Date">
-                      <input
-                        type="date"
-                        className={inputCls}
+                      <DatePicker
                         value={inst.date}
-                        onChange={(e) =>
-                          setInstallment(idx, "date", e.target.value)
-                        }
+                        onChange={(v) => setInstallment(idx, "date", v)}
                       />
                     </Field>
                     <Field label="Payment Date">
-                      <input
-                        type="date"
-                        className={inputCls}
+                      <DatePicker
                         value={inst.paymentDate}
-                        onChange={(e) =>
-                          setInstallment(idx, "paymentDate", e.target.value)
+                        onChange={(v) =>
+                          setInstallment(idx, "paymentDate", v)
                         }
                       />
                     </Field>
@@ -459,8 +472,14 @@ export function CandidateModal() {
                     <Field label="Paid" className="justify-end">
                       <input
                         type="checkbox"
-                        className="h-5 w-5 accent-[var(--primary)]"
+                        className="h-5 w-5 accent-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-40"
                         checked={inst.paid}
+                        disabled={!canMarkInstallmentPaid(inst)}
+                        title={
+                          canMarkInstallmentPaid(inst)
+                            ? ""
+                            : "Set the amount and due date before marking as paid"
+                        }
                         onChange={(e) =>
                           setInstallment(idx, "paid", e.target.checked)
                         }

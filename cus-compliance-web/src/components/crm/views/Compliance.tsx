@@ -7,8 +7,11 @@ import {
   CrmTable,
   DataTableContainer,
   EmptyTableRow,
+  FullscreenButton,
+  FullscreenExitFab,
   PaginationBar,
   RemarksCell,
+  useFullscreen,
   usePagination,
 } from "../shared";
 import {
@@ -28,13 +31,20 @@ export function Compliance() {
   );
   const { page, pageSize, pageCount, pageItems, setPage, setPageSize } =
     usePagination(list, 50);
+  const { fullscreen, toggleFullscreen, shellCls } = useFullscreen();
+  const rows = fullscreen ? list : pageItems;
 
   return (
-    <div>
-      <FiltersBar />
+    <div className={shellCls}>
+      <FullscreenExitFab fullscreen={fullscreen} onExit={toggleFullscreen} />
+      {!fullscreen && <FiltersBar />}
       <DataTableContainer
         title="Compliance Sheet"
         subtitle="Auto-generated from Master"
+        fullscreen={fullscreen}
+        actions={
+          <FullscreenButton fullscreen={fullscreen} onToggle={toggleFullscreen} />
+        }
         toolbar={
           <PaginationBar
             total={list.length}
@@ -63,8 +73,8 @@ export function Compliance() {
             </tr>
           </thead>
           <tbody>
-            {pageItems.length ? (
-              pageItems.map((x) => (
+            {rows.length ? (
+              rows.map((x) => (
                 <tr key={x.id}>
                   <td>{x.assignedTo}</td>
                   <td>

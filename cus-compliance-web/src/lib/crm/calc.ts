@@ -47,17 +47,15 @@ export function getRemaining(c: Candidate): number {
 }
 
 export function getLastPaymentDate(c: Candidate): string {
-  const dates = (c.installments || [])
-    .filter((i) => i && i.paid && (Number(i.amount) || 0) > 0)
-    .map((i) => paymentDateFor(i))
-    .filter(Boolean)
-    .map((v) => new Date(v + "T00:00:00"))
-    .filter((d) => !isNaN(d.getTime()));
-  return dates.length
-    ? new Date(Math.max(...dates.map((d) => d.getTime())))
-        .toISOString()
-        .slice(0, 10)
-    : "";
+  const installments = c.installments || [];
+  for (let idx = installments.length - 1; idx >= 0; idx--) {
+    const i = installments[idx];
+    if (i && i.paid && (Number(i.amount) || 0) > 0) {
+      const d = paymentDateFor(i);
+      if (d) return d;
+    }
+  }
+  return "";
 }
 
 export function getNextDueDate(c: Candidate): string {

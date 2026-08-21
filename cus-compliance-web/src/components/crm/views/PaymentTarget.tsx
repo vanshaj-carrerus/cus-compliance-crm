@@ -7,8 +7,11 @@ import {
   CrmTable,
   DataTableContainer,
   EmptyTableRow,
+  FullscreenButton,
+  FullscreenExitFab,
   MonthSelector,
   PaginationBar,
+  useFullscreen,
   usePagination,
 } from "../shared";
 import {
@@ -43,18 +46,29 @@ export function PaymentTarget() {
     next.setMonth(next.getMonth() + delta);
     updateSettings({ targetMonth: next.toISOString() });
   };
+  const { fullscreen, toggleFullscreen, shellCls } = useFullscreen();
+  const rows = fullscreen ? list : pageItems;
 
   return (
-    <div>
-      <MonthSelector
-        label={fmtMonth(d)}
-        onPrev={() => shiftMonth(-1)}
-        onNext={() => shiftMonth(1)}
-      />
-      <FiltersBar />
+    <div className={shellCls}>
+      <FullscreenExitFab fullscreen={fullscreen} onExit={toggleFullscreen} />
+      {!fullscreen && (
+        <>
+          <MonthSelector
+            label={fmtMonth(d)}
+            onPrev={() => shiftMonth(-1)}
+            onNext={() => shiftMonth(1)}
+          />
+          <FiltersBar />
+        </>
+      )}
       <DataTableContainer
         title={`Payment Target - ${fmtMonth(d)}`}
         subtitle="Carry-forward active until fully paid"
+        fullscreen={fullscreen}
+        actions={
+          <FullscreenButton fullscreen={fullscreen} onToggle={toggleFullscreen} />
+        }
         toolbar={
           <PaginationBar
             total={list.length}
@@ -86,8 +100,8 @@ export function PaymentTarget() {
             </tr>
           </thead>
           <tbody>
-            {pageItems.length ? (
-              pageItems.map((x) => {
+            {rows.length ? (
+              rows.map((x) => {
                 const due = getDueForMonth(x, d);
                 const pri = priority(x, d);
                 return (

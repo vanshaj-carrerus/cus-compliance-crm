@@ -3,42 +3,26 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCrm } from "../CrmProvider";
 import { FiltersBar } from "../FiltersBar";
+import { FullscreenExitFab } from "../shared";
 import {
   money,
-  getTotalPaid,
   getRemaining,
-  getLastPaymentDate,
   getNextDueDate,
   rowColorClass,
   fmtDate,
-  fmtDateShort,
   exportCandidatesCsv,
   importSheetRows,
   downloadBlob,
   phoneOf,
   todayIso,
+  normalizeCandidate,
 } from "@/lib/crm";
 import type { Candidate } from "@/lib/crm/types";
-
-const STATUS_OPTIONS = [
-  "Active",
-  "Fully Paid",
-  "Run Away",
-  "Job Lost",
-  "Cancelled",
-  "Refunded",
-  "Closed",
-  "Inactive",
-  "No Response",
-  "Payment Hold",
-];
 
 function instText(c: Candidate, idx: number): string {
   const i = c.installments[idx];
   if (!i?.amount) return "";
-  return (
-    String(i.amount) + (i.date ? " " + fmtDateShort(i.date) : "")
-  );
+  return String(i.amount) + (i.date ? " " + fmtDate(i.date) : "");
 }
 
 function instStatus(i: Candidate["installments"][0]) {
@@ -49,12 +33,50 @@ function instStatus(i: Candidate["installments"][0]) {
   return { label: "DUE", color: "text-muted" };
 }
 
+// Visible sheet columns, in the exact order requested:
+// Month | Total | Terms (=Assigned To) | P.O. | Start Date | Candidate Name | 1st..9th date
+// Every other candidate field (phone, status, remarks, floor, fee %, contact
+// info, real "terms" text, etc.) still exists on the record and is still
+// computed/edited via the row's Edit action - it's just not shown inline here.
+type DataCol = {
+  key: string;
+  label: string;
+  editable: boolean;
+  getText: (c: Candidate) => string;
+};
+
+const DATA_COLS: DataCol[] = [
+  { key: "poMonth", label: "Month", editable: true, getText: (c) => c.poMonth || "" },
+  {
+    key: "totalServiceFee",
+    label: "Total",
+    editable: false,
+    getText: (c) => (c.totalServiceFee ? String(c.totalServiceFee) : ""),
+  },
+  { key: "assignedTo", label: "Terms", editable: true, getText: (c) => c.assignedTo || "" },
+  { key: "po", label: "P.O.", editable: true, getText: (c) => c.po || "" },
+  { key: "startDate", label: "Start Date", editable: true, getText: (c) => c.startDate || "" },
+  { key: "name", label: "Candidate Name", editable: true, getText: (c) => c.name || "" },
+  ...Array.from({ length: 9 }, (_, i) => ({
+    key: "inst" + i,
+    label:
+      i + 1 + (i === 0 ? "st" : i === 1 ? "nd" : i === 2 ? "rd" : "th") + " date",
+    editable: false,
+    getText: (c: Candidate) => {
+      const inst = c.installments[i];
+      if (!inst?.amount) return "";
+      return String(inst.amount) + (inst.date ? " " + inst.date : "");
+    },
+  })),
+];
+
+type CellPos = { row: number; col: number };
+type Rect = { r0: number; r1: number; c0: number; c1: number };
+
 export function MasterSheet() {
   const {
     filtered,
     candidates,
-    updateMasterField,
-    updateInstallment,
     togglePaid,
     deleteCandidate,
     editCandidate,
@@ -66,7 +88,6 @@ export function MasterSheet() {
     snapshot,
     bulkSelected,
     setBulkSelected,
-    updateContactField,
     smartFilter,
     setSmartFilter,
     getRemaining: _gr,
@@ -79,6 +100,15 @@ export function MasterSheet() {
   const [methodFilter, setMethodFilter] = useState("");
   const [fullscreen, setFullscreen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFullscreen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [fullscreen]);
 
   let list = filtered();
 
@@ -111,10 +141,7 @@ export function MasterSheet() {
       list = list.filter((c) => (names.get(c.name.toLowerCase().trim()) || 0) > 1);
     } else if (smartFilter.type === "missingData") {
       list = list.filter(
-        (c) =>
-          !phoneOf(c) ||
-          !getNextDueDate(c) ||
-          !c.totalServiceFee
+        (c) => !phoneOf(c) || !getNextDueDate(c) || !c.totalServiceFee
       );
     }
   }
@@ -122,93 +149,270 @@ export function MasterSheet() {
   if (followupFilter) {
     const t = todayIso();
     if (followupFilter === "overdue")
-      list = list.filter(
-        (c) => c.nextFollowUpDate && c.nextFollowUpDate < t
-      );
+      list = list.filter((c) => c.nextFollowUpDate && c.nextFollowUpDate < t);
     if (followupFilter === "today")
       list = list.filter((c) => c.nextFollowUpDate === t);
     if (followupFilter === "future")
-      list = list.filter(
-        (c) => c.nextFollowUpDate && c.nextFollowUpDate > t
-      );
+      list = list.filter((c) => c.nextFollowUpDate && c.nextFollowUpDate > t);
     if (followupFilter === "never")
       list = list.filter((c) => !c.nextFollowUpDate);
   }
   if (methodFilter)
     list = list.filter((c) => c.contactMethod === methodFilter);
 
-  const PAGE_SIZE_OPTIONS = [25, 50, 100] as const;
-  const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(50);
-  const [page, setPage] = useState(0);
-
-  const pageCount = Math.max(1, Math.ceil(list.length / pageSize));
-  const pageList = list.slice(page * pageSize, page * pageSize + pageSize);
-
-  useEffect(() => {
-    setPage(0);
-  }, [list.length, followupFilter, methodFilter, smartFilter?.type]);
-
-  useEffect(() => {
-    setPage((p) => Math.min(p, pageCount - 1));
-  }, [pageCount]);
-
-  const toggleSelect = (id: string, checked: boolean, shift = false) => {
+  const toggleSelect = (id: string, checked: boolean) => {
     const next = new Set(bulkSelected);
     if (checked) next.add(id);
     else next.delete(id);
     setBulkSelected(next);
   };
 
-  const handlePaste = useCallback(
-    (e: React.ClipboardEvent, startId: number, startCol: number) => {
-      const text = e.clipboardData.getData("text");
-      if (!text.includes("\t") && !text.includes("\n")) return;
-      e.preventDefault();
+  // ---- Google-Sheets-style range selection ----
+  // `ranges` holds ranges committed by earlier Ctrl/Cmd-clicks; the range
+  // currently being drawn (liveAnchor..liveFocus) is kept separate so it can
+  // be extended by Shift-click/drag without disturbing the committed ones.
+  const [ranges, setRanges] = useState<Rect[]>([]);
+  const [liveAnchor, setLiveAnchor] = useState<CellPos | null>(null);
+  const [liveFocus, setLiveFocus] = useState<CellPos | null>(null);
+  const draggingRef = useRef(false);
+  const dragModeRef = useRef<"cell" | "row" | "col">("cell");
+
+  useEffect(() => {
+    const up = () => {
+      draggingRef.current = false;
+    };
+    window.addEventListener("mouseup", up);
+    return () => window.removeEventListener("mouseup", up);
+  }, []);
+
+  // Clear selection if the visible row set changes size underneath it
+  // (adjust state during render instead of an effect, per React's guidance
+  // for resetting state in response to a prop/derived-value change).
+  const [prevListLength, setPrevListLength] = useState(list.length);
+  if (prevListLength !== list.length) {
+    setPrevListLength(list.length);
+    if (ranges.length || liveAnchor || liveFocus) {
+      setRanges([]);
+      setLiveAnchor(null);
+      setLiveFocus(null);
+    }
+  }
+
+  const liveRect: Rect | null =
+    liveAnchor && liveFocus
+      ? {
+          r0: Math.min(liveAnchor.row, liveFocus.row),
+          r1: Math.max(liveAnchor.row, liveFocus.row),
+          c0: Math.min(liveAnchor.col, liveFocus.col),
+          c1: Math.max(liveAnchor.col, liveFocus.col),
+        }
+      : null;
+  const allRects = useMemo(
+    () => (liveRect ? [...ranges, liveRect] : ranges),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [ranges, liveAnchor, liveFocus]
+  );
+  const hasSelection = allRects.length > 0;
+
+  const isCellSelected = (row: number, col: number) =>
+    allRects.some(
+      (r) => row >= r.r0 && row <= r.r1 && col >= r.c0 && col <= r.c1
+    );
+
+  const commitLiveRange = () => {
+    if (liveRect) setRanges((prev) => [...prev, liveRect]);
+  };
+
+  const beginCellSelect = (row: number, col: number, e: React.MouseEvent) => {
+    dragModeRef.current = "cell";
+    draggingRef.current = true;
+    if (e.ctrlKey || e.metaKey) {
+      commitLiveRange();
+      setLiveAnchor({ row, col });
+      setLiveFocus({ row, col });
+    } else if (e.shiftKey && liveAnchor) {
+      setLiveFocus({ row, col });
+    } else {
+      setRanges([]);
+      setLiveAnchor({ row, col });
+      setLiveFocus({ row, col });
+    }
+  };
+  const extendCellSelect = (row: number, col: number) => {
+    if (draggingRef.current && dragModeRef.current === "cell")
+      setLiveFocus({ row, col });
+  };
+
+  const beginRowSelect = (row: number, e: React.MouseEvent) => {
+    dragModeRef.current = "row";
+    draggingRef.current = true;
+    const lastCol = DATA_COLS.length - 1;
+    if (e.ctrlKey || e.metaKey) {
+      commitLiveRange();
+      setLiveAnchor({ row, col: 0 });
+      setLiveFocus({ row, col: lastCol });
+    } else if (e.shiftKey && liveAnchor) {
+      setLiveAnchor({ row: liveAnchor.row, col: 0 });
+      setLiveFocus({ row, col: lastCol });
+    } else {
+      setRanges([]);
+      setLiveAnchor({ row, col: 0 });
+      setLiveFocus({ row, col: lastCol });
+    }
+  };
+  const extendRowSelect = (row: number) => {
+    if (draggingRef.current && dragModeRef.current === "row")
+      setLiveFocus({ row, col: DATA_COLS.length - 1 });
+  };
+
+  const beginColSelect = (col: number, e: React.MouseEvent) => {
+    dragModeRef.current = "col";
+    draggingRef.current = true;
+    const lastRow = list.length - 1;
+    if (e.ctrlKey || e.metaKey) {
+      commitLiveRange();
+      setLiveAnchor({ row: 0, col });
+      setLiveFocus({ row: lastRow, col });
+    } else if (e.shiftKey && liveAnchor) {
+      setLiveAnchor({ row: 0, col: liveAnchor.col });
+      setLiveFocus({ row: lastRow, col });
+    } else {
+      setRanges([]);
+      setLiveAnchor({ row: 0, col });
+      setLiveFocus({ row: lastRow, col });
+    }
+  };
+  const extendColSelect = (col: number) => {
+    if (draggingRef.current && dragModeRef.current === "col")
+      setLiveFocus({ row: list.length - 1, col });
+  };
+
+  // Native `copy`/`paste` clipboard events only fire when the browser has
+  // something of its own to copy (a real text selection) or an editable
+  // element with a selection focused. Clicking a cell to "select" it in the
+  // sheet sense doesn't create that, so Ctrl+C would silently do nothing.
+  // We drive both directly through the Clipboard API instead, from a
+  // keydown listener and from the toolbar Copy button.
+  const rectsToTsv = useCallback(
+    (rects: Rect[]) => {
+      if (!rects.length) return "";
+      const rowSet = new Set<number>();
+      const colSet = new Set<number>();
+      rects.forEach((r) => {
+        for (let i = r.r0; i <= r.r1; i++) rowSet.add(i);
+        for (let j = r.c0; j <= r.c1; j++) colSet.add(j);
+      });
+      const rows = [...rowSet].sort((a, b) => a - b);
+      const cols = [...colSet].sort((a, b) => a - b);
+      const inSelection = (r: number, c: number) =>
+        rects.some((rect) => r >= rect.r0 && r <= rect.r1 && c >= rect.c0 && c <= rect.c1);
+      return rows
+        .map((r) => {
+          const cand = list[r];
+          if (!cand) return "";
+          return cols
+            .map((c) => (inSelection(r, c) ? DATA_COLS[c].getText(cand) : ""))
+            .join("\t");
+        })
+        .join("\n");
+    },
+    [list]
+  );
+
+  const copySelection = useCallback(() => {
+    if (!allRects.length) return;
+    const text = rectsToTsv(allRects);
+    navigator.clipboard.writeText(text).then(
+      () => toast("Selection copied", "success"),
+      () => toast("Copy failed - clipboard permission blocked", "error")
+    );
+  }, [allRects, rectsToTsv, toast]);
+
+  const pasteAnchor = (): CellPos | null => {
+    if (!allRects.length) return null;
+    const r0 = Math.min(...allRects.map((r) => r.r0));
+    const c0 = Math.min(...allRects.map((r) => r.c0));
+    return { row: r0, col: c0 };
+  };
+
+  const applyPasteText = useCallback(
+    (text: string, anchor: CellPos) => {
+      if (!text.includes("\t") && !text.includes("\n")) return false;
+      const startCandidate = list[anchor.row];
+      if (!startCandidate) return false;
       snapshot();
-      const rows = text.replace(/\r/g, "").split("\n").filter(Boolean);
       const ids = list.map((c) => c.id);
-      const startRow = ids.indexOf(startId);
-      if (startRow < 0) return;
-      const fields = [
-        "name",
-        "phoneNumber",
-        "assignedTo",
-        "floor",
-        "annualPackage",
-        "serviceFeePercent",
-        "terms",
-        "po",
-        "startDate",
-        "status",
-        "remarks",
-        "poMonth",
-      ];
+      const startRow = ids.indexOf(startCandidate.id);
+      if (startRow < 0) return false;
+      const rows = text.replace(/\r/g, "").split("\n").filter(Boolean);
       let next = [...candidates];
-      rows.forEach((row, ri) => {
-        const cols = row.split("\t");
+      rows.forEach((rowText, ri) => {
         const id = ids[startRow + ri];
         if (!id) return;
         const ci = next.findIndex((c) => c.id === id);
         if (ci < 0) return;
-        let c = { ...next[ci] };
-        cols.forEach((val, di) => {
-          const field = fields[startCol + di];
-          if (!field) return;
-          (c as Record<string, unknown>)[field] = val.trim();
+        const c = { ...next[ci] };
+        const cols = rowText.split("\t");
+        cols.forEach((val, ci2) => {
+          const colDef = DATA_COLS[anchor.col + ci2];
+          if (!colDef || !colDef.editable) return;
+          (c as Record<string, unknown>)[colDef.key] = val.trim();
         });
-        next[ci] = { ...c } as Candidate;
+        next[ci] = c as Candidate;
       });
-      // re-normalize via field updates
       next = next.map((c) => {
         const orig = candidates.find((x) => x.id === c.id);
-        return orig === c ? c : require("@/lib/crm").normalizeCandidate(c);
+        return orig === c ? c : normalizeCandidate(c);
       });
       setCandidates(next);
       queueSave();
       toast("Paste applied", "success");
+      return true;
     },
     [list, candidates, snapshot, setCandidates, queueSave, toast]
   );
+
+  // Not memoized: it closes over `allRects` via `pasteAnchor`, which changes
+  // on every selection update, so a fresh function each render is simplest.
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const text = e.clipboardData.getData("text");
+    const anchor = pasteAnchor();
+    if (!anchor) return;
+    if (applyPasteText(text, anchor)) e.preventDefault();
+  };
+
+  // Fallback for Ctrl/Cmd+C and Ctrl/Cmd+V when focus isn't in a native
+  // text selection - covers clicking a cell (or a whole row/column header)
+  // and pressing the shortcut, which is the normal sheet workflow.
+  useEffect(() => {
+    const isTypingWithSelection = () => {
+      const el = document.activeElement as HTMLInputElement | null;
+      if (!el || !("selectionStart" in el)) return false;
+      return el.selectionStart !== el.selectionEnd;
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const key = e.key.toLowerCase();
+      if (key === "c") {
+        if (!hasSelection || isTypingWithSelection()) return;
+        copySelection();
+      } else if (key === "v") {
+        const anchor = pasteAnchor();
+        if (!anchor) return;
+        navigator.clipboard
+          .readText()
+          .then((text) => applyPasteText(text, anchor))
+          .catch(() => {
+            // Clipboard read blocked (permissions) - the native onPaste
+            // handler on the grid still covers Ctrl+V while focused in
+            // an editable cell.
+          });
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasSelection, allRects, copySelection, applyPasteText]);
 
   const exportCsv = () => {
     downloadBlob(
@@ -240,39 +444,6 @@ export function MasterSheet() {
     }
   };
 
-  const cols = useMemo(
-    () => [
-      { key: "name", label: "Name", freeze: "freeze-name" },
-      { key: "phoneNumber", label: "Phone", freeze: "freeze-phone" },
-      { key: "totalServiceFee", label: "Total Fee", freeze: "freeze-total", calc: true },
-      { key: "paid", label: "Paid", freeze: "freeze-paid", calc: true },
-      { key: "remaining", label: "Remaining", freeze: "freeze-remaining", calc: true },
-      { key: "poMonth", label: "P.O Month" },
-      { key: "installmentCount", label: "Inst #" },
-      { key: "assignedTo", label: "Assigned" },
-      { key: "floor", label: "Floor" },
-      { key: "annualPackage", label: "Annual Pkg" },
-      { key: "serviceFeePercent", label: "Fee %" },
-      { key: "terms", label: "Terms" },
-      { key: "po", label: "P.O" },
-      { key: "startDate", label: "Start Date" },
-      { key: "status", label: "Status" },
-      { key: "remarks", label: "Remarks" },
-      ...Array.from({ length: 9 }, (_, i) => ({
-        key: "inst" + i,
-        label: i + 1 + (i === 0 ? "st" : i === 1 ? "nd" : i === 2 ? "rd" : "th") + " Installment",
-        inst: i,
-      })),
-      { key: "lastPay", label: "Last Pay", calc: true },
-      { key: "nextDue", label: "Next Due", calc: true },
-      { key: "lastContactDate", label: "Last Contact" },
-      { key: "nextFollowUpDate", label: "Next Follow-up" },
-      { key: "contactMethod", label: "Contact Method" },
-      { key: "actions", label: "Actions", calc: true },
-    ],
-    []
-  );
-
   void _gr;
 
   const shellCls = fullscreen
@@ -281,155 +452,153 @@ export function MasterSheet() {
 
   return (
     <div className={shellCls}>
-      <FiltersBar />
-      {smartFilter && (
-        <div className="mb-3 flex items-center justify-between rounded-[var(--radius)] border border-primary/30 bg-primary/5 px-4 py-2 text-sm">
-          <span>
-            ✨ Smart filter active · {list.length} matching candidates
-          </span>
-          <button
-            type="button"
-            className="rounded border border-border bg-secondary px-3 py-1 text-xs"
-            onClick={() => setSmartFilter(null)}
-          >
-            Clear Smart Filter
-          </button>
-        </div>
-      )}
-      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-[15px] border border-border bg-secondary/50 px-3 py-2.5">
-        <span className="text-xs text-muted">Follow-up:</span>
-        <select
-          className="rounded border border-border bg-input px-2 py-1 text-sm"
-          value={followupFilter}
-          onChange={(e) => setFollowupFilter(e.target.value)}
-        >
-          <option value="">All</option>
-          <option value="overdue">Overdue</option>
-          <option value="today">Today</option>
-          <option value="future">Future</option>
-          <option value="never">Not Set</option>
-        </select>
-        <span className="text-xs text-muted">Contact Method:</span>
-        <select
-          className="rounded border border-border bg-input px-2 py-1 text-sm"
-          value={methodFilter}
-          onChange={(e) => setMethodFilter(e.target.value)}
-        >
-          <option value="">All</option>
-          {["Call", "WhatsApp", "Email", "In-Person", "No Contact"].map((v) => (
-            <option key={v}>{v}</option>
-          ))}
-        </select>
-        <button
-          type="button"
-          className="rounded border border-border bg-secondary px-3 py-1 text-xs"
-          onClick={() => {
-            setFollowupFilter("");
-            setMethodFilter("");
-          }}
-        >
-          Clear Contact Filters
-        </button>
-      </div>
-
-      <div className="overflow-hidden rounded-[var(--radius)] border border-border bg-card">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-4">
-          <div>
-            <div className="text-base font-semibold">Master P.O Sheet</div>
-            <div className="mt-1 text-xs text-muted">
-              Excel-style grid: edit cells, paste from Sheets, TAB/arrows to
-              navigate. Data saves to MongoDB.
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-border bg-secondary px-2.5 py-1 text-xs text-muted">
-              Showing {pageList.length} of {list.length} · Page {page + 1}/{pageCount}
-            </span>
-            <button
-              type="button"
-              className="rounded border border-border bg-secondary px-3 py-1.5 text-xs disabled:opacity-50"
-              disabled={page <= 0}
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              aria-label="Previous page"
-            >
-              ◀
-            </button>
-            <button
-              type="button"
-              className="rounded border border-border bg-secondary px-3 py-1.5 text-xs disabled:opacity-50"
-              disabled={page >= pageCount - 1}
-              onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
-              aria-label="Next page"
-            >
-              ▶
-            </button>
-            <label className="flex items-center gap-1 text-xs text-muted">
-              Rows
+      {!fullscreen && (
+        <>
+          <FiltersBar>
+            <span className="mx-1 hidden h-6 w-px bg-border sm:block" />
+            <label className="filter-group">
+              <span className="filter-label">Follow-up</span>
               <select
-                className="rounded border border-border bg-input px-2 py-1 text-xs text-foreground"
-                value={pageSize}
-                onChange={(e) => {
-                  const next = Number(e.target.value) as (typeof PAGE_SIZE_OPTIONS)[number];
-                  setPageSize(next);
-                  setPage(0);
-                }}
+                value={followupFilter}
+                onChange={(e) => setFollowupFilter(e.target.value)}
               >
-                {PAGE_SIZE_OPTIONS.map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
+                <option value="">All</option>
+                <option value="overdue">Overdue</option>
+                <option value="today">Today</option>
+                <option value="future">Future</option>
+                <option value="never">Not Set</option>
               </select>
             </label>
-            <button
-              type="button"
-              className="rounded border border-border bg-secondary px-3 py-1.5 text-xs"
-              onClick={() => fileRef.current?.click()}
-            >
-              📥 Import CSV
-            </button>
-            <button
-              type="button"
-              className="rounded border border-border bg-secondary px-3 py-1.5 text-xs"
-              onClick={exportCsv}
-            >
-              📤 Export CSV
-            </button>
-            <button
-              type="button"
-              className="rounded border border-border bg-secondary px-3 py-1.5 text-xs"
-              onClick={duplicateLast}
-            >
-              📋 Duplicate Last
-            </button>
-            <button
-              type="button"
-              className="rounded bg-danger px-3 py-1.5 text-xs text-white"
-              onClick={deleteAllCandidates}
-            >
-              🗑️ Delete All
-            </button>
-            <button
-              type="button"
-              className="rounded border border-border bg-secondary px-3 py-1.5 text-xs"
-              onClick={() => setFullscreen((f) => !f)}
-            >
-              {fullscreen ? "Exit Fullscreen" : "Fullscreen"}
-            </button>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".csv,.tsv,.txt"
-              className="hidden"
-              onChange={(e) => importCsv(e.target.files?.[0])}
-            />
+            <label className="filter-group">
+              <span className="filter-label">Contact Method</span>
+              <select
+                value={methodFilter}
+                onChange={(e) => setMethodFilter(e.target.value)}
+              >
+                <option value="">All</option>
+                {["Call", "WhatsApp", "Email", "In-Person", "No Contact"].map(
+                  (v) => (
+                    <option key={v}>{v}</option>
+                  )
+                )}
+              </select>
+            </label>
+            {(followupFilter || methodFilter) && (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => {
+                  setFollowupFilter("");
+                  setMethodFilter("");
+                }}
+              >
+                Clear Contact Filters
+              </button>
+            )}
+          </FiltersBar>
+          {smartFilter && (
+            <div className="mb-3 flex items-center justify-between rounded-[var(--radius)] border border-primary/30 bg-primary/5 px-4 py-2 text-sm">
+              <span>
+                ✨ Smart filter active · {list.length} matching candidates
+              </span>
+              <button
+                type="button"
+                className="rounded border border-border bg-secondary px-3 py-1 text-xs"
+                onClick={() => setSmartFilter(null)}
+              >
+                Clear Smart Filter
+              </button>
+            </div>
+          )}
+        </>
+      )}
+      <FullscreenExitFab
+        fullscreen={fullscreen}
+        onExit={() => setFullscreen(false)}
+      />
+      <div
+        className={`overflow-hidden rounded-[var(--radius)] border border-border bg-card ${
+          fullscreen ? "flex min-h-0 flex-1 flex-col" : ""
+        }`}
+      >
+        {!fullscreen && (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-4">
+            <div>
+              <div className="text-base font-semibold">Master P.O Sheet</div>
+              <div className="mt-1 text-xs text-muted">
+                Sheet-style grid: click a cell (or drag across cells) to select
+                a range, Shift+click/drag to extend it, Ctrl/Cmd+click to add
+                another row/column/range, Ctrl/Cmd+C to copy, Ctrl/Cmd+V to
+                paste - just like pasting into a Google Sheet. Click or drag
+                across row numbers / column headers to select whole
+                rows/columns. To type a single value (or edit installments,
+                phone, status, remarks, contact info, etc.) use ✏️ Edit. Data
+                saves to MongoDB.
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-border bg-secondary px-2.5 py-1 text-xs text-muted">
+                {list.length} candidates
+              </span>
+              <button
+                type="button"
+                className="rounded border border-border bg-secondary px-3 py-1.5 text-xs disabled:opacity-50"
+                disabled={!hasSelection}
+                onClick={copySelection}
+                title="Copy the selected cell range (or Ctrl/Cmd+C)"
+              >
+                📄 Copy Selection
+              </button>
+              <button
+                type="button"
+                className="rounded border border-border bg-secondary px-3 py-1.5 text-xs"
+                onClick={() => fileRef.current?.click()}
+              >
+                📥 Import CSV
+              </button>
+              <button
+                type="button"
+                className="rounded border border-border bg-secondary px-3 py-1.5 text-xs"
+                onClick={exportCsv}
+              >
+                📤 Export CSV
+              </button>
+              <button
+                type="button"
+                className="rounded border border-border bg-secondary px-3 py-1.5 text-xs"
+                onClick={duplicateLast}
+              >
+                📋 Duplicate Last
+              </button>
+              <button
+                type="button"
+                className="rounded bg-danger px-3 py-1.5 text-xs text-white"
+                onClick={deleteAllCandidates}
+              >
+                🗑️ Delete All
+              </button>
+              <button
+                type="button"
+                className="rounded border border-border bg-secondary px-3 py-1.5 text-xs"
+                onClick={() => setFullscreen((f) => !f)}
+              >
+                {fullscreen ? "Exit Fullscreen" : "Fullscreen"}
+              </button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".csv,.tsv,.txt"
+                className="hidden"
+                onChange={(e) => importCsv(e.target.files?.[0])}
+              />
+            </div>
           </div>
-        </div>
+        )}
         <div
           ref={scrollRef}
           id="masterScroll"
-          className="table-scroll overflow-auto"
-          style={{ maxHeight: fullscreen ? "calc(100vh - 160px)" : "calc(100vh - 280px)" }}
+          className={`table-scroll overflow-auto ${fullscreen ? "flex-1 !max-h-none" : ""}`}
+          onPaste={handlePaste}
         >
           <table className="excel-grid">
             <thead>
@@ -446,22 +615,22 @@ export function MasterSheet() {
                     }}
                   />
                 </th>
-                {cols.map((c) => (
+                {DATA_COLS.map((col, colIdx) => (
                   <th
-                    key={c.key}
-                    className={
-                      "freeze" in c && c.freeze
-                        ? `sticky-priority ${c.freeze}`
-                        : ""
-                    }
+                    key={col.key}
+                    className="col-head-selectable"
+                    onMouseDown={(e) => beginColSelect(colIdx, e)}
+                    onMouseEnter={() => extendColSelect(colIdx)}
+                    title="Click (or drag) to select whole column(s). Shift/Ctrl to extend."
                   >
-                    {c.label}
+                    {col.label}
                   </th>
                 ))}
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {pageList.map((c, rowIndex) => (
+              {list.map((c, rowIndex) => (
                 <tr
                   key={c.id}
                   className={`${rowColorClass(c)} ${
@@ -469,7 +638,14 @@ export function MasterSheet() {
                   }`}
                   data-id={c.id}
                 >
-                  <td className="row-head">{page * pageSize + rowIndex + 1}</td>
+                  <td
+                    className="row-head row-head-selectable"
+                    onMouseDown={(e) => beginRowSelect(rowIndex, e)}
+                    onMouseEnter={() => extendRowSelect(rowIndex)}
+                    title="Click (or drag) to select whole row(s). Shift/Ctrl to extend."
+                  >
+                    {rowIndex + 1}
+                  </td>
                   <td className="freeze-check">
                     <input
                       type="checkbox"
@@ -479,177 +655,75 @@ export function MasterSheet() {
                       }
                     />
                   </td>
-                  <td className="freeze-name sticky-priority important-col">
-                    <input
-                      className="sheet-cell name-priority"
-                      value={c.name}
-                      onChange={(e) =>
-                        updateMasterField(c.id, "name", e.target.value)
-                      }
-                      onPaste={(e) => handlePaste(e, c.id, 0)}
-                    />
+                  {/* Month */}
+                  <td
+                    className={isCellSelected(rowIndex, 0) ? "cell-selected" : ""}
+                    onMouseDown={(e) => beginCellSelect(rowIndex, 0, e)}
+                    onMouseEnter={() => extendCellSelect(rowIndex, 0)}
+                  >
+                    <span className="sheet-cell">{c.poMonth || ""}</span>
                   </td>
-                  <td className="freeze-phone sticky-priority">
-                    <input
-                      className="sheet-cell phone-cell"
-                      value={c.phoneNumber}
-                      onChange={(e) =>
-                        updateMasterField(c.id, "phoneNumber", e.target.value)
-                      }
-                    />
-                  </td>
-                  <td className="freeze-total sticky-priority calc-cell">
+                  {/* Total */}
+                  <td
+                    className={`calc-cell ${isCellSelected(rowIndex, 1) ? "cell-selected" : ""}`}
+                    onMouseDown={(e) => beginCellSelect(rowIndex, 1, e)}
+                    onMouseEnter={() => extendCellSelect(rowIndex, 1)}
+                  >
                     <span className="font-bold text-primary">
                       {money(c.totalServiceFee)}
                     </span>
                   </td>
-                  <td className="freeze-paid sticky-priority calc-cell">
-                    <span className="font-bold text-success">
-                      {money(getTotalPaid(c))}
-                    </span>
+                  {/* Terms = Assigned To */}
+                  <td
+                    className={isCellSelected(rowIndex, 2) ? "cell-selected" : ""}
+                    onMouseDown={(e) => beginCellSelect(rowIndex, 2, e)}
+                    onMouseEnter={() => extendCellSelect(rowIndex, 2)}
+                  >
+                    <span className="sheet-cell">{c.assignedTo || ""}</span>
                   </td>
-                  <td className="freeze-remaining sticky-priority calc-cell">
-                    <span
-                      className={
-                        getRemaining(c) > 0
-                          ? "font-bold text-danger"
-                          : "font-bold text-success"
-                      }
-                    >
-                      {money(getRemaining(c))}
-                    </span>
+                  {/* P.O. */}
+                  <td
+                    className={isCellSelected(rowIndex, 3) ? "cell-selected" : ""}
+                    onMouseDown={(e) => beginCellSelect(rowIndex, 3, e)}
+                    onMouseEnter={() => extendCellSelect(rowIndex, 3)}
+                  >
+                    <span className="sheet-cell">{c.po || ""}</span>
                   </td>
-                  <td>
-                    <input
-                      className="sheet-cell"
-                      value={c.poMonth}
-                      onChange={(e) =>
-                        updateMasterField(c.id, "poMonth", e.target.value)
-                      }
-                    />
+                  {/* Start Date */}
+                  <td
+                    className={isCellSelected(rowIndex, 4) ? "cell-selected" : ""}
+                    onMouseDown={(e) => beginCellSelect(rowIndex, 4, e)}
+                    onMouseEnter={() => extendCellSelect(rowIndex, 4)}
+                  >
+                    <span className="sheet-cell">{c.startDate || ""}</span>
                   </td>
-                  <td>
-                    <input
-                      className="sheet-cell"
-                      value={c.installmentCount || ""}
-                      onChange={(e) =>
-                        updateMasterField(
-                          c.id,
-                          "installmentCount",
-                          e.target.value
-                        )
-                      }
-                    />
-                  </td>
-                  <td>
-                    <select
-                      className="sheet-cell"
-                      value={c.assignedTo}
-                      onChange={(e) =>
-                        updateMasterField(c.id, "assignedTo", e.target.value)
-                      }
-                    >
-                      <option>Yatin</option>
-                      <option>Jayraj</option>
-                    </select>
-                  </td>
-                  <td>
-                    <input
-                      className="sheet-cell"
-                      value={c.floor}
-                      onChange={(e) =>
-                        updateMasterField(c.id, "floor", e.target.value)
-                      }
-                    />
-                  </td>
-                  <td>
-                    <input
-                      className="sheet-cell"
-                      value={c.annualPackage || ""}
-                      onChange={(e) =>
-                        updateMasterField(c.id, "annualPackage", e.target.value)
-                      }
-                    />
-                  </td>
-                  <td>
-                    <input
-                      className="sheet-cell"
-                      value={c.serviceFeePercent || ""}
-                      onChange={(e) =>
-                        updateMasterField(
-                          c.id,
-                          "serviceFeePercent",
-                          e.target.value
-                        )
-                      }
-                    />
-                  </td>
-                  <td>
-                    <input
-                      className="sheet-cell"
-                      value={c.terms}
-                      onChange={(e) =>
-                        updateMasterField(c.id, "terms", e.target.value)
-                      }
-                    />
-                  </td>
-                  <td>
-                    <input
-                      className="sheet-cell"
-                      value={c.po}
-                      onChange={(e) =>
-                        updateMasterField(c.id, "po", e.target.value)
-                      }
-                    />
-                  </td>
-                  <td>
-                    <input
-                      className="sheet-cell"
-                      value={c.startDate}
-                      onChange={(e) =>
-                        updateMasterField(c.id, "startDate", e.target.value)
-                      }
-                      placeholder="YYYY-MM-DD"
-                    />
-                  </td>
-                  <td>
-                    <select
-                      className="sheet-cell"
-                      value={c.status}
-                      onChange={(e) =>
-                        updateMasterField(c.id, "status", e.target.value)
-                      }
-                    >
-                      {[...new Set([c.status, ...STATUS_OPTIONS])].map((s) => (
-                        <option key={s}>{s}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    <textarea
-                      className="sheet-cell remarks-editor"
-                      value={c.remarks}
-                      onChange={(e) =>
-                        updateMasterField(c.id, "remarks", e.target.value)
-                      }
-                    />
+                  {/* Candidate Name */}
+                  <td
+                    className={`important-col ${isCellSelected(rowIndex, 5) ? "cell-selected" : ""}`}
+                    onMouseDown={(e) => beginCellSelect(rowIndex, 5, e)}
+                    onMouseEnter={() => extendCellSelect(rowIndex, 5)}
+                  >
+                    <span className="sheet-cell name-priority">{c.name || ""}</span>
                   </td>
                   {Array.from({ length: 9 }, (_, idx) => {
                     const st = instStatus(c.installments[idx]);
+                    const colIdx = 6 + idx;
                     return (
-                      <td key={idx} className="inst-col">
+                      <td
+                        key={idx}
+                        className={`inst-col ${isCellSelected(rowIndex, colIdx) ? "cell-selected" : ""}`}
+                        onMouseDown={(e) => beginCellSelect(rowIndex, colIdx, e)}
+                        onMouseEnter={() => extendCellSelect(rowIndex, colIdx)}
+                      >
                         <div className="inst-cell">
                           <div className="inst-row">
-                            <input
-                              className="sheet-cell"
-                              type="text"
-                              defaultValue={instText(c, idx)}
-                              key={c.id + "-" + idx + "-" + instText(c, idx)}
-                              placeholder="1500 14 Jan"
-                              onBlur={(e) =>
-                                updateInstallment(c.id, idx, e.target.value)
-                              }
-                            />
+                            <span
+                              className="sheet-cell inst-text"
+                              onClick={() => editCandidate(c.id)}
+                              title="Edit installments from the Edit option"
+                            >
+                              {instText(c, idx) || "-"}
+                            </span>
                             <input
                               type="checkbox"
                               checked={!!c.installments[idx]?.paid}
@@ -667,67 +741,6 @@ export function MasterSheet() {
                       </td>
                     );
                   })}
-                  <td className="calc-cell">{fmtDate(getLastPaymentDate(c))}</td>
-                  <td className="calc-cell">{fmtDate(getNextDueDate(c))}</td>
-                  <td>
-                    <input
-                      type="date"
-                      className="sheet-cell"
-                      value={c.lastContactDate || ""}
-                      onChange={(e) =>
-                        updateContactField(
-                          c.id,
-                          "lastContactDate",
-                          e.target.value
-                        )
-                      }
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="date"
-                      className={`sheet-cell ${
-                        !c.nextFollowUpDate
-                          ? "text-danger"
-                          : c.nextFollowUpDate < todayIso()
-                            ? "text-danger"
-                            : c.nextFollowUpDate === todayIso()
-                              ? "text-warning"
-                              : "text-success"
-                      }`}
-                      value={c.nextFollowUpDate || ""}
-                      onChange={(e) =>
-                        updateContactField(
-                          c.id,
-                          "nextFollowUpDate",
-                          e.target.value
-                        )
-                      }
-                    />
-                  </td>
-                  <td>
-                    <select
-                      className="sheet-cell"
-                      value={c.contactMethod}
-                      onChange={(e) =>
-                        updateContactField(
-                          c.id,
-                          "contactMethod",
-                          e.target.value
-                        )
-                      }
-                    >
-                      {[
-                        "Call",
-                        "WhatsApp",
-                        "Email",
-                        "In-Person",
-                        "No Contact",
-                      ].map((v) => (
-                        <option key={v}>{v}</option>
-                      ))}
-                    </select>
-                  </td>
                   <td>
                     <button
                       type="button"
@@ -777,6 +790,8 @@ function BulkBar({ list }: { list: Candidate[] }) {
   const { newId } = require("@/lib/crm") as typeof import("@/lib/crm");
   const { addDays, todayIso } = require("@/lib/crm") as typeof import("@/lib/crm");
   const { exportCandidatesCsv, downloadBlob } = require("@/lib/crm") as typeof import("@/lib/crm");
+  const { getRemaining: getRemainingAmt, nextUnpaid: nextUnpaidInst } =
+    require("@/lib/crm") as typeof import("@/lib/crm");
 
   void list;
   void _n;
@@ -902,8 +917,11 @@ function BulkBar({ list }: { list: Candidate[] }) {
           setCandidates(
             candidates.map((c) => {
               if (!bulkSelected.has(String(c.id))) return c;
+              let lastPaymentDate = "";
               const installments = c.installments.map((i, idx) => {
                 if (i.amount && !i.paid) {
+                  const paymentDate = i.paymentDate || i.date || todayIso();
+                  lastPaymentDate = paymentDate;
                   h.push({
                     id: newId(),
                     candidateId: c.id,
@@ -916,15 +934,20 @@ function BulkBar({ list }: { list: Candidate[] }) {
                     notes: "Bulk mark paid - installment " + (idx + 1),
                     timestamp: new Date().toISOString(),
                   });
-                  return {
-                    ...i,
-                    paid: true,
-                    paymentDate: i.paymentDate || i.date || todayIso(),
-                  };
+                  return { ...i, paid: true, paymentDate };
                 }
                 return i;
               });
-              return normalizeCandidate({ ...c, installments });
+              let normalized = normalizeCandidate({ ...c, installments });
+              if (lastPaymentDate && getRemainingAmt(normalized) > 0) {
+                const n = nextUnpaidInst(normalized);
+                if (n)
+                  normalized = {
+                    ...normalized,
+                    nextFollowUpDate: addDays(lastPaymentDate, 20),
+                  };
+              }
+              return normalized;
             })
           );
           setHistory(h);

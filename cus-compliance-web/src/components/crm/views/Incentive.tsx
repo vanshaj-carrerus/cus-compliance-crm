@@ -6,9 +6,12 @@ import {
   CrmTable,
   DataTableContainer,
   EmptyTableRow,
+  FullscreenButton,
+  FullscreenExitFab,
   PaginationBar,
   RemarksCell,
   StatCard,
+  useFullscreen,
   usePagination,
 } from "../shared";
 import {
@@ -39,83 +42,94 @@ export function Incentive() {
   const applyRange = (fromVal: string, toVal: string) => {
     updateSettings({ incentiveFrom: fromVal, incentiveTo: toVal });
   };
+  const { fullscreen, toggleFullscreen, shellCls } = useFullscreen();
+  const displayRows = fullscreen ? rows : pageItems;
 
   return (
-    <div>
-      <div className="date-range-bar">
-        <label>
-          From Date
-          <input
-            type="date"
-            value={from}
-            onChange={(e) => applyRange(e.target.value, to)}
-          />
-        </label>
-        <label>
-          To Date
-          <input
-            type="date"
-            value={to}
-            onChange={(e) => applyRange(from, e.target.value)}
-          />
-        </label>
-        <button
-          type="button"
-          className="btn btn-primary btn-sm"
-          onClick={() => applyRange(from, to)}
-        >
-          Show Report
-        </button>
-        <button
-          type="button"
-          className="btn btn-secondary btn-sm"
-          onClick={() => {
-            const s = currentCycleStart();
-            const e = addDaysDate(s, 31);
-            applyRange(toIsoDate(s), toIsoDate(e));
-            updateSettings({ incentiveStart: s.toISOString() });
-          }}
-        >
-          Current 25th Cycle
-        </button>
-        <button
-          type="button"
-          className="btn btn-secondary btn-sm"
-          onClick={() => {
-            const n = new Date();
-            const s = new Date(n.getFullYear(), n.getMonth(), 1);
-            const e = new Date(n.getFullYear(), n.getMonth() + 1, 0);
-            applyRange(toIsoDate(s), toIsoDate(e));
-          }}
-        >
-          Current Month
-        </button>
-      </div>
+    <div className={shellCls}>
+      <FullscreenExitFab fullscreen={fullscreen} onExit={toggleFullscreen} />
+      {!fullscreen && (
+        <>
+          <div className="date-range-bar">
+            <label>
+              From Date
+              <input
+                type="date"
+                value={from}
+                onChange={(e) => applyRange(e.target.value, to)}
+              />
+            </label>
+            <label>
+              To Date
+              <input
+                type="date"
+                value={to}
+                onChange={(e) => applyRange(from, e.target.value)}
+              />
+            </label>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={() => applyRange(from, to)}
+            >
+              Show Report
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => {
+                const s = currentCycleStart();
+                const e = addDaysDate(s, 31);
+                applyRange(toIsoDate(s), toIsoDate(e));
+                updateSettings({ incentiveStart: s.toISOString() });
+              }}
+            >
+              Current 25th Cycle
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => {
+                const n = new Date();
+                const s = new Date(n.getFullYear(), n.getMonth(), 1);
+                const e = new Date(n.getFullYear(), n.getMonth() + 1, 0);
+                applyRange(toIsoDate(s), toIsoDate(e));
+              }}
+            >
+              Current Month
+            </button>
+          </div>
 
-      <div className="stat-grid">
-        <StatCard
-          label="Selected Period"
-          value={`${fmtDate(from)} → ${fmtDate(to)}`}
-          sub={`${rows.length} payment rows`}
-        />
-        <StatCard
-          label="Total Payments"
-          value={money(totalPayments)}
-          sub="Payments inside selected dates"
-          tone="success"
-        />
-        <StatCard
-          label="Yatin Incentive"
-          value={money(totalIncentive)}
-          sub="Payment ÷ 2"
-          tone="info"
-        />
-      </div>
+          <div className="stat-grid">
+            <StatCard
+              label="Selected Period"
+              value={`${fmtDate(from)} → ${fmtDate(to)}`}
+              sub={`${rows.length} payment rows`}
+            />
+            <StatCard
+              label="Total Payments"
+              value={money(totalPayments)}
+              sub="Payments inside selected dates"
+              tone="success"
+            />
+            <StatCard
+              label="Yatin Incentive"
+              value={money(totalIncentive)}
+              sub="Payment ÷ 2"
+              tone="info"
+            />
+          </div>
 
-      <FiltersBar />
+          <FiltersBar />
+        </>
+      )}
       <DataTableContainer
         title="Incentive Sheet"
         subtitle="Filter any From/To dates manually"
+        fullscreen={fullscreen}
+        actions={
+          <FullscreenButton fullscreen={fullscreen} onToggle={toggleFullscreen} />
+        }
         toolbar={
           <PaginationBar
             total={rows.length}
@@ -141,9 +155,9 @@ export function Incentive() {
             </tr>
           </thead>
           <tbody>
-            {pageItems.length ? (
-              pageItems.map((r, i) => {
-                const globalIdx = page * pageSize + i;
+            {displayRows.length ? (
+              displayRows.map((r, i) => {
+                const globalIdx = fullscreen ? i : page * pageSize + i;
                 const priorRunning = rows
                   .slice(0, globalIdx)
                   .reduce(
