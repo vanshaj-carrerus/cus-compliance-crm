@@ -176,6 +176,12 @@ export function CrmProvider({
   const undoStack = useRef<string[]>([]);
   const redoStack = useRef<string[]>([]);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Serializes every /api/crm/save call - the endpoint does a full
+  // delete-all + insert-all, which isn't safe to run concurrently. Rapid
+  // undo/redo can queue several saves faster than a slow request resolves;
+  // without this chain two PUTs can overlap and collide on the unique
+  // candidate id index, producing a 500.
+  const saveQueue = useRef<Promise<void>>(Promise.resolve());
   const stateRef = useRef<Snapshot>({
     candidates: [],
     history: [],
@@ -250,21 +256,29 @@ export function CrmProvider({
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3000);
   }, []);
 
-  const persist = useCallback(async (snap: Snapshot, silent = false) => {
-    if (!silent) setSaveState("saving");
-    try {
-      const res = await fetch("/api/crm/save", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(snap),
-      });
-      if (!res.ok) throw new Error("Save failed");
-      if (!silent) setSaveState("saved");
-    } catch (e) {
-      console.error(e);
-      setSaveState("error");
-      throw e;
-    }
+  const persist = useCallback((snap: Snapshot, silent = false) => {
+    const run = async () => {
+      if (!silent) setSaveState("saving");
+      try {
+        const res = await fetch("/api/crm/save", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(snap),
+        });
+        if (!res.ok) throw new Error("Save failed");
+        if (!silent) setSaveState("saved");
+      } catch (e) {
+        console.error(e);
+        setSaveState("error");
+        throw e;
+      }
+    };
+    // Chain onto the previous save regardless of whether it succeeded, so
+    // one slow/failed request never blocks the next; but never let two
+    // requests run at once.
+    const queued = saveQueue.current.catch(() => {}).then(run);
+    saveQueue.current = queued.catch(() => {});
+    return queued;
   }, []);
 
   const queueSave = useCallback(() => {
@@ -365,7 +379,7 @@ export function CrmProvider({
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
-        saveNow();
+        saveNow().catch(() => {});
       }
       if (e.key === "Escape") {
         setCandidateModalOpen(false);
@@ -543,10 +557,24 @@ export function CrmProvider({
     if (idx < 0) return;
     snapshot();
     const c = { ...candidates[idx] };
-    const numFields = ["annualPackage", "serviceFeePercent", "installmentCount"];
+    const numFields = [
+      "annualPackage",
+      "serviceFeePercent",
+      "installmentCount",
+      "totalServiceFee",
+    ];
     if (numFields.includes(field)) {
       (c as Record<string, unknown>)[field] =
         Number(String(value).replace(/[$,%\s,]/g, "")) || 0;
+      // normalizeCandidate recomputes totalServiceFee from
+      // annualPackage x serviceFeePercent whenever both are non-zero,
+      // which would silently discard a directly typed/pasted Total.
+      // Editing Total here means "use this flat amount", so clear the
+      // pair that would otherwise override it.
+      if (field === "totalServiceFee") {
+        c.annualPackage = 0;
+        c.serviceFeePercent = 0;
+      }
     } else {
       (c as Record<string, unknown>)[field] = value;
     }
