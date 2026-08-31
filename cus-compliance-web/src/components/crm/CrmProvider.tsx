@@ -90,6 +90,7 @@ interface CrmContextValue {
   deleteCandidate: (id: number) => void;
   deleteAllCandidates: () => void;
   duplicateLast: () => void;
+  addBlankRow: (position?: "top" | "bottom") => void;
   updateMasterField: (
     id: number,
     field: string,
@@ -548,6 +549,18 @@ export function CrmProvider({
     toast("Candidate duplicated", "success");
   };
 
+  // Inserts one blank candidate at the front or back of the list, giving
+  // the sheet a paste anchor beyond the existing rows - pasting a block
+  // that starts on this row overwrites it and auto-creates any further
+  // overflow rows (see MasterSheet's paste handling).
+  const addBlankRow = (position: "top" | "bottom" = "bottom") => {
+    snapshot();
+    const blank = normalizeCandidate({ id: newId() });
+    setCandidates(position === "top" ? [blank, ...candidates] : [...candidates, blank]);
+    queueSave();
+    toast(`Blank row added to ${position === "top" ? "top" : "bottom"}`, "success");
+  };
+
   const updateMasterField = (
     id: number,
     field: string,
@@ -827,6 +840,7 @@ export function CrmProvider({
     deleteCandidate,
     deleteAllCandidates,
     duplicateLast,
+    addBlankRow,
     updateMasterField,
     updateInstallment,
     togglePaid,

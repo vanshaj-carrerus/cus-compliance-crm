@@ -84,6 +84,7 @@ export function MasterSheet() {
     deleteCandidate,
     editCandidate,
     duplicateLast,
+    addBlankRow,
     deleteAllCandidates,
     toast,
     setCandidates,
@@ -106,6 +107,21 @@ export function MasterSheet() {
   const [pasteProgress, setPasteProgress] = useState<{ done: number; total: number } | null>(
     null
   );
+  const [draggingId, setDraggingId] = useState<number | null>(null);
+  const [dragOverInfo, setDragOverInfo] = useState<
+    { id: number; pos: "before" | "after" } | null
+  >(null);
+
+  const addRow = (position: "top" | "bottom") => {
+    addBlankRow(position);
+    // Scroll so the new blank row is visible and ready to paste into -
+    // it lands at index 0 (top) or the very end (bottom) of the sheet.
+    requestAnimationFrame(() => {
+      const el = scrollRef.current;
+      if (!el) return;
+      el.scrollTop = position === "top" ? 0 : el.scrollHeight;
+    });
+  };
 
   useEffect(() => {
     if (!fullscreen) return;
@@ -165,6 +181,66 @@ export function MasterSheet() {
   }
   if (methodFilter)
     list = list.filter((c) => c.contactMethod === methodFilter);
+
+  // --- Row drag-to-reorder -------------------------------------------------
+  // `list` can be a filtered subset of `candidates`, so a drag only ever
+  // reorders among the currently-visible rows; hidden (filtered-out) rows
+  // keep their exact original slots in the underlying array. This keeps the
+  // move accurate regardless of active filters/search.
+  const reorderRows = useCallback(
+    (draggedId: number, targetId: number, after: boolean) => {
+      if (draggedId === targetId) return;
+      const visibleIds = list.map((c) => c.id);
+      const fromIdx = visibleIds.indexOf(draggedId);
+      const targetIdx = visibleIds.indexOf(targetId);
+      if (fromIdx < 0 || targetIdx < 0) return;
+
+      const reordered = [...visibleIds];
+      reordered.splice(fromIdx, 1);
+      let insertAt = reordered.indexOf(targetId);
+      if (after) insertAt += 1;
+      reordered.splice(insertAt, 0, draggedId);
+
+      const visibleIdSet = new Set(visibleIds);
+      const candidateMap = new Map(candidates.map((c) => [c.id, c]));
+      const next = [...candidates];
+      let vi = 0;
+      for (let i = 0; i < next.length; i++) {
+        if (visibleIdSet.has(next[i].id)) {
+          next[i] = candidateMap.get(reordered[vi]) ?? next[i];
+          vi += 1;
+        }
+      }
+      snapshot();
+      setCandidates(next);
+      queueSave();
+    },
+    [list, candidates, snapshot, setCandidates, queueSave]
+  );
+
+  const handleRowDragOver = (id: number) => (e: React.DragEvent<HTMLTableRowElement>) => {
+    if (draggingId == null || draggingId === id) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pos: "before" | "after" = e.clientY - rect.top < rect.height / 2 ? "before" : "after";
+    setDragOverInfo((prev) => (prev && prev.id === id && prev.pos === pos ? prev : { id, pos }));
+  };
+
+  const handleRowDrop = (id: number) => (e: React.DragEvent<HTMLTableRowElement>) => {
+    e.preventDefault();
+    const draggedId = draggingId;
+    const pos = dragOverInfo?.pos ?? "before";
+    setDraggingId(null);
+    setDragOverInfo(null);
+    if (draggedId == null || draggedId === id) return;
+    reorderRows(draggedId, id, pos === "after");
+  };
+
+  const handleRowDragEnd = () => {
+    setDraggingId(null);
+    setDragOverInfo(null);
+  };
 
   const toggleSelect = (id: string, checked: boolean) => {
     const next = new Set(bulkSelected);
@@ -654,6 +730,22 @@ export function MasterSheet() {
               </button>
               <button
                 type="button"
+                title="Add a blank row to the top - pastes anchored there will overwrite it and auto-create as many more rows as needed"
+                className="rounded border border-border bg-secondary px-3 py-1.5 text-xs"
+                onClick={() => addRow("top")}
+              >
+                ➕ Add Row (Top)
+              </button>
+              <button
+                type="button"
+                title="Add a blank row to the bottom - pastes anchored there will overwrite it and auto-create as many more rows as needed"
+                className="rounded border border-border bg-secondary px-3 py-1.5 text-xs"
+                onClick={() => addRow("bottom")}
+              >
+                ➕ Add Row (Bottom)
+              </button>
+              <button
+                type="button"
                 className="rounded bg-danger px-3 py-1.5 text-xs text-white"
                 onClick={deleteAllCandidates}
               >
@@ -685,6 +777,7 @@ export function MasterSheet() {
           <table className="excel-grid">
             <thead>
               <tr>
+                <th className="row-head" title="Drag a row's handle to reorder it">⠿</th>
                 <th className="row-head">#</th>
                 <th className="freeze-check">
                   <input
@@ -717,9 +810,32 @@ export function MasterSheet() {
                   key={c.id}
                   className={`${rowColorClass(c)} ${
                     bulkSelected.has(String(c.id)) ? "outline outline-primary/40" : ""
+                  } ${draggingId === c.id ? "opacity-40" : ""} ${
+                    dragOverInfo?.id === c.id && dragOverInfo.pos === "before"
+                      ? "border-t-2 border-t-primary"
+                      : dragOverInfo?.id === c.id && dragOverInfo.pos === "after"
+                        ? "border-b-2 border-b-primary"
+                        : ""
                   }`}
                   data-id={c.id}
+                  onDragOver={draggingId != null ? handleRowDragOver(c.id) : undefined}
+                  onDrop={draggingId != null ? handleRowDrop(c.id) : undefined}
                 >
+                  <td
+                    className="row-head cursor-grab select-none text-center active:cursor-grabbing"
+                    draggable
+                    onDragStart={(e) => {
+                      setDraggingId(c.id);
+                      e.dataTransfer.effectAllowed = "move";
+                      e.dataTransfer.setData("text/plain", String(c.id));
+                      const rowEl = e.currentTarget.closest("tr");
+                      if (rowEl) e.dataTransfer.setDragImage(rowEl, 20, 12);
+                    }}
+                    onDragEnd={handleRowDragEnd}
+                    title="Drag to reorder this row"
+                  >
+                    ⠿
+                  </td>
                   <td
                     className="row-head row-head-selectable"
                     onMouseDown={(e) => beginRowSelect(rowIndex, e)}
