@@ -16,6 +16,7 @@ import {
   todayIso,
   normalizeCandidate,
   parseInstallment,
+  newId,
 } from "@/lib/crm";
 import type { Candidate } from "@/lib/crm/types";
 
@@ -102,6 +103,9 @@ export function MasterSheet() {
   const [methodFilter, setMethodFilter] = useState("");
   const [fullscreen, setFullscreen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [pasteProgress, setPasteProgress] = useState<{ done: number; total: number } | null>(
+    null
+  );
 
   useEffect(() => {
     if (!fullscreen) return;
@@ -337,67 +341,115 @@ export function MasterSheet() {
     return { row: r0, col: c0 };
   };
 
-  const applyPasteText = useCallback(
-    (text: string, anchor: CellPos) => {
-      if (!text.includes("\t") && !text.includes("\n")) return false;
-      const startCandidate = list[anchor.row];
-      if (!startCandidate) return false;
-      snapshot();
-      const ids = list.map((c) => c.id);
-      const startRow = ids.indexOf(startCandidate.id);
-      if (startRow < 0) return false;
-      const rows = text.replace(/\r/g, "").split("\n").filter(Boolean);
-      let next = [...candidates];
-      rows.forEach((rowText, ri) => {
-        const id = ids[startRow + ri];
-        if (!id) return;
-        const ci = next.findIndex((c) => c.id === id);
-        if (ci < 0) return;
-        const c = { ...next[ci], installments: [...next[ci].installments] };
-        const cols = rowText.split("\t");
-        cols.forEach((val, ci2) => {
-          const colDef = DATA_COLS[anchor.col + ci2];
-          if (!colDef || !colDef.editable) return;
-          const trimmed = val.trim();
-          if (colDef.key.startsWith("inst")) {
-            const instIdx = Number(colDef.key.slice(4));
-            const old = c.installments[instIdx] || normalizeCandidate({}).installments[0];
-            const parsed = parseInstallment(trimmed);
-            const paid =
-              old.paid || (!!parsed.amount && Number(parsed.amount) > 0 && !old.amount);
-            c.installments[instIdx] = {
-              ...old,
-              ...parsed,
-              paid,
-              paymentDate: paid ? old.paymentDate || parsed.date || todayIso() : old.paymentDate,
-              receipt: old.receipt || "",
-              notes: old.notes || "",
-            };
-          } else if (colDef.key === "totalServiceFee") {
-            // normalizeCandidate recomputes totalServiceFee from
-            // annualPackage x serviceFeePercent whenever both are non-zero,
-            // which would silently discard a pasted Total - clear the pair
-            // so the pasted flat amount actually sticks.
-            c.annualPackage = 0;
-            c.serviceFeePercent = 0;
-            (c as Record<string, unknown>)[colDef.key] =
-              Number(trimmed.replace(/[$,%\s,]/g, "")) || 0;
-          } else {
-            (c as Record<string, unknown>)[colDef.key] = trimmed;
-          }
-        });
-        next[ci] = c as Candidate;
+  // Extracted so both existing rows and newly-created rows (see below) go
+  // through identical column parsing.
+  const applyRowFields = useCallback(
+    (c: Candidate, rowText: string, anchorCol: number) => {
+      const cols = rowText.split("\t");
+      cols.forEach((val, ci2) => {
+        const colDef = DATA_COLS[anchorCol + ci2];
+        if (!colDef || !colDef.editable) return;
+        const trimmed = val.trim();
+        if (colDef.key.startsWith("inst")) {
+          const instIdx = Number(colDef.key.slice(4));
+          const old = c.installments[instIdx] || normalizeCandidate({}).installments[0];
+          const parsed = parseInstallment(trimmed);
+          const paid =
+            old.paid || (!!parsed.amount && Number(parsed.amount) > 0 && !old.amount);
+          c.installments[instIdx] = {
+            ...old,
+            ...parsed,
+            paid,
+            paymentDate: paid ? old.paymentDate || parsed.date || todayIso() : old.paymentDate,
+            receipt: old.receipt || "",
+            notes: old.notes || "",
+          };
+        } else if (colDef.key === "totalServiceFee") {
+          // normalizeCandidate recomputes totalServiceFee from
+          // annualPackage x serviceFeePercent whenever both are non-zero,
+          // which would silently discard a pasted Total - clear the pair
+          // so the pasted flat amount actually sticks.
+          c.annualPackage = 0;
+          c.serviceFeePercent = 0;
+          (c as unknown as Record<string, unknown>)[colDef.key] =
+            Number(trimmed.replace(/[$,%\s,]/g, "")) || 0;
+        } else {
+          (c as unknown as Record<string, unknown>)[colDef.key] = trimmed;
+        }
       });
+    },
+    []
+  );
+
+  // A row pasted past the last existing (visible) candidate has no id to
+  // write onto - it used to just be dropped on the floor. Instead we create
+  // a fresh candidate for it, same as "Duplicate Last" does, then run it
+  // through the same column mapping as an existing row. Creation itself is
+  // instant (client-side only, one snapshot save at the end) but for large
+  // pastes we yield to the browser every few rows so a progress overlay can
+  // actually paint instead of appearing to hang.
+  const runPaste = useCallback(
+    async (text: string, anchor: CellPos, ids: number[], startRow: number) => {
+      const rows = text.replace(/\r/g, "").split("\n").filter(Boolean);
+      const existingSlots = Math.max(0, ids.length - startRow);
+      const totalNew = Math.max(0, rows.length - existingSlots);
+      const showProgress = totalNew >= 5;
+      if (showProgress) setPasteProgress({ done: 0, total: totalNew });
+
+      let next = [...candidates];
+      let created = 0;
+      for (let ri = 0; ri < rows.length; ri++) {
+        const id = ids[startRow + ri];
+        let ci: number;
+        if (id != null) {
+          ci = next.findIndex((c) => c.id === id);
+          if (ci < 0) continue;
+        } else {
+          next.push(normalizeCandidate({ id: newId() }));
+          ci = next.length - 1;
+          created += 1;
+          if (showProgress) {
+            setPasteProgress({ done: created, total: totalNew });
+            if (created % 4 === 0) {
+              await new Promise((resolve) => setTimeout(resolve, 0));
+            }
+          }
+        }
+        const c = { ...next[ci], installments: [...next[ci].installments] };
+        applyRowFields(c, rows[ri], anchor.col);
+        next[ci] = c as Candidate;
+      }
+
       next = next.map((c) => {
         const orig = candidates.find((x) => x.id === c.id);
         return orig === c ? c : normalizeCandidate(c);
       });
       setCandidates(next);
       queueSave();
-      toast("Paste applied", "success");
+      setPasteProgress(null);
+      toast(
+        created > 0
+          ? `Paste applied - ${created} new candidate${created > 1 ? "s" : ""} created`
+          : "Paste applied",
+        "success"
+      );
+    },
+    [candidates, applyRowFields, setCandidates, queueSave, toast]
+  );
+
+  const applyPasteText = useCallback(
+    (text: string, anchor: CellPos) => {
+      if (!text.includes("\t") && !text.includes("\n")) return false;
+      const startCandidate = list[anchor.row];
+      if (!startCandidate) return false;
+      const ids = list.map((c) => c.id);
+      const startRow = ids.indexOf(startCandidate.id);
+      if (startRow < 0) return false;
+      snapshot();
+      void runPaste(text, anchor, ids, startRow);
       return true;
     },
-    [list, candidates, snapshot, setCandidates, queueSave, toast]
+    [list, snapshot, runPaste]
   );
 
   // Not memoized: it closes over `allRects` via `pasteAnchor`, which changes
@@ -525,7 +577,7 @@ export function MasterSheet() {
             )}
           </FiltersBar>
           {smartFilter && (
-            <div className="mb-3 flex items-center justify-between rounded-[var(--radius)] border border-primary/30 bg-primary/5 px-4 py-2 text-sm">
+            <div className="mb-3 flex items-center justify-between rounded-(--radius) border border-primary/30 bg-primary/5 px-4 py-2 text-sm">
               <span>
                 ✨ Smart filter active · {list.length} matching candidates
               </span>
@@ -545,7 +597,7 @@ export function MasterSheet() {
         onExit={() => setFullscreen(false)}
       />
       <div
-        className={`overflow-hidden rounded-[var(--radius)] border border-border bg-card ${
+        className={`overflow-hidden rounded-(--radius) border border-border bg-card ${
           fullscreen ? "flex min-h-0 flex-1 flex-col" : ""
         }`}
       >
@@ -627,7 +679,7 @@ export function MasterSheet() {
         <div
           ref={scrollRef}
           id="masterScroll"
-          className={`table-scroll overflow-auto ${fullscreen ? "flex-1 !max-h-none" : ""}`}
+          className={`table-scroll overflow-auto ${fullscreen ? "flex-1 max-h-none!" : ""}`}
           onPaste={handlePaste}
         >
           <table className="excel-grid">
@@ -664,7 +716,7 @@ export function MasterSheet() {
                 <tr
                   key={c.id}
                   className={`${rowColorClass(c)} ${
-                    bulkSelected.has(String(c.id)) ? "outline outline-1 outline-primary/40" : ""
+                    bulkSelected.has(String(c.id)) ? "outline outline-primary/40" : ""
                   }`}
                   data-id={c.id}
                 >
@@ -856,6 +908,26 @@ export function MasterSheet() {
       {bulkSelected.size > 0 && (
         <BulkBar list={list} />
       )}
+
+      {pasteProgress && (
+        <div className="fixed inset-0 z-5000 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-[20px] border border-border bg-card p-6 text-center shadow-2xl">
+            <div className="mb-3 text-2xl">📋</div>
+            <div className="mb-1 text-sm font-semibold">Creating new candidates…</div>
+            <div className="mb-4 text-xs text-muted">
+              {pasteProgress.done} of {pasteProgress.total} done
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+              <div
+                className="h-full rounded-full bg-primary transition-[width] duration-150"
+                style={{
+                  width: `${Math.round((pasteProgress.done / pasteProgress.total) * 100)}%`,
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -902,7 +974,7 @@ function BulkBar({ list }: { list: Candidate[] }) {
   };
 
   return (
-    <div className="fixed bottom-4 left-1/2 z-[3900] flex w-[min(1180px,calc(100vw-28px))] -translate-x-1/2 flex-wrap items-center gap-2 rounded-[20px] border border-border bg-card px-3.5 py-3 shadow-2xl">
+    <div className="fixed bottom-4 left-1/2 z-3900 flex w-[min(1180px,calc(100vw-28px))] -translate-x-1/2 flex-wrap items-center gap-2 rounded-[20px] border border-border bg-card px-3.5 py-3 shadow-2xl">
       <div className="mr-auto font-black">{bulkSelected.size} candidates selected</div>
       <select
         className="rounded border border-border bg-input px-2 py-1 text-sm"

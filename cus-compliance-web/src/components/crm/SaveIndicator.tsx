@@ -31,7 +31,7 @@ export function SaveIndicator() {
 
   return (
     <div
-      className={`pointer-events-none fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-[1000] flex -translate-x-1/2 items-center gap-2 rounded-full border border-border bg-card/95 px-3 py-1.5 text-[11px] shadow-sm backdrop-blur sm:left-auto sm:right-5 sm:translate-x-0 sm:rounded-[var(--radius)] sm:px-4 sm:py-2 sm:text-xs ${color}`}
+      className={`pointer-events-none fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-1000 flex -translate-x-1/2 items-center gap-2 rounded-full border border-border bg-card/95 px-3 py-1.5 text-[11px] shadow-sm backdrop-blur sm:left-auto sm:right-5 sm:translate-x-0 sm:rounded-(--radius) sm:px-4 sm:py-2 sm:text-xs ${color}`}
     >
       <span>{icon}</span>
       <span className="whitespace-nowrap">{label}</span>
