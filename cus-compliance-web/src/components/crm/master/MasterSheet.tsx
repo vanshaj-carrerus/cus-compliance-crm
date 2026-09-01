@@ -35,8 +35,8 @@ function instStatus(i: Candidate["installments"][0]) {
 }
 
 // Visible sheet columns, in the exact order requested:
-// Month | Total | Terms (=Assigned To) | P.O. | Start Date | Candidate Name | 1st..9th date
-// Every other candidate field (phone, status, remarks, floor, fee %, contact
+// Month | Total | Terms (=Assigned To) | P.O. | Start Date | Candidate Name | Floor | 1st..9th date
+// Every other candidate field (phone, status, remarks, fee %, contact
 // info, real "terms" text, etc.) still exists on the record and is still
 // computed/edited via the row's Edit action - it's just not shown inline here.
 type DataCol = {
@@ -58,6 +58,7 @@ const DATA_COLS: DataCol[] = [
   { key: "po", label: "P.O.", editable: true, getText: (c) => c.po || "" },
   { key: "startDate", label: "Start Date", editable: true, getText: (c) => c.startDate || "" },
   { key: "name", label: "Candidate Name", editable: true, getText: (c) => c.name || "" },
+  { key: "floor", label: "Floor", editable: true, getText: (c) => c.floor || "" },
   ...Array.from({ length: 9 }, (_, i) => ({
     key: "inst" + i,
     label:
@@ -570,6 +571,74 @@ export function MasterSheet() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasSelection, allRects, copySelection, applyPasteText]);
 
+  // Arrow-key navigation between sheet cells - only kicks in when focus is
+  // already inside one of the grid's own inputs/selects (marked with the
+  // "sheet-cell" class), so it never touches toolbar controls, modals, etc.
+  // Left/Right defer to the browser's normal cursor movement unless the
+  // caret is already at the start/end of the field, so typed text is still
+  // navigable with the same keys.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.key !== "ArrowUp" &&
+        e.key !== "ArrowDown" &&
+        e.key !== "ArrowLeft" &&
+        e.key !== "ArrowRight"
+      )
+        return;
+      const target = e.target as HTMLElement;
+      if (!target.classList?.contains("sheet-cell")) return;
+      const td = target.closest("td[data-row][data-col]") as HTMLElement | null;
+      if (!td) return;
+      const row = Number(td.dataset.row);
+      const col = Number(td.dataset.col);
+      if (Number.isNaN(row) || Number.isNaN(col)) return;
+
+      if (
+        target instanceof HTMLInputElement &&
+        (e.key === "ArrowLeft" || e.key === "ArrowRight")
+      ) {
+        const atStart = target.selectionStart === 0 && target.selectionEnd === 0;
+        const atEnd =
+          target.selectionStart === target.value.length &&
+          target.selectionEnd === target.value.length;
+        if (e.key === "ArrowLeft" && !atStart) return;
+        if (e.key === "ArrowRight" && !atEnd) return;
+      }
+
+      let newRow = row;
+      let newCol = col;
+      if (e.key === "ArrowUp") newRow -= 1;
+      else if (e.key === "ArrowDown") newRow += 1;
+      else if (e.key === "ArrowLeft") newCol -= 1;
+      else newCol += 1;
+
+      if (newRow < 0 || newRow >= list.length) return;
+      if (newCol < 0 || newCol >= DATA_COLS.length) return;
+
+      const nextTd = scrollRef.current?.querySelector(
+        `td[data-row="${newRow}"][data-col="${newCol}"]`
+      ) as HTMLElement | null;
+      const focusable = nextTd?.querySelector("input, select") as
+        | HTMLInputElement
+        | HTMLSelectElement
+        | null;
+      if (!focusable) return;
+
+      e.preventDefault();
+      focusable.focus();
+      if (focusable instanceof HTMLInputElement) {
+        const pos = focusable.value.length;
+        focusable.setSelectionRange(pos, pos);
+      }
+      setRanges([]);
+      setLiveAnchor({ row: newRow, col: newCol });
+      setLiveFocus({ row: newRow, col: newCol });
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [list.length]);
+
   const exportCsv = () => {
     downloadBlob(
       exportCandidatesCsv(candidates),
@@ -855,6 +924,8 @@ export function MasterSheet() {
                   </td>
                   {/* Month */}
                   <td
+                    data-row={rowIndex}
+                    data-col={0}
                     className={isCellSelected(rowIndex, 0) ? "cell-selected" : ""}
                     onMouseDown={(e) => beginCellSelect(rowIndex, 0, e)}
                     onMouseEnter={() => extendCellSelect(rowIndex, 0)}
@@ -871,6 +942,8 @@ export function MasterSheet() {
                   </td>
                   {/* Total */}
                   <td
+                    data-row={rowIndex}
+                    data-col={1}
                     className={isCellSelected(rowIndex, 1) ? "cell-selected" : ""}
                     onMouseDown={(e) => beginCellSelect(rowIndex, 1, e)}
                     onMouseEnter={() => extendCellSelect(rowIndex, 1)}
@@ -893,6 +966,8 @@ export function MasterSheet() {
                   </td>
                   {/* Terms = Assigned To */}
                   <td
+                    data-row={rowIndex}
+                    data-col={2}
                     className={isCellSelected(rowIndex, 2) ? "cell-selected" : ""}
                     onMouseDown={(e) => beginCellSelect(rowIndex, 2, e)}
                     onMouseEnter={() => extendCellSelect(rowIndex, 2)}
@@ -911,6 +986,8 @@ export function MasterSheet() {
                   </td>
                   {/* P.O. */}
                   <td
+                    data-row={rowIndex}
+                    data-col={3}
                     className={isCellSelected(rowIndex, 3) ? "cell-selected" : ""}
                     onMouseDown={(e) => beginCellSelect(rowIndex, 3, e)}
                     onMouseEnter={() => extendCellSelect(rowIndex, 3)}
@@ -927,6 +1004,8 @@ export function MasterSheet() {
                   </td>
                   {/* Start Date */}
                   <td
+                    data-row={rowIndex}
+                    data-col={4}
                     className={isCellSelected(rowIndex, 4) ? "cell-selected" : ""}
                     onMouseDown={(e) => beginCellSelect(rowIndex, 4, e)}
                     onMouseEnter={() => extendCellSelect(rowIndex, 4)}
@@ -944,6 +1023,8 @@ export function MasterSheet() {
                   </td>
                   {/* Candidate Name */}
                   <td
+                    data-row={rowIndex}
+                    data-col={5}
                     className={`important-col ${isCellSelected(rowIndex, 5) ? "cell-selected" : ""}`}
                     onMouseDown={(e) => beginCellSelect(rowIndex, 5, e)}
                     onMouseEnter={() => extendCellSelect(rowIndex, 5)}
@@ -958,12 +1039,32 @@ export function MasterSheet() {
                       }
                     />
                   </td>
+                  {/* Floor */}
+                  <td
+                    data-row={rowIndex}
+                    data-col={6}
+                    className={isCellSelected(rowIndex, 6) ? "cell-selected" : ""}
+                    onMouseDown={(e) => beginCellSelect(rowIndex, 6, e)}
+                    onMouseEnter={() => extendCellSelect(rowIndex, 6)}
+                  >
+                    <input
+                      className="sheet-cell"
+                      defaultValue={c.floor || ""}
+                      key={c.id + "-floor-" + (c.floor || "")}
+                      onBlur={(e) =>
+                        e.target.value !== (c.floor || "") &&
+                        updateMasterField(c.id, "floor", e.target.value)
+                      }
+                    />
+                  </td>
                   {Array.from({ length: 9 }, (_, idx) => {
                     const st = instStatus(c.installments[idx]);
-                    const colIdx = 6 + idx;
+                    const colIdx = 7 + idx;
                     return (
                       <td
                         key={idx}
+                        data-row={rowIndex}
+                        data-col={colIdx}
                         className={`inst-col ${isCellSelected(rowIndex, colIdx) ? "cell-selected" : ""}`}
                         onMouseDown={(e) => beginCellSelect(rowIndex, colIdx, e)}
                         onMouseEnter={() => extendCellSelect(rowIndex, colIdx)}
