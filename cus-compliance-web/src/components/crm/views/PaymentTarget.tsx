@@ -11,6 +11,8 @@ import {
   FullscreenExitFab,
   MonthSelector,
   PaginationBar,
+  ResetColumnsButton,
+  useColumnOrder,
   useFullscreen,
   usePagination,
 } from "../shared";
@@ -23,9 +25,11 @@ import {
   getComplianceStatus,
   getDueForMonth,
   priority,
+  statusExcluded,
   fmtDate,
   fmtMonth,
 } from "@/lib/crm";
+import type { Candidate } from "@/lib/crm/types";
 
 function priorityClass(pri: string) {
   if (pri === "Red") return "danger-text";
@@ -37,7 +41,9 @@ function priorityClass(pri: string) {
 export function PaymentTarget() {
   const { filtered, settings, updateSettings, updateMasterField } = useCrm();
   const d = new Date(settings.targetMonth);
-  const list = filtered().filter((x) => getRemaining(x) > 0);
+  const list = filtered().filter(
+    (x) => !statusExcluded(x.status) && getRemaining(x) > 0
+  );
   const { page, pageSize, pageCount, pageItems, setPage, setPageSize } =
     usePagination(list, 50);
 
@@ -48,6 +54,98 @@ export function PaymentTarget() {
   };
   const { fullscreen, toggleFullscreen, shellCls } = useFullscreen();
   const rows = fullscreen ? list : pageItems;
+
+  type Row = { x: Candidate; due: number; pri: string };
+  const columns: {
+    key: string;
+    label: string;
+    className?: string | ((r: Row) => string);
+    render: (r: Row) => React.ReactNode;
+  }[] = [
+    { key: "assignedTo", label: "Assigned", render: (r) => r.x.assignedTo },
+    { key: "candidate", label: "Candidate", render: (r) => <strong>{r.x.name}</strong> },
+    { key: "floor", label: "Floor", render: (r) => r.x.floor || "-" },
+    { key: "po", label: "P.O", render: (r) => r.x.po || "-" },
+    {
+      key: "installmentDue",
+      label: "Installment Due",
+      className: "accent-text",
+      render: (r) => (r.due ? money(r.due) : "-"),
+    },
+    {
+      key: "expectedAmount",
+      label: "Expected Amount",
+      render: (r) => (
+        <input
+          className="target-input"
+          value={String(r.x.expectedAmount ?? "")}
+          placeholder="$ expected"
+          onChange={(e) =>
+            updateMasterField(r.x.id, "expectedAmount", e.target.value)
+          }
+        />
+      ),
+    },
+    {
+      key: "expectedDate",
+      label: "Expected Date",
+      render: (r) => (
+        <input
+          type="date"
+          className="target-input date"
+          value={r.x.expectedDate || ""}
+          onChange={(e) => updateMasterField(r.x.id, "expectedDate", e.target.value)}
+        />
+      ),
+    },
+    {
+      key: "monthRemarks",
+      label: "Month Remarks",
+      render: (r) => (
+        <input
+          className="target-input remarks"
+          value={r.x.monthRemarks || ""}
+          placeholder="Monthly remarks"
+          onChange={(e) => updateMasterField(r.x.id, "monthRemarks", e.target.value)}
+        />
+      ),
+    },
+    {
+      key: "paid",
+      label: "Paid",
+      className: "success-text",
+      render: (r) => money(getTotalPaid(r.x)),
+    },
+    {
+      key: "remaining",
+      label: "Remaining",
+      className: "danger-text",
+      render: (r) => money(getRemaining(r.x)),
+    },
+    {
+      key: "lastPayment",
+      label: "Last Payment",
+      render: (r) => fmtDate(getLastPaymentDate(r.x)),
+    },
+    {
+      key: "nextPayment",
+      label: "Next Payment",
+      render: (r) => fmtDate(getNextDueDate(r.x)),
+    },
+    { key: "status", label: "Status", render: (r) => <Badge label={getComplianceStatus(r.x)} /> },
+    {
+      key: "priority",
+      label: "Priority",
+      className: (r) => priorityClass(r.pri),
+      render: (r) => r.pri,
+    },
+  ];
+  const { order, gripProps, headerProps, resetOrder } = useColumnOrder(
+    "paymentTargetColumnOrder",
+    columns.map((c) => c.key)
+  );
+  const columnsByKey = new Map(columns.map((c) => [c.key, c]));
+  const orderedColumns = order.map((k) => columnsByKey.get(k)!);
 
   return (
     <div className={shellCls}>
@@ -77,84 +175,54 @@ export function PaymentTarget() {
             pageCount={pageCount}
             onPageChange={setPage}
             onPageSizeChange={setPageSize}
-          />
+          >
+            <ResetColumnsButton onReset={resetOrder} />
+          </PaginationBar>
         }
       >
         <CrmTable minWidth="1200px">
           <thead>
             <tr>
-              <th>Assigned</th>
-              <th>Candidate</th>
-              <th>Floor</th>
-              <th>P.O</th>
-              <th>Installment Due</th>
-              <th>Expected Amount</th>
-              <th>Expected Date</th>
-              <th>Month Remarks</th>
-              <th>Paid</th>
-              <th>Remaining</th>
-              <th>Last Payment</th>
-              <th>Next Payment</th>
-              <th>Status</th>
-              <th>Priority</th>
+              {orderedColumns.map((col) => {
+                const hp = headerProps(col.key);
+                return (
+                  <th
+                    key={col.key}
+                    className={hp.className}
+                    onDragOver={hp.onDragOver}
+                    onDrop={hp.onDrop}
+                  >
+                    <span
+                      className="mr-1 inline-block cursor-grab select-none active:cursor-grabbing"
+                      title="Drag to reorder this column"
+                      {...gripProps(col.key)}
+                    >
+                      ⠿
+                    </span>
+                    {col.label}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
             {rows.length ? (
               rows.map((x) => {
-                const due = getDueForMonth(x, d);
-                const pri = priority(x, d);
+                const row: Row = { x, due: getDueForMonth(x, d), pri: priority(x, d) };
                 return (
                   <tr key={x.id}>
-                    <td>{x.assignedTo}</td>
-                    <td>
-                      <strong>{x.name}</strong>
-                    </td>
-                    <td>{x.floor || "-"}</td>
-                    <td>{x.po || "-"}</td>
-                    <td className="accent-text">{due ? money(due) : "-"}</td>
-                    <td>
-                      <input
-                        className="target-input"
-                        value={String(x.expectedAmount ?? "")}
-                        placeholder="$ expected"
-                        onChange={(e) =>
-                          updateMasterField(
-                            x.id,
-                            "expectedAmount",
-                            e.target.value
-                          )
+                    {orderedColumns.map((col) => (
+                      <td
+                        key={col.key}
+                        className={
+                          typeof col.className === "function"
+                            ? col.className(row)
+                            : col.className
                         }
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="date"
-                        className="target-input date"
-                        value={x.expectedDate || ""}
-                        onChange={(e) =>
-                          updateMasterField(x.id, "expectedDate", e.target.value)
-                        }
-                      />
-                    </td>
-                    <td>
-                      <input
-                        className="target-input remarks"
-                        value={x.monthRemarks || ""}
-                        placeholder="Monthly remarks"
-                        onChange={(e) =>
-                          updateMasterField(x.id, "monthRemarks", e.target.value)
-                        }
-                      />
-                    </td>
-                    <td className="success-text">{money(getTotalPaid(x))}</td>
-                    <td className="danger-text">{money(getRemaining(x))}</td>
-                    <td>{fmtDate(getLastPaymentDate(x))}</td>
-                    <td>{fmtDate(getNextDueDate(x))}</td>
-                    <td>
-                      <Badge label={getComplianceStatus(x)} />
-                    </td>
-                    <td className={priorityClass(pri)}>{pri}</td>
+                      >
+                        {col.render(row)}
+                      </td>
+                    ))}
                   </tr>
                 );
               })

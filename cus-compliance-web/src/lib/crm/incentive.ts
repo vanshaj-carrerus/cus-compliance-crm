@@ -57,7 +57,6 @@ export function filterCandidates(
         c.remarks,
         c.poMonth,
         c.phoneNumber,
-        c.candidateNumber,
       ].some((x) => String(x || "").toLowerCase().includes(q))
     );
   }

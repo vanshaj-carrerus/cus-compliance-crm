@@ -27,7 +27,6 @@ const CandidateSchema = new Schema(
     id: { type: Number, required: true, unique: true, index: true },
     name: { type: String, default: "" },
     phoneNumber: { type: String, default: "" },
-    candidateNumber: { type: String, default: "" },
     assignedTo: { type: String, default: "Yatin" },
     floor: { type: String, default: "" },
     annualPackage: { type: Number, default: 0 },

@@ -1,7 +1,158 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { badgeClass } from "@/lib/crm";
+
+// Google-Sheets-style column drag-to-reorder, shared across every table view.
+// Order is keyed by a stable string per column (not position) and persisted
+// to localStorage per-browser under `storageKey`, so it's a per-device
+// preference only - it never touches the backend and resets if the browser's
+// storage is cleared.
+function loadColumnOrder(storageKey: string, keys: string[]): string[] {
+  if (typeof window === "undefined") return keys;
+  try {
+    const raw = window.localStorage.getItem(storageKey);
+    if (!raw) return keys;
+    const parsed = JSON.parse(raw);
+    if (
+      Array.isArray(parsed) &&
+      parsed.length === keys.length &&
+      keys.every((k) => parsed.includes(k))
+    ) {
+      return parsed as string[];
+    }
+  } catch {
+    // ignore malformed/blocked storage - fall back to default order
+  }
+  return keys;
+}
+
+export function useColumnOrder(storageKey: string, keys: string[]) {
+  const [order, setOrder] = useState<string[]>(() =>
+    loadColumnOrder(storageKey, keys)
+  );
+  const [draggingKey, setDraggingKey] = useState<string | null>(null);
+  const [dragOverInfo, setDragOverInfo] = useState<
+    { key: string; pos: "before" | "after" } | null
+  >(null);
+
+  // Keep in sync if the set of columns a page renders ever changes shape
+  // (e.g. a future column added/removed) - otherwise a stale saved order
+  // would silently drop or lose track of columns. Reset during render
+  // (React's documented pattern) rather than in an effect, to avoid an
+  // extra cascading render.
+  const keysSignature = keys.join("|");
+  const [prevKeysSignature, setPrevKeysSignature] = useState(keysSignature);
+  if (prevKeysSignature !== keysSignature) {
+    setPrevKeysSignature(keysSignature);
+    if (order.length !== keys.length || !keys.every((k) => order.includes(k))) {
+      setOrder(keys);
+    }
+  }
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify(order));
+    } catch {
+      // ignore blocked storage (private mode, quota, etc.)
+    }
+  }, [storageKey, order]);
+
+  const reorder = useCallback(
+    (draggedKey: string, targetKey: string, after: boolean) => {
+      if (draggedKey === targetKey) return;
+      setOrder((prev) => {
+        const fromIdx = prev.indexOf(draggedKey);
+        const targetIdx = prev.indexOf(targetKey);
+        if (fromIdx < 0 || targetIdx < 0) return prev;
+        const next = [...prev];
+        next.splice(fromIdx, 1);
+        let insertAt = next.indexOf(targetKey);
+        if (insertAt < 0) return prev;
+        if (after) insertAt += 1;
+        next.splice(insertAt, 0, draggedKey);
+        return next;
+      });
+    },
+    []
+  );
+
+  const onHeaderDragOver = (key: string) => (e: React.DragEvent) => {
+    if (draggingKey == null || draggingKey === key) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pos: "before" | "after" =
+      e.clientX - rect.left < rect.width / 2 ? "before" : "after";
+    setDragOverInfo((prev) =>
+      prev && prev.key === key && prev.pos === pos ? prev : { key, pos }
+    );
+  };
+
+  const onHeaderDrop = (key: string) => (e: React.DragEvent) => {
+    e.preventDefault();
+    const draggedKey = draggingKey;
+    const pos = dragOverInfo?.pos ?? "before";
+    setDraggingKey(null);
+    setDragOverInfo(null);
+    if (draggedKey == null || draggedKey === key) return;
+    reorder(draggedKey, key, pos === "after");
+  };
+
+  const onHeaderDragEnd = () => {
+    setDraggingKey(null);
+    setDragOverInfo(null);
+  };
+
+  const headerClass = (key: string) =>
+    [
+      draggingKey === key ? "opacity-40" : "",
+      dragOverInfo?.key === key && dragOverInfo.pos === "before"
+        ? "border-l-2 border-l-primary"
+        : dragOverInfo?.key === key && dragOverInfo.pos === "after"
+          ? "border-r-2 border-r-primary"
+          : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+  const gripProps = (key: string) => ({
+    draggable: true as const,
+    onMouseDown: (e: React.MouseEvent) => e.stopPropagation(),
+    onDragStart: (e: React.DragEvent) => {
+      e.stopPropagation();
+      setDraggingKey(key);
+      e.dataTransfer.effectAllowed = "move" as const;
+      e.dataTransfer.setData("text/plain", key);
+    },
+    onDragEnd: onHeaderDragEnd,
+  });
+
+  const headerProps = (key: string) => ({
+    className: headerClass(key),
+    onDragOver: draggingKey != null ? onHeaderDragOver(key) : undefined,
+    onDrop: draggingKey != null ? onHeaderDrop(key) : undefined,
+  });
+
+  const resetOrder = () => setOrder(keys);
+
+  return { order, gripProps, headerProps, resetOrder };
+}
+
+// Drop next to the other toolbar buttons on any page that uses
+// useColumnOrder, to let a user undo a column drag they didn't mean to make.
+export function ResetColumnsButton({ onReset }: { onReset: () => void }) {
+  return (
+    <button
+      type="button"
+      className="rounded border border-border bg-secondary px-3 py-1.5 text-xs"
+      onClick={onReset}
+      title="Restore this table's columns to their default order"
+    >
+      ↺ Reset Columns
+    </button>
+  );
+}
 
 // Shared fullscreen behaviour for the big data-table pages: hides the page's
 // filters/toolbar chrome and expands the table to fill the viewport. `shellCls`
@@ -83,6 +234,7 @@ export function PaginationBar({
   pageCount,
   onPageChange,
   onPageSizeChange,
+  children,
 }: {
   total: number;
   page: number;
@@ -90,6 +242,7 @@ export function PaginationBar({
   pageCount: number;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: 25 | 50 | 100) => void;
+  children?: React.ReactNode;
 }) {
   const start = total ? page * pageSize + 1 : 0;
   const end = Math.min(total, page * pageSize + pageSize);
@@ -134,6 +287,7 @@ export function PaginationBar({
             ))}
           </select>
         </label>
+        {children}
       </div>
     </div>
   );

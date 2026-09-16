@@ -3,11 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCrm } from "../CrmProvider";
 import { FiltersBar } from "../FiltersBar";
-import { FullscreenExitFab } from "../shared";
+import { FullscreenExitFab, ResetColumnsButton, useColumnOrder } from "../shared";
 import {
   getRemaining,
   getNextDueDate,
-  rowColorClass,
   fmtDate,
   exportCandidatesCsv,
   importSheetRows,
@@ -18,7 +17,7 @@ import {
   parseInstallment,
   newId,
 } from "@/lib/crm";
-import type { Candidate } from "@/lib/crm/types";
+import { DEFAULT_STATUSES, type Candidate } from "@/lib/crm/types";
 
 function instText(c: Candidate, idx: number): string {
   const i = c.installments[idx];
@@ -48,17 +47,30 @@ type DataCol = {
 
 const DATA_COLS: DataCol[] = [
   { key: "poMonth", label: "Month", editable: true, getText: (c) => c.poMonth || "" },
+  { key: "name", label: "Candidate Name", editable: true, getText: (c) => c.name || "" },
+  {
+    key: "annualPackage",
+    label: "Offer Amount",
+    editable: true,
+    getText: (c) => (c.annualPackage ? String(c.annualPackage) : ""),
+  },
+  {
+    key: "serviceFeePercent",
+    label: "Percentage",
+    editable: true,
+    getText: (c) => (c.serviceFeePercent ? String(c.serviceFeePercent) : ""),
+  },
   {
     key: "totalServiceFee",
     label: "Total",
     editable: true,
     getText: (c) => (c.totalServiceFee ? String(c.totalServiceFee) : ""),
   },
+  { key: "startDate", label: "Start Date", editable: true, getText: (c) => c.startDate || "" },
+  { key: "floor", label: "Floor", editable: true, getText: (c) => c.floor || "" },
   { key: "assignedTo", label: "Terms", editable: true, getText: (c) => c.assignedTo || "" },
   { key: "po", label: "P.O.", editable: true, getText: (c) => c.po || "" },
-  { key: "startDate", label: "Start Date", editable: true, getText: (c) => c.startDate || "" },
-  { key: "name", label: "Candidate Name", editable: true, getText: (c) => c.name || "" },
-  { key: "floor", label: "Floor", editable: true, getText: (c) => c.floor || "" },
+  { key: "status", label: "Status", editable: true, getText: (c) => c.status || "" },
   ...Array.from({ length: 9 }, (_, i) => ({
     key: "inst" + i,
     label:
@@ -71,6 +83,9 @@ const DATA_COLS: DataCol[] = [
     },
   })),
 ];
+
+const DATA_COL_KEYS = DATA_COLS.map((c) => c.key);
+const DATA_COLS_BY_KEY = new Map(DATA_COLS.map((c) => [c.key, c]));
 
 type CellPos = { row: number; col: number };
 type Rect = { r0: number; r1: number; c0: number; c1: number };
@@ -112,6 +127,20 @@ export function MasterSheet() {
   const [dragOverInfo, setDragOverInfo] = useState<
     { id: number; pos: "before" | "after" } | null
   >(null);
+
+  // Column drag-to-reorder - order is a browser-local preference (see
+  // useColumnOrder), so all cell/paste/select logic below reads column
+  // definitions through `orderedCols` instead of DATA_COLS directly.
+  const {
+    order: colOrder,
+    gripProps,
+    headerProps,
+    resetOrder: resetColOrder,
+  } = useColumnOrder("masterSheetColumnOrder", DATA_COL_KEYS);
+  const orderedCols = useMemo(
+    () => colOrder.map((k) => DATA_COLS_BY_KEY.get(k)!),
+    [colOrder]
+  );
 
   const addRow = (position: "top" | "bottom") => {
     addBlankRow(position);
@@ -394,12 +423,12 @@ export function MasterSheet() {
           const cand = list[r];
           if (!cand) return "";
           return cols
-            .map((c) => (inSelection(r, c) ? DATA_COLS[c].getText(cand) : ""))
+            .map((c) => (inSelection(r, c) ? orderedCols[c].getText(cand) : ""))
             .join("\t");
         })
         .join("\n");
     },
-    [list]
+    [list, orderedCols]
   );
 
   const copySelection = useCallback(() => {
@@ -424,7 +453,7 @@ export function MasterSheet() {
     (c: Candidate, rowText: string, anchorCol: number) => {
       const cols = rowText.split("\t");
       cols.forEach((val, ci2) => {
-        const colDef = DATA_COLS[anchorCol + ci2];
+        const colDef = orderedCols[anchorCol + ci2];
         if (!colDef || !colDef.editable) return;
         const trimmed = val.trim();
         if (colDef.key.startsWith("inst")) {
@@ -450,12 +479,18 @@ export function MasterSheet() {
           c.serviceFeePercent = 0;
           (c as unknown as Record<string, unknown>)[colDef.key] =
             Number(trimmed.replace(/[$,%\s,]/g, "")) || 0;
+        } else if (
+          colDef.key === "annualPackage" ||
+          colDef.key === "serviceFeePercent"
+        ) {
+          (c as unknown as Record<string, unknown>)[colDef.key] =
+            Number(trimmed.replace(/[$,%\s,]/g, "")) || 0;
         } else {
           (c as unknown as Record<string, unknown>)[colDef.key] = trimmed;
         }
       });
     },
-    []
+    [orderedCols]
   );
 
   // A row pasted past the last existing (visible) candidate has no id to
@@ -671,6 +706,212 @@ export function MasterSheet() {
 
   void _gr;
 
+  const renderDataCell = (
+    col: DataCol,
+    rowIndex: number,
+    vi: number,
+    c: Candidate
+  ) => {
+    const selectedCls = isCellSelected(rowIndex, vi) ? "cell-selected" : "";
+    const cellProps = {
+      "data-row": rowIndex,
+      "data-col": vi,
+      onMouseDown: (e: React.MouseEvent) => beginCellSelect(rowIndex, vi, e),
+      onMouseEnter: () => extendCellSelect(rowIndex, vi),
+    };
+
+    if (col.key === "poMonth") {
+      return (
+        <td key={col.key} {...cellProps} className={selectedCls}>
+          <input
+            className="sheet-cell"
+            defaultValue={c.poMonth || ""}
+            key={c.id + "-poMonth-" + (c.poMonth || "")}
+            onBlur={(e) =>
+              e.target.value !== (c.poMonth || "") &&
+              updateMasterField(c.id, "poMonth", e.target.value)
+            }
+          />
+        </td>
+      );
+    }
+    if (col.key === "annualPackage") {
+      return (
+        <td key={col.key} {...cellProps} className={selectedCls}>
+          <input
+            className="sheet-cell"
+            defaultValue={c.annualPackage ? String(c.annualPackage) : ""}
+            key={c.id + "-annualPackage-" + c.annualPackage}
+            placeholder="0"
+            title="Offer amount - combined with Percentage to compute Total"
+            onBlur={(e) => {
+              if (e.target.value === (c.annualPackage ? String(c.annualPackage) : "")) return;
+              updateMasterField(c.id, "annualPackage", e.target.value);
+            }}
+          />
+        </td>
+      );
+    }
+    if (col.key === "serviceFeePercent") {
+      return (
+        <td key={col.key} {...cellProps} className={selectedCls}>
+          <input
+            className="sheet-cell"
+            defaultValue={c.serviceFeePercent ? String(c.serviceFeePercent) : ""}
+            key={c.id + "-serviceFeePercent-" + c.serviceFeePercent}
+            placeholder="0"
+            title="Service fee % - combined with Offer Amount to compute Total"
+            onBlur={(e) => {
+              if (e.target.value === (c.serviceFeePercent ? String(c.serviceFeePercent) : "")) return;
+              updateMasterField(c.id, "serviceFeePercent", e.target.value);
+            }}
+          />
+        </td>
+      );
+    }
+    if (col.key === "totalServiceFee") {
+      return (
+        <td key={col.key} {...cellProps} className={selectedCls}>
+          <input
+            className="sheet-cell font-bold text-primary"
+            defaultValue={c.totalServiceFee ? String(c.totalServiceFee) : ""}
+            key={c.id + "-total-" + c.totalServiceFee}
+            placeholder="0"
+            title={
+              c.annualPackage && c.serviceFeePercent
+                ? "Computed from Offer Amount × Percentage - edit those columns, or clear one to type Total directly"
+                : undefined
+            }
+            onBlur={(e) => {
+              if (e.target.value === (c.totalServiceFee ? String(c.totalServiceFee) : "")) return;
+              updateMasterField(c.id, "totalServiceFee", e.target.value);
+            }}
+          />
+        </td>
+      );
+    }
+    if (col.key === "assignedTo") {
+      return (
+        <td key={col.key} {...cellProps} className={selectedCls}>
+          <select
+            className="sheet-cell"
+            value={c.assignedTo || ""}
+            onChange={(e) => updateMasterField(c.id, "assignedTo", e.target.value)}
+          >
+            <option value="">-</option>
+            <option>Yatin</option>
+            <option>Jayraj</option>
+          </select>
+        </td>
+      );
+    }
+    if (col.key === "po") {
+      return (
+        <td key={col.key} {...cellProps} className={selectedCls}>
+          <input
+            className="sheet-cell"
+            defaultValue={c.po || ""}
+            key={c.id + "-po-" + (c.po || "")}
+            onBlur={(e) =>
+              e.target.value !== (c.po || "") &&
+              updateMasterField(c.id, "po", e.target.value)
+            }
+          />
+        </td>
+      );
+    }
+    if (col.key === "status") {
+      return (
+        <td key={col.key} {...cellProps} className={selectedCls}>
+          <select
+            className="sheet-cell"
+            value={c.status || ""}
+            onChange={(e) => updateMasterField(c.id, "status", e.target.value)}
+          >
+            <option value="">-</option>
+            {DEFAULT_STATUSES.map((s) => (
+              <option key={s}>{s}</option>
+            ))}
+          </select>
+        </td>
+      );
+    }
+    if (col.key === "startDate") {
+      return (
+        <td key={col.key} {...cellProps} className={selectedCls}>
+          <input
+            className="sheet-cell"
+            defaultValue={c.startDate || ""}
+            key={c.id + "-startDate-" + (c.startDate || "")}
+            placeholder="YYYY-MM-DD"
+            onBlur={(e) =>
+              e.target.value !== (c.startDate || "") &&
+              updateMasterField(c.id, "startDate", e.target.value)
+            }
+          />
+        </td>
+      );
+    }
+    if (col.key === "name") {
+      return (
+        <td key={col.key} {...cellProps} className={`important-col ${selectedCls}`}>
+          <input
+            className="sheet-cell name-priority"
+            defaultValue={c.name || ""}
+            key={c.id + "-name-" + (c.name || "")}
+            onBlur={(e) =>
+              e.target.value !== (c.name || "") &&
+              updateMasterField(c.id, "name", e.target.value)
+            }
+          />
+        </td>
+      );
+    }
+    if (col.key === "floor") {
+      return (
+        <td key={col.key} {...cellProps} className={selectedCls}>
+          <input
+            className="sheet-cell"
+            defaultValue={c.floor || ""}
+            key={c.id + "-floor-" + (c.floor || "")}
+            onBlur={(e) =>
+              e.target.value !== (c.floor || "") &&
+              updateMasterField(c.id, "floor", e.target.value)
+            }
+          />
+        </td>
+      );
+    }
+    // Installment columns are keyed "inst0".."inst8"
+    const idx = Number(col.key.slice(4));
+    const st = instStatus(c.installments[idx]);
+    return (
+      <td key={col.key} {...cellProps} className={`inst-col ${selectedCls}`}>
+        <div className="inst-cell">
+          <div className="inst-row">
+            <input
+              className="sheet-cell inst-text"
+              type="text"
+              defaultValue={instText(c, idx)}
+              key={c.id + "-" + idx + "-" + instText(c, idx)}
+              placeholder=""
+              onBlur={(e) =>
+                e.target.value !== instText(c, idx) &&
+                updateInstallment(c.id, idx, e.target.value)
+              }
+            />
+            <input
+              type="checkbox"
+              checked={!!c.installments[idx]?.paid}
+              onChange={(e) => togglePaid(c.id, idx, e.target.checked)}
+            />
+          </div>
+          {st.label ? <div className={`inst-status ${st.color}`}>{st.label}</div> : null}
+        </div>
+      </td>
+    );
+  };
+
   const shellCls = fullscreen
     ? "fixed inset-0 z-[3000] flex flex-col bg-background p-4"
     : "";
@@ -756,10 +997,11 @@ export function MasterSheet() {
                 another row/column/range, Ctrl/Cmd+C to copy, Ctrl/Cmd+V to
                 paste - just like pasting into a Google Sheet. Click or drag
                 across row numbers / column headers to select whole
-                rows/columns. Click directly into any cell (Month, Terms,
-                P.O., Start Date, Name or an installment) to type or edit it
-                right there - no need to open ✏️ Edit unless you want phone,
-                status, remarks or other contact fields. Data saves to
+                rows/columns. Click directly into any cell (Month, Name,
+                Offer Amount, Percentage, Total, Start Date, Floor, Terms,
+                P.O. or an installment) to type or edit it right there - no
+                need to open ✏️ Edit unless you want phone, status, remarks
+                or other contact fields. Data saves to
                 MongoDB.
               </div>
             </div>
@@ -813,6 +1055,7 @@ export function MasterSheet() {
               >
                 ➕ Add Row (Bottom)
               </button>
+              <ResetColumnsButton onReset={resetColOrder} />
               <button
                 type="button"
                 className="rounded bg-danger px-3 py-1.5 text-xs text-white"
@@ -859,17 +1102,29 @@ export function MasterSheet() {
                     }}
                   />
                 </th>
-                {DATA_COLS.map((col, colIdx) => (
-                  <th
-                    key={col.key}
-                    className="col-head-selectable"
-                    onMouseDown={(e) => beginColSelect(colIdx, e)}
-                    onMouseEnter={() => extendColSelect(colIdx)}
-                    title="Click (or drag) to select whole column(s). Shift/Ctrl to extend."
-                  >
-                    {col.label}
-                  </th>
-                ))}
+                {orderedCols.map((col, colIdx) => {
+                  const hp = headerProps(col.key);
+                  return (
+                    <th
+                      key={col.key}
+                      className={`col-head-selectable ${hp.className}`}
+                      onMouseDown={(e) => beginColSelect(colIdx, e)}
+                      onMouseEnter={() => extendColSelect(colIdx)}
+                      onDragOver={hp.onDragOver}
+                      onDrop={hp.onDrop}
+                      title="Click (or drag) to select whole column(s). Shift/Ctrl to extend. Drag the ⠿ handle to reorder columns."
+                    >
+                      <span
+                        className="mr-1 inline-block cursor-grab select-none active:cursor-grabbing"
+                        title="Drag to reorder this column"
+                        {...gripProps(col.key)}
+                      >
+                        ⠿
+                      </span>
+                      {col.label}
+                    </th>
+                  );
+                })}
                 <th>Actions</th>
               </tr>
             </thead>
@@ -877,7 +1132,9 @@ export function MasterSheet() {
               {list.map((c, rowIndex) => (
                 <tr
                   key={c.id}
-                  className={`${rowColorClass(c)} ${
+                  className={`${
+                    c.status === "Cancelled" ? "row-cancelled" : ""
+                  } ${
                     bulkSelected.has(String(c.id)) ? "outline outline-primary/40" : ""
                   } ${draggingId === c.id ? "opacity-40" : ""} ${
                     dragOverInfo?.id === c.id && dragOverInfo.pos === "before"
@@ -922,183 +1179,9 @@ export function MasterSheet() {
                       }
                     />
                   </td>
-                  {/* Month */}
-                  <td
-                    data-row={rowIndex}
-                    data-col={0}
-                    className={isCellSelected(rowIndex, 0) ? "cell-selected" : ""}
-                    onMouseDown={(e) => beginCellSelect(rowIndex, 0, e)}
-                    onMouseEnter={() => extendCellSelect(rowIndex, 0)}
-                  >
-                    <input
-                      className="sheet-cell"
-                      defaultValue={c.poMonth || ""}
-                      key={c.id + "-poMonth-" + (c.poMonth || "")}
-                      onBlur={(e) =>
-                        e.target.value !== (c.poMonth || "") &&
-                        updateMasterField(c.id, "poMonth", e.target.value)
-                      }
-                    />
-                  </td>
-                  {/* Total */}
-                  <td
-                    data-row={rowIndex}
-                    data-col={1}
-                    className={isCellSelected(rowIndex, 1) ? "cell-selected" : ""}
-                    onMouseDown={(e) => beginCellSelect(rowIndex, 1, e)}
-                    onMouseEnter={() => extendCellSelect(rowIndex, 1)}
-                  >
-                    <input
-                      className="sheet-cell font-bold text-primary"
-                      defaultValue={c.totalServiceFee ? String(c.totalServiceFee) : ""}
-                      key={c.id + "-total-" + c.totalServiceFee}
-                      placeholder="0"
-                      title={
-                        c.annualPackage && c.serviceFeePercent
-                          ? "Computed from Annual Package × Fee % - edit those in ✏️ Edit, or clear one to type Total directly"
-                          : undefined
-                      }
-                      onBlur={(e) => {
-                        if (e.target.value === (c.totalServiceFee ? String(c.totalServiceFee) : "")) return;
-                        updateMasterField(c.id, "totalServiceFee", e.target.value);
-                      }}
-                    />
-                  </td>
-                  {/* Terms = Assigned To */}
-                  <td
-                    data-row={rowIndex}
-                    data-col={2}
-                    className={isCellSelected(rowIndex, 2) ? "cell-selected" : ""}
-                    onMouseDown={(e) => beginCellSelect(rowIndex, 2, e)}
-                    onMouseEnter={() => extendCellSelect(rowIndex, 2)}
-                  >
-                    <select
-                      className="sheet-cell"
-                      value={c.assignedTo || ""}
-                      onChange={(e) =>
-                        updateMasterField(c.id, "assignedTo", e.target.value)
-                      }
-                    >
-                      <option value="">-</option>
-                      <option>Yatin</option>
-                      <option>Jayraj</option>
-                    </select>
-                  </td>
-                  {/* P.O. */}
-                  <td
-                    data-row={rowIndex}
-                    data-col={3}
-                    className={isCellSelected(rowIndex, 3) ? "cell-selected" : ""}
-                    onMouseDown={(e) => beginCellSelect(rowIndex, 3, e)}
-                    onMouseEnter={() => extendCellSelect(rowIndex, 3)}
-                  >
-                    <input
-                      className="sheet-cell"
-                      defaultValue={c.po || ""}
-                      key={c.id + "-po-" + (c.po || "")}
-                      onBlur={(e) =>
-                        e.target.value !== (c.po || "") &&
-                        updateMasterField(c.id, "po", e.target.value)
-                      }
-                    />
-                  </td>
-                  {/* Start Date */}
-                  <td
-                    data-row={rowIndex}
-                    data-col={4}
-                    className={isCellSelected(rowIndex, 4) ? "cell-selected" : ""}
-                    onMouseDown={(e) => beginCellSelect(rowIndex, 4, e)}
-                    onMouseEnter={() => extendCellSelect(rowIndex, 4)}
-                  >
-                    <input
-                      className="sheet-cell"
-                      defaultValue={c.startDate || ""}
-                      key={c.id + "-startDate-" + (c.startDate || "")}
-                      placeholder="YYYY-MM-DD"
-                      onBlur={(e) =>
-                        e.target.value !== (c.startDate || "") &&
-                        updateMasterField(c.id, "startDate", e.target.value)
-                      }
-                    />
-                  </td>
-                  {/* Candidate Name */}
-                  <td
-                    data-row={rowIndex}
-                    data-col={5}
-                    className={`important-col ${isCellSelected(rowIndex, 5) ? "cell-selected" : ""}`}
-                    onMouseDown={(e) => beginCellSelect(rowIndex, 5, e)}
-                    onMouseEnter={() => extendCellSelect(rowIndex, 5)}
-                  >
-                    <input
-                      className="sheet-cell name-priority"
-                      defaultValue={c.name || ""}
-                      key={c.id + "-name-" + (c.name || "")}
-                      onBlur={(e) =>
-                        e.target.value !== (c.name || "") &&
-                        updateMasterField(c.id, "name", e.target.value)
-                      }
-                    />
-                  </td>
-                  {/* Floor */}
-                  <td
-                    data-row={rowIndex}
-                    data-col={6}
-                    className={isCellSelected(rowIndex, 6) ? "cell-selected" : ""}
-                    onMouseDown={(e) => beginCellSelect(rowIndex, 6, e)}
-                    onMouseEnter={() => extendCellSelect(rowIndex, 6)}
-                  >
-                    <input
-                      className="sheet-cell"
-                      defaultValue={c.floor || ""}
-                      key={c.id + "-floor-" + (c.floor || "")}
-                      onBlur={(e) =>
-                        e.target.value !== (c.floor || "") &&
-                        updateMasterField(c.id, "floor", e.target.value)
-                      }
-                    />
-                  </td>
-                  {Array.from({ length: 9 }, (_, idx) => {
-                    const st = instStatus(c.installments[idx]);
-                    const colIdx = 7 + idx;
-                    return (
-                      <td
-                        key={idx}
-                        data-row={rowIndex}
-                        data-col={colIdx}
-                        className={`inst-col ${isCellSelected(rowIndex, colIdx) ? "cell-selected" : ""}`}
-                        onMouseDown={(e) => beginCellSelect(rowIndex, colIdx, e)}
-                        onMouseEnter={() => extendCellSelect(rowIndex, colIdx)}
-                      >
-                        <div className="inst-cell">
-                          <div className="inst-row">
-                            <input
-                              className="sheet-cell inst-text"
-                              type="text"
-                              defaultValue={instText(c, idx)}
-                              key={c.id + "-" + idx + "-" + instText(c, idx)}
-                              placeholder="1500 14 Jan"
-                              onBlur={(e) =>
-                                e.target.value !== instText(c, idx) &&
-                                updateInstallment(c.id, idx, e.target.value)
-                              }
-                            />
-                            <input
-                              type="checkbox"
-                              checked={!!c.installments[idx]?.paid}
-                              onChange={(e) =>
-                                togglePaid(c.id, idx, e.target.checked)
-                              }
-                            />
-                          </div>
-                          {st.label ? (
-                            <div className={`inst-status ${st.color}`}>
-                              {st.label}
-                            </div>
-                          ) : null}
-                        </div>
-                      </td>
-                    );
-                  })}
+                  {orderedCols.map((col, vi) =>
+                    renderDataCell(col, rowIndex, vi, c)
+                  )}
                   <td>
                     <button
                       type="button"

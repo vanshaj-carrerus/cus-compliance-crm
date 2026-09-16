@@ -151,6 +151,15 @@ body {
 .excel-grid tbody td {
   position: relative;
   z-index: 1;
+  background-color: #ffffff;
+}
+/* Master P.O Sheet rows are otherwise plain white - flag Cancelled rows
+   with a faint red tint so they're easy to spot in the list. Needs
+   !important to beat the plain white rule above and any other per-cell
+   background (selection highlight aside, which already uses !important
+   and rightly wins over this). */
+.excel-grid tbody tr.row-cancelled > td {
+  background-color: var(--row-cancelled) !important;
 }
 .excel-grid td.inst-col {
   white-space: normal;

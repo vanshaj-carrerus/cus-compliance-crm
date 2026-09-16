@@ -13,7 +13,7 @@ export function FiltersBar({ children }: { children?: ReactNode }) {
   ].sort();
   const statuses = [
     ...new Set([
-      ...DEFAULT_STATUSES.filter((s) => s !== "Custom"),
+      ...DEFAULT_STATUSES,
       ...candidates.map((c) => c.status).filter(Boolean),
     ]),
   ];

@@ -164,11 +164,17 @@ export function computeDashboardStats(
     : candidates;
 
   const total = scoped.length;
+  // "Active" here means still being tracked and still owed money -
+  // Fully Paid/Cancelled are terminal (statusExcluded), Run Away gets its
+  // own dedicated stat below rather than counting as "active".
   const active = scoped.filter(
-    (x) => x.status === "Active" && getRemaining(x) > 0
+    (x) =>
+      !statusExcluded(x.status) &&
+      x.status !== "Run Away" &&
+      getRemaining(x) > 0
   ).length;
   const inactive = scoped.filter(
-    (x) => x.status === "Inactive" || getRemaining(x) <= 0
+    (x) => statusExcluded(x.status) || getRemaining(x) <= 0
   ).length;
   const runawayCandidates = scoped.filter((x) => x.status === "Run Away");
   const runaway = runawayCandidates.length;

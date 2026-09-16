@@ -44,7 +44,6 @@ const CANDIDATE_EXTRA_COLUMNS = [
   "Contact Notes",
   "Paid Installments",
   "id",
-  "candidateNumber",
   "installmentCount",
   "expectedDate",
   "expectedAmount",
@@ -306,7 +305,6 @@ function candidateRows(candidates: Candidate[]): SheetRecord[] {
         .filter(Boolean)
         .join("|"),
       id: candidate.id,
-      candidateNumber: candidate.candidateNumber || "",
       installmentCount: candidate.installmentCount || "",
       expectedDate: candidate.expectedDate || "",
       expectedAmount: candidate.expectedAmount ?? "",
@@ -693,7 +691,6 @@ export async function parseCrmWorkbook(
         phoneNumber: String(
           recordGet(record, "Phone Number", "phoneNumber")
         ),
-        candidateNumber: String(recordGet(record, "candidateNumber")),
         assignedTo: String(
           recordGet(record, "Assigned To", "assignedTo") || "Yatin"
         ),
@@ -705,7 +702,7 @@ export async function parseCrmWorkbook(
         po: String(recordGet(record, "P.O.", "po")),
         poMonth: String(recordGet(record, "Month", "poMonth")),
         startDate: asDateOnly(recordGet(record, "Start date", "startDate")),
-        status: String(recordGet(record, "Status", "status") || "Active"),
+        status: String(recordGet(record, "Status", "status") || ""),
         remarks: String(recordGet(record, "Remarks", "remarks")),
         installmentCount: asNumber(recordGet(record, "installmentCount")),
         installments,

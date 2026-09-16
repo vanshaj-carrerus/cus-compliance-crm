@@ -9,7 +9,7 @@ import {
   DEFAULT_WORKFLOW_RULES,
   CONTACT_METHODS,
 } from "./types";
-import { round, getRemaining, parseMoney } from "./calc";
+import { round, parseMoney } from "./calc";
 import {
   currentCycleStart,
   addDaysDate,
@@ -78,7 +78,7 @@ export function normalizeCandidate(c: Partial<Candidate> = {}): Candidate {
   if (assignedTo === "Jayraj bhai") assignedTo = "Jayraj";
   if (assignedTo !== "Jayraj") assignedTo = "Yatin";
 
-  let phoneNumber =
+  const phoneNumber =
     String(
       c.phoneNumber ||
         raw.phone ||
@@ -86,10 +86,6 @@ export function normalizeCandidate(c: Partial<Candidate> = {}): Candidate {
         raw.contactNumber ||
         ""
     ).trim() || "";
-  const candidateNumber = String(c.candidateNumber || "").trim();
-  if (!phoneNumber && candidateNumber && /\d{4,}/.test(candidateNumber)) {
-    phoneNumber = candidateNumber;
-  }
 
   let poMonth = normalizeMonthLabel(
     String(c.poMonth || raw.poMonthName || raw.month || raw.po_month || "")
@@ -110,11 +106,10 @@ export function normalizeCandidate(c: Partial<Candidate> = {}): Candidate {
   ) as ContactMethod;
   if (!CONTACT_METHODS.includes(contactMethod)) contactMethod = "No Contact";
 
-  let out: Candidate = {
+  const out: Candidate = {
     id: typeof c.id === "number" ? c.id : Number(c.id) || newId(),
     name: String(c.name || ""),
     phoneNumber,
-    candidateNumber,
     assignedTo: assignedTo as "Yatin" | "Jayraj",
     floor: String(c.floor || ""),
     annualPackage: annual,
@@ -124,7 +119,7 @@ export function normalizeCandidate(c: Partial<Candidate> = {}): Candidate {
     po: String(c.po || ""),
     poMonth,
     startDate,
-    status: String(c.status || "Active"),
+    status: String(c.status || ""),
     remarks: String(c.remarks || ""),
     installmentCount,
     installments: inst,
@@ -140,14 +135,6 @@ export function normalizeCandidate(c: Partial<Candidate> = {}): Candidate {
     createdAt: String(c.createdAt || new Date().toISOString()),
     updatedAt: new Date().toISOString(),
   };
-
-  if (
-    getRemaining(out) <= 0 &&
-    out.totalServiceFee > 0 &&
-    out.status === "Active"
-  ) {
-    out.status = "Inactive";
-  }
 
   return out;
 }

@@ -111,20 +111,17 @@ export function priority(c: Candidate, d: Date): string {
   return "Green";
 }
 
+// "Fully Paid" and "Cancelled" are terminal - once a candidate is marked
+// as either, they stop being tracked anywhere except the Master P.O Sheet
+// (no more Follow-up, Compliance, Payment Target, or workflow automation).
 export function statusExcluded(s: string): boolean {
-  return [
-    "cancelled",
-    "refunded",
-    "closed",
-    "fully paid",
-    "inactive",
-  ].includes(String(s || "").toLowerCase());
+  return ["cancelled", "fully paid"].includes(String(s || "").toLowerCase());
 }
 
 export function rowColorClass(c: Candidate): string {
-  const st = String(c.status || "Active").toLowerCase();
+  const st = String(c.status || "").toLowerCase();
   if (st.includes("run")) return "row-run-away";
-  if (st.includes("lost")) return "row-job-lost";
+  if (st.includes("lost") || st.includes("gone")) return "row-job-lost";
   if (st.includes("cancel")) return "row-cancelled";
   if (st.includes("refund")) return "row-refunded";
   if (st.includes("closed")) return "row-closed";
@@ -153,6 +150,8 @@ export function badgeClass(t: string): string {
     "Fully Paid": "badge-success",
     "Run Away": "badge-warning",
     "No Response": "badge-warning",
+    "Not Responding": "badge-warning",
+    "Job Gone": "badge-danger",
     "Payment Hold": "badge-info",
   };
   return map[t] || "badge-default";

@@ -6,7 +6,9 @@ import {
   Badge,
   FullscreenButton,
   FullscreenExitFab,
+  ResetColumnsButton,
   TableShell,
+  useColumnOrder,
   useFullscreen,
 } from "../shared";
 import {
@@ -20,6 +22,8 @@ import {
   phoneOf,
   cleanPhone,
 } from "@/lib/crm";
+
+type DailyRow = ReturnType<typeof filteredDaily>[number];
 
 const CATEGORIES = [
   { key: "overdue", label: "🔴 OVERDUE", cls: "border-danger/40" },
@@ -100,6 +104,75 @@ export function DailyFollowUp({
   };
 
   const { fullscreen, toggleFullscreen, shellCls } = useFullscreen();
+
+  const columns: {
+    key: string;
+    label: string;
+    className?: string | ((r: DailyRow) => string);
+    render: (r: DailyRow) => React.ReactNode;
+  }[] = [
+    {
+      key: "candidate",
+      label: "Candidate",
+      render: (r) => (
+        <>
+          <strong>{r.candidate.name || "Unnamed"}</strong>
+          <div className="mt-1 md:hidden">
+            <Badge label={r.candidate.status || "Unset"} />
+          </div>
+        </>
+      ),
+    },
+    { key: "phone", label: "Phone", render: (r) => phoneOf(r.candidate) || "-" },
+    { key: "poMonth", label: "P.O Month", render: (r) => r.candidate.poMonth || "-" },
+    { key: "assigned", label: "Assigned", render: (r) => r.candidate.assignedTo || "-" },
+    { key: "totalFee", label: "Total Fee", render: (r) => money(r.candidate.totalServiceFee) },
+    {
+      key: "paidAmount",
+      label: "Paid",
+      className: "text-success",
+      render: (r) => money(getTotalPaid(r.candidate)),
+    },
+    {
+      key: "remaining",
+      label: "Remaining",
+      className: "text-danger",
+      render: (r) => money(getRemaining(r.candidate)),
+    },
+    {
+      key: "dueAmount",
+      label: "Due Amount",
+      className: "text-primary",
+      render: (r) => money(r.amount),
+    },
+    { key: "dueDate", label: "Due Date", render: (r) => fmtDate(r.date) },
+    {
+      key: "daysOverdue",
+      label: "Days Overdue",
+      className: (r) => (r.days ? "font-bold text-danger" : "text-muted"),
+      render: (r) => r.days || "-",
+    },
+    {
+      key: "lastContact",
+      label: "Last Contact",
+      render: (r) => (
+        <input
+          type="date"
+          className="rounded border border-border bg-input px-1 py-0.5 text-xs"
+          value={r.candidate.lastContactDate || ""}
+          onChange={(e) =>
+            updateContactField(r.candidate.id, "lastContactDate", e.target.value)
+          }
+        />
+      ),
+    },
+  ];
+  const { order, gripProps, headerProps, resetOrder } = useColumnOrder(
+    "dailyFollowUpColumnOrder",
+    columns.map((c) => c.key)
+  );
+  const columnsByKey = new Map(columns.map((c) => [c.key, c]));
+  const orderedColumns = order.map((k) => columnsByKey.get(k)!);
 
   return (
     <div className={shellCls}>
@@ -252,6 +325,7 @@ export function DailyFollowUp({
             >
               Next ▶
             </button>
+            <ResetColumnsButton onReset={resetOrder} />
             <label className="ml-auto flex items-center gap-1 text-xs text-muted">
               Rows
               <select
@@ -281,17 +355,26 @@ export function DailyFollowUp({
                   onChange={(e) => toggleAll(e.target.checked)}
                 />
               </th>
-              <th>Candidate</th>
-              <th>Phone</th>
-              <th>P.O Month</th>
-              <th>Assigned</th>
-              <th>Total Fee</th>
-              <th>Paid</th>
-              <th>Remaining</th>
-              <th>Due Amount</th>
-              <th>Due Date</th>
-              <th>Days Overdue</th>
-              <th>Last Contact</th>
+              {orderedColumns.map((col) => {
+                const hp = headerProps(col.key);
+                return (
+                  <th
+                    key={col.key}
+                    className={hp.className}
+                    onDragOver={hp.onDragOver}
+                    onDrop={hp.onDrop}
+                  >
+                    <span
+                      className="mr-1 inline-block cursor-grab select-none active:cursor-grabbing"
+                      title="Drag to reorder this column"
+                      {...gripProps(col.key)}
+                    >
+                      ⠿
+                    </span>
+                    {col.label}
+                  </th>
+                );
+              })}
               <th>Actions</th>
             </tr>
           </thead>
@@ -308,33 +391,18 @@ export function DailyFollowUp({
                       onChange={(e) => toggleOne(id, e.target.checked)}
                     />
                   </td>
-                  <td>
-                    <strong>{c.name || "Unnamed"}</strong>
-                    <div className="mt-1 md:hidden">
-                      <Badge label={c.status || "Active"} />
-                    </div>
-                  </td>
-                  <td>{phoneOf(c) || "-"}</td>
-                  <td>{c.poMonth || "-"}</td>
-                  <td>{c.assignedTo || "-"}</td>
-                  <td>{money(c.totalServiceFee)}</td>
-                  <td className="text-success">{money(getTotalPaid(c))}</td>
-                  <td className="text-danger">{money(getRemaining(c))}</td>
-                  <td className="text-primary">{money(r.amount)}</td>
-                  <td>{fmtDate(r.date)}</td>
-                  <td className={r.days ? "font-bold text-danger" : "text-muted"}>
-                    {r.days || "-"}
-                  </td>
-                  <td>
-                    <input
-                      type="date"
-                      className="rounded border border-border bg-input px-1 py-0.5 text-xs"
-                      value={c.lastContactDate || ""}
-                      onChange={(e) =>
-                        updateContactField(c.id, "lastContactDate", e.target.value)
+                  {orderedColumns.map((col) => (
+                    <td
+                      key={col.key}
+                      className={
+                        typeof col.className === "function"
+                          ? col.className(r)
+                          : col.className
                       }
-                    />
-                  </td>
+                    >
+                      {col.render(r)}
+                    </td>
+                  ))}
                   <td>
                     <div className="flex flex-wrap gap-1">
                       <button

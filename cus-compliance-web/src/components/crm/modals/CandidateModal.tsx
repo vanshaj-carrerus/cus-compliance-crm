@@ -20,7 +20,6 @@ import {
 type FormState = {
   name: string;
   phoneNumber: string;
-  candidateNumber: string;
   assignedTo: "Yatin" | "Jayraj";
   floor: string;
   annualPackage: string;
@@ -30,7 +29,6 @@ type FormState = {
   poMonth: string;
   startDate: string;
   status: string;
-  customStatus: string;
   remarks: string;
   installmentCount: string;
   lastContactDate: string;
@@ -63,7 +61,6 @@ function createEmptyForm(): FormState {
   return {
     name: "",
     phoneNumber: "",
-    candidateNumber: "",
     assignedTo: "Yatin",
     floor: "",
     annualPackage: "",
@@ -72,8 +69,7 @@ function createEmptyForm(): FormState {
     po: "",
     poMonth: "",
     startDate: "",
-    status: "Active",
-    customStatus: "",
+    status: "",
     remarks: "",
     installmentCount: "",
     lastContactDate: "",
@@ -89,13 +85,9 @@ function createEmptyForm(): FormState {
 }
 
 function formFromCandidate(c: Candidate): FormState {
-  const isCustom = !DEFAULT_STATUSES.includes(
-    c.status as (typeof DEFAULT_STATUSES)[number]
-  );
   return {
     name: c.name,
     phoneNumber: c.phoneNumber,
-    candidateNumber: c.candidateNumber,
     assignedTo: c.assignedTo,
     floor: c.floor,
     annualPackage: String(c.annualPackage || ""),
@@ -104,8 +96,7 @@ function formFromCandidate(c: Candidate): FormState {
     po: c.po,
     poMonth: c.poMonth,
     startDate: c.startDate,
-    status: isCustom ? "Custom" : c.status,
-    customStatus: isCustom ? c.status : "",
+    status: c.status,
     remarks: c.remarks,
     installmentCount: String(c.installmentCount || ""),
     lastContactDate: c.lastContactDate,
@@ -239,7 +230,6 @@ export function CandidateModal() {
                 [
                   ["name", "Candidate Name", "text"],
                   ["phoneNumber", "Phone Number", "text"],
-                  ["candidateNumber", "Candidate Number", "text"],
                   ["floor", "Office / Floor", "text"],
                   ["annualPackage", "Annual Package", "number"],
                   ["serviceFeePercent", "Service Fee %", "number"],
@@ -291,21 +281,12 @@ export function CandidateModal() {
                   value={form.status}
                   onChange={(e) => setValue("status", e.target.value)}
                 >
+                  <option value="">-</option>
                   {DEFAULT_STATUSES.map((s) => (
                     <option key={s}>{s}</option>
                   ))}
                 </select>
               </Field>
-
-              {form.status === "Custom" && (
-                <Field label="Custom Status">
-                  <input
-                    className={inputCls}
-                    value={form.customStatus}
-                    onChange={(e) => setValue("customStatus", e.target.value)}
-                  />
-                </Field>
-              )}
 
               <Field label="Total Service Fee">
                 <input
@@ -518,7 +499,6 @@ export function CandidateModal() {
               saveCandidateForm({
                 name: form.name,
                 phoneNumber: form.phoneNumber,
-                candidateNumber: form.candidateNumber,
                 assignedTo: form.assignedTo,
                 floor: form.floor,
                 annualPackage: Number(form.annualPackage) || 0,
@@ -527,10 +507,7 @@ export function CandidateModal() {
                 po: form.po,
                 poMonth: form.poMonth,
                 startDate: form.startDate,
-                status:
-                  form.status === "Custom"
-                    ? form.customStatus.trim() || "Custom"
-                    : form.status,
+                status: form.status,
                 remarks: form.remarks,
                 installmentCount: count,
                 lastContactDate: form.lastContactDate,

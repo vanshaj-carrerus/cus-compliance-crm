@@ -593,7 +593,7 @@ export function CrmProvider({
     }
     if (
       field === "status" &&
-      ["Run Away", "No Response"].includes(String(value))
+      ["Run Away", "Not Responding"].includes(String(value))
     ) {
       c.nextFollowUpDate = addDays(todayIso(), 7);
     }

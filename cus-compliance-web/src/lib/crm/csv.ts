@@ -309,8 +309,8 @@ export function importSheetRows(
         : prev?.assignedTo || "Yatin") as Assignee,
       status:
         col.status >= 0
-          ? String(row[col.status] || "Active").trim()
-          : prev?.status || "Active",
+          ? String(row[col.status] || "").trim()
+          : prev?.status || "",
       remarks:
         col.remarks >= 0
           ? String(row[col.remarks] || "").trim()

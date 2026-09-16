@@ -40,7 +40,6 @@ export interface Candidate {
   id: number;
   name: string;
   phoneNumber: string;
-  candidateNumber: string;
   assignedTo: Assignee;
   floor: string;
   annualPackage: number;
@@ -154,18 +153,11 @@ export interface ToastItem {
 }
 
 export const DEFAULT_STATUSES = [
-  "Active",
   "Fully Paid",
-  "Inactive",
-  "Cancelled",
-  "Lost Job",
-  "Job Lost",
-  "Refunded",
-  "Closed",
+  "Not Responding",
   "Run Away",
-  "No Response",
-  "Payment Hold",
-  "Custom",
+  "Job Gone",
+  "Cancelled",
 ] as const;
 
 export const MONTHS = [
