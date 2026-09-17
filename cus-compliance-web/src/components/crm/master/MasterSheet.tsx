@@ -3,11 +3,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCrm } from "../CrmProvider";
 import { FiltersBar } from "../FiltersBar";
-import { FullscreenExitFab, ResetColumnsButton, useColumnOrder } from "../shared";
+import {
+  ColumnResizeHandle,
+  FullscreenExitFab,
+  ResetColumnsButton,
+  useColumnOrder,
+  useColumnWidths,
+} from "../shared";
 import {
   getRemaining,
+  getTotalPaid,
   getNextDueDate,
   fmtDate,
+  money,
   exportCandidatesCsv,
   importSheetRows,
   downloadBlob,
@@ -66,6 +74,18 @@ const DATA_COLS: DataCol[] = [
     editable: true,
     getText: (c) => (c.totalServiceFee ? String(c.totalServiceFee) : ""),
   },
+  {
+    key: "paid",
+    label: "Paid",
+    editable: false,
+    getText: (c) => money(getTotalPaid(c)),
+  },
+  {
+    key: "remaining",
+    label: "Remaining",
+    editable: false,
+    getText: (c) => money(getRemaining(c)),
+  },
   { key: "startDate", label: "Start Date", editable: true, getText: (c) => c.startDate || "" },
   { key: "floor", label: "Floor", editable: true, getText: (c) => c.floor || "" },
   { key: "assignedTo", label: "Terms", editable: true, getText: (c) => c.assignedTo || "" },
@@ -86,6 +106,20 @@ const DATA_COLS: DataCol[] = [
 
 const DATA_COL_KEYS = DATA_COLS.map((c) => c.key);
 const DATA_COLS_BY_KEY = new Map(DATA_COLS.map((c) => [c.key, c]));
+
+// Starting column widths before any manual resize - wider for columns whose
+// cell content (inst-cell/name-priority, see .excel-grid CSS) needs the
+// extra room, narrower for short numeric/date fields.
+const DATA_COL_DEFAULT_WIDTHS: Record<string, number> = {
+  name: 220,
+  poMonth: 110,
+  floor: 90,
+  assignedTo: 110,
+  status: 120,
+  paid: 110,
+  remaining: 110,
+  ...Object.fromEntries(DATA_COLS.filter((c) => c.key.startsWith("inst")).map((c) => [c.key, 220])),
+};
 
 type CellPos = { row: number; col: number };
 type Rect = { r0: number; r1: number; c0: number; c1: number };
@@ -118,7 +152,11 @@ export function MasterSheet() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [followupFilter, setFollowupFilter] = useState("");
   const [methodFilter, setMethodFilter] = useState("");
-  const [fullscreen, setFullscreen] = useState(false);
+  // Starts true so this table-heavy page opens straight into fullscreen -
+  // users asked to land on the full table rather than have to click the
+  // Fullscreen button every time (see useFullscreen in shared.tsx, which
+  // this page predates and so duplicates rather than uses directly).
+  const [fullscreen, setFullscreen] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
   const [pasteProgress, setPasteProgress] = useState<{ done: number; total: number } | null>(
     null
@@ -137,6 +175,15 @@ export function MasterSheet() {
     headerProps,
     resetOrder: resetColOrder,
   } = useColumnOrder("masterSheetColumnOrder", DATA_COL_KEYS);
+  const {
+    colStyle,
+    resizeHandleProps,
+    resetWidths: resetColWidths,
+  } = useColumnWidths(
+    "masterSheetColumnWidths",
+    DATA_COL_KEYS,
+    DATA_COL_DEFAULT_WIDTHS
+  );
   const orderedCols = useMemo(
     () => colOrder.map((k) => DATA_COLS_BY_KEY.get(k)!),
     [colOrder]
@@ -606,6 +653,61 @@ export function MasterSheet() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasSelection, allRects, copySelection, applyPasteText]);
 
+  // Backspace/Delete clears every editable cell in the current selection -
+  // reuses applyRowFields (same per-column reset rules as paste) by feeding
+  // it a row of empty values for exactly the selected column span.
+  const clearSelection = useCallback(() => {
+    if (!allRects.length) return;
+    const ids = list.map((c) => c.id);
+    let next = [...candidates];
+    const touched = new Set<number>();
+    for (const rect of allRects) {
+      for (let r = rect.r0; r <= rect.r1; r++) {
+        const id = ids[r];
+        if (id == null) continue;
+        const ci = next.findIndex((c) => c.id === id);
+        if (ci < 0) continue;
+        const c = { ...next[ci], installments: [...next[ci].installments] };
+        const width = rect.c1 - rect.c0 + 1;
+        applyRowFields(c, Array(width).fill("").join("\t"), rect.c0);
+        next[ci] = c;
+        touched.add(id);
+      }
+    }
+    if (!touched.size) return;
+    snapshot();
+    next = next.map((c) => (touched.has(c.id) ? normalizeCandidate(c) : c));
+    setCandidates(next);
+    queueSave();
+    toast("Selection cleared", "success");
+  }, [allRects, list, candidates, applyRowFields, snapshot, setCandidates, queueSave, toast]);
+
+  // Only intercepts Backspace/Delete when it's clearly meant for the sheet:
+  // focus is either inside one of the grid's own cells (marked "sheet-cell"),
+  // or nowhere text-editable at all (the common case right after selecting a
+  // whole row/column via its header, which doesn't focus an input). Any
+  // *other* focused input/textarea/select on the page - a filter, a modal -
+  // keeps its normal Backspace/Delete behavior even if a stale selection is
+  // still technically active underneath it.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Backspace" && e.key !== "Delete") return;
+      if (!hasSelection) return;
+      const active = document.activeElement as HTMLElement | null;
+      const isForeignInput =
+        active &&
+        (active instanceof HTMLInputElement ||
+          active instanceof HTMLTextAreaElement ||
+          active instanceof HTMLSelectElement) &&
+        !active.classList.contains("sheet-cell");
+      if (isForeignInput) return;
+      e.preventDefault();
+      clearSelection();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [hasSelection, clearSelection]);
+
   // Arrow-key navigation between sheet cells - only kicks in when focus is
   // already inside one of the grid's own inputs/selects (marked with the
   // "sheet-cell" class), so it never touches toolbar controls, modals, etc.
@@ -790,6 +892,30 @@ export function MasterSheet() {
         </td>
       );
     }
+    if (col.key === "paid") {
+      return (
+        <td key={col.key} {...cellProps} className={selectedCls}>
+          <div
+            className="sheet-cell calc-cell success-text"
+            title="Sum of paid installments - not editable, edit the installment columns instead"
+          >
+            {money(getTotalPaid(c))}
+          </div>
+        </td>
+      );
+    }
+    if (col.key === "remaining") {
+      return (
+        <td key={col.key} {...cellProps} className={selectedCls}>
+          <div
+            className="sheet-cell calc-cell danger-text"
+            title="Total minus Paid - not editable, edit the Total or installment columns instead"
+          >
+            {money(getRemaining(c))}
+          </div>
+        </td>
+      );
+    }
     if (col.key === "assignedTo") {
       return (
         <td key={col.key} {...cellProps} className={selectedCls}>
@@ -828,7 +954,7 @@ export function MasterSheet() {
             value={c.status || ""}
             onChange={(e) => updateMasterField(c.id, "status", e.target.value)}
           >
-            <option value="">-</option>
+            <option value="">Active</option>
             {DEFAULT_STATUSES.map((s) => (
               <option key={s}>{s}</option>
             ))}
@@ -1055,7 +1181,12 @@ export function MasterSheet() {
               >
                 ➕ Add Row (Bottom)
               </button>
-              <ResetColumnsButton onReset={resetColOrder} />
+              <ResetColumnsButton
+                onReset={() => {
+                  resetColOrder();
+                  resetColWidths();
+                }}
+              />
               <button
                 type="button"
                 className="rounded bg-danger px-3 py-1.5 text-xs text-white"
@@ -1108,6 +1239,7 @@ export function MasterSheet() {
                     <th
                       key={col.key}
                       className={`col-head-selectable ${hp.className}`}
+                      style={colStyle(col.key)}
                       onMouseDown={(e) => beginColSelect(colIdx, e)}
                       onMouseEnter={() => extendColSelect(colIdx)}
                       onDragOver={hp.onDragOver}
@@ -1122,6 +1254,7 @@ export function MasterSheet() {
                         ⠿
                       </span>
                       {col.label}
+                      <ColumnResizeHandle {...resizeHandleProps(col.key)} />
                     </th>
                   );
                 })}

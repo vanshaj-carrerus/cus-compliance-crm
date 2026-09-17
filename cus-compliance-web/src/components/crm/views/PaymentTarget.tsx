@@ -4,17 +4,22 @@ import { useCrm } from "../CrmProvider";
 import { FiltersBar } from "../FiltersBar";
 import {
   Badge,
+  ColumnResizeHandle,
   CrmTable,
   DataTableContainer,
   EmptyTableRow,
   FullscreenButton,
   FullscreenExitFab,
   MonthSelector,
-  PaginationBar,
+  PasteProgressOverlay,
   ResetColumnsButton,
+  SheetCaptureField,
+  TableCountBar,
   useColumnOrder,
+  useColumnWidths,
   useFullscreen,
-  usePagination,
+  useSheetGrid,
+  type SheetColumn,
 } from "../shared";
 import {
   money,
@@ -28,6 +33,8 @@ import {
   statusExcluded,
   fmtDate,
   fmtMonth,
+  normalizeCandidate,
+  newId,
 } from "@/lib/crm";
 import type { Candidate } from "@/lib/crm/types";
 
@@ -39,21 +46,28 @@ function priorityClass(pri: string) {
 }
 
 export function PaymentTarget() {
-  const { filtered, settings, updateSettings, updateMasterField } = useCrm();
+  const {
+    filtered,
+    settings,
+    updateSettings,
+    updateMasterField,
+    candidates,
+    setCandidates,
+    queueSave,
+    snapshot,
+    toast,
+  } = useCrm();
   const d = new Date(settings.targetMonth);
   const list = filtered().filter(
     (x) => !statusExcluded(x.status) && getRemaining(x) > 0
   );
-  const { page, pageSize, pageCount, pageItems, setPage, setPageSize } =
-    usePagination(list, 50);
-
   const shiftMonth = (delta: number) => {
     const next = new Date(d);
     next.setMonth(next.getMonth() + delta);
     updateSettings({ targetMonth: next.toISOString() });
   };
   const { fullscreen, toggleFullscreen, shellCls } = useFullscreen();
-  const rows = fullscreen ? list : pageItems;
+  const rows = list;
 
   type Row = { x: Candidate; due: number; pri: string };
   const columns: {
@@ -77,7 +91,7 @@ export function PaymentTarget() {
       label: "Expected Amount",
       render: (r) => (
         <input
-          className="target-input"
+          className="target-input sheet-cell"
           value={String(r.x.expectedAmount ?? "")}
           placeholder="$ expected"
           onChange={(e) =>
@@ -92,7 +106,7 @@ export function PaymentTarget() {
       render: (r) => (
         <input
           type="date"
-          className="target-input date"
+          className="target-input date sheet-cell"
           value={r.x.expectedDate || ""}
           onChange={(e) => updateMasterField(r.x.id, "expectedDate", e.target.value)}
         />
@@ -103,7 +117,7 @@ export function PaymentTarget() {
       label: "Month Remarks",
       render: (r) => (
         <input
-          className="target-input remarks"
+          className="target-input remarks sheet-cell"
           value={r.x.monthRemarks || ""}
           placeholder="Monthly remarks"
           onChange={(e) => updateMasterField(r.x.id, "monthRemarks", e.target.value)}
@@ -144,8 +158,85 @@ export function PaymentTarget() {
     "paymentTargetColumnOrder",
     columns.map((c) => c.key)
   );
+  const { colStyle, resizeHandleProps, resetWidths } = useColumnWidths(
+    "paymentTargetColumnWidths",
+    columns.map((c) => c.key),
+    { candidate: 180, monthRemarks: 220, default: 140 }
+  );
   const columnsByKey = new Map(columns.map((c) => [c.key, c]));
   const orderedColumns = order.map((k) => columnsByKey.get(k)!);
+
+  // Same select/copy/paste workflow as Master P.O Sheet (see useSheetGrid),
+  // scoped to this page's three editable fields - the rest of the columns
+  // are computed/read-only so paste just skips them, same as Master does
+  // for its own non-editable columns.
+  const sheetColumns: SheetColumn<Candidate>[] = [
+    { key: "assignedTo", editable: false, getText: (x) => x.assignedTo || "" },
+    { key: "candidate", editable: false, getText: (x) => x.name || "" },
+    { key: "floor", editable: false, getText: (x) => x.floor || "" },
+    { key: "po", editable: false, getText: (x) => x.po || "" },
+    {
+      key: "installmentDue",
+      editable: false,
+      getText: (x) => {
+        const due = getDueForMonth(x, d);
+        return due ? money(due) : "-";
+      },
+    },
+    {
+      key: "expectedAmount",
+      editable: true,
+      getText: (x) => (x.expectedAmount != null ? String(x.expectedAmount) : ""),
+      applyText: (x, v) => {
+        x.expectedAmount = v;
+      },
+    },
+    {
+      key: "expectedDate",
+      editable: true,
+      getText: (x) => x.expectedDate || "",
+      applyText: (x, v) => {
+        x.expectedDate = v;
+      },
+    },
+    {
+      key: "monthRemarks",
+      editable: true,
+      getText: (x) => x.monthRemarks || "",
+      applyText: (x, v) => {
+        x.monthRemarks = v;
+      },
+    },
+    { key: "paid", editable: false, getText: (x) => money(getTotalPaid(x)) },
+    { key: "remaining", editable: false, getText: (x) => money(getRemaining(x)) },
+    { key: "lastPayment", editable: false, getText: (x) => fmtDate(getLastPaymentDate(x)) },
+    { key: "nextPayment", editable: false, getText: (x) => fmtDate(getNextDueDate(x)) },
+    { key: "status", editable: false, getText: (x) => getComplianceStatus(x) },
+    { key: "priority", editable: false, getText: (x) => priority(x, d) },
+  ];
+  const sheetColumnsByKey = new Map(sheetColumns.map((c) => [c.key, c]));
+  const orderedSheetColumns = order.map((k) => sheetColumnsByKey.get(k)!);
+
+  const {
+    scrollRef,
+    isCellSelected,
+    cellProps,
+    captureProps,
+    handlePaste,
+    pasteProgress,
+  } = useSheetGrid<Candidate>({
+      rows,
+      columns: orderedSheetColumns,
+      allRows: candidates,
+      setAllRows: setCandidates,
+      queueSave,
+      snapshot,
+      toast,
+      createBlankRow: () => normalizeCandidate({ id: newId() }),
+      normalize: normalizeCandidate,
+      overflowNote:
+        "New candidates only show up here once they have Name/P.O/Month and a remaining balance set on Master P.O Sheet.",
+    });
 
   return (
     <div className={shellCls}>
@@ -164,23 +255,23 @@ export function PaymentTarget() {
         title={`Payment Target - ${fmtMonth(d)}`}
         subtitle="Carry-forward active until fully paid"
         fullscreen={fullscreen}
+        scrollRef={scrollRef}
+        onPaste={handlePaste}
         actions={
           <FullscreenButton fullscreen={fullscreen} onToggle={toggleFullscreen} />
         }
         toolbar={
-          <PaginationBar
-            total={list.length}
-            page={page}
-            pageSize={pageSize}
-            pageCount={pageCount}
-            onPageChange={setPage}
-            onPageSizeChange={setPageSize}
-          >
-            <ResetColumnsButton onReset={resetOrder} />
-          </PaginationBar>
+          <TableCountBar total={list.length}>
+            <ResetColumnsButton
+              onReset={() => {
+                resetOrder();
+                resetWidths();
+              }}
+            />
+          </TableCountBar>
         }
       >
-        <CrmTable minWidth="1200px">
+        <CrmTable minWidth="1200px" resizable selectable>
           <thead>
             <tr>
               {orderedColumns.map((col) => {
@@ -189,6 +280,7 @@ export function PaymentTarget() {
                   <th
                     key={col.key}
                     className={hp.className}
+                    style={colStyle(col.key)}
                     onDragOver={hp.onDragOver}
                     onDrop={hp.onDrop}
                   >
@@ -200,6 +292,7 @@ export function PaymentTarget() {
                       ⠿
                     </span>
                     {col.label}
+                    <ColumnResizeHandle {...resizeHandleProps(col.key)} />
                   </th>
                 );
               })}
@@ -207,22 +300,25 @@ export function PaymentTarget() {
           </thead>
           <tbody>
             {rows.length ? (
-              rows.map((x) => {
+              rows.map((x, rowIdx) => {
                 const row: Row = { x, due: getDueForMonth(x, d), pri: priority(x, d) };
                 return (
                   <tr key={x.id}>
-                    {orderedColumns.map((col) => (
-                      <td
-                        key={col.key}
-                        className={
-                          typeof col.className === "function"
-                            ? col.className(row)
-                            : col.className
-                        }
-                      >
-                        {col.render(row)}
-                      </td>
-                    ))}
+                    {orderedColumns.map((col, colIdx) => {
+                      const cls =
+                        typeof col.className === "function"
+                          ? col.className(row)
+                          : col.className;
+                      return (
+                        <td
+                          key={col.key}
+                          {...cellProps(rowIdx, colIdx)}
+                          className={`${cls || ""} ${isCellSelected(rowIdx, colIdx) ? "cell-selected" : ""}`}
+                        >
+                          {col.render(row)}
+                        </td>
+                      );
+                    })}
                   </tr>
                 );
               })
@@ -235,6 +331,8 @@ export function PaymentTarget() {
           </tbody>
         </CrmTable>
       </DataTableContainer>
+      <SheetCaptureField {...captureProps} />
+      <PasteProgressOverlay pasteProgress={pasteProgress} />
     </div>
   );
 }

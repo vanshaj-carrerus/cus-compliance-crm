@@ -6,9 +6,7 @@ import {
   CrmTable,
   DataTableContainer,
   EmptyTableRow,
-  PaginationBar,
   RemarksCell,
-  usePagination,
 } from "../shared";
 import { money, fmtDate, phoneOf } from "@/lib/crm";
 
@@ -19,8 +17,6 @@ export function History() {
       new Date(b.timestamp || b.date).getTime() -
       new Date(a.timestamp || a.date).getTime()
   );
-  const { page, pageSize, pageCount, pageItems, setPage, setPageSize } =
-    usePagination(rows, 50);
 
   const messages = candidates
     .flatMap((c) =>
@@ -37,16 +33,6 @@ export function History() {
       <DataTableContainer
         title="Payment History Ledger"
         subtitle={`${rows.length} records`}
-        toolbar={
-          <PaginationBar
-            total={rows.length}
-            page={page}
-            pageSize={pageSize}
-            pageCount={pageCount}
-            onPageChange={setPage}
-            onPageSizeChange={setPageSize}
-          />
-        }
       >
         <CrmTable>
           <thead>
@@ -61,8 +47,8 @@ export function History() {
             </tr>
           </thead>
           <tbody>
-            {pageItems.length ? (
-              pageItems.map((h) => (
+            {rows.length ? (
+              rows.map((h) => (
                 <tr key={h.id}>
                   <td>{fmtDate(h.date)}</td>
                   <td>{h.assignedTo || "-"}</td>

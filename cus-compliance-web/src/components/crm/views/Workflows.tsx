@@ -1,13 +1,7 @@
 "use client";
 
 import { useCrm } from "../CrmProvider";
-import {
-  CrmTable,
-  DataTableContainer,
-  EmptyTableRow,
-  PaginationBar,
-  usePagination,
-} from "../shared";
+import { CrmTable, DataTableContainer, EmptyTableRow } from "../shared";
 import { downloadBlob } from "@/lib/crm/csv";
 
 const RULE_INFO = {
@@ -33,8 +27,6 @@ export function Workflows() {
   const { settings, updateSettings, runWorkflows, toast } = useCrm();
   const rules = settings.workflowRules;
   const log = [...(settings.workflowLog || [])].reverse();
-  const { page, pageSize, pageCount, pageItems, setPage, setPageSize } =
-    usePagination(log, 50);
 
   const requestNotifications = async () => {
     if (!("Notification" in window)) {
@@ -131,16 +123,6 @@ export function Workflows() {
             Export Log
           </button>
         }
-        toolbar={
-          <PaginationBar
-            total={log.length}
-            page={page}
-            pageSize={pageSize}
-            pageCount={pageCount}
-            onPageChange={setPage}
-            onPageSizeChange={setPageSize}
-          />
-        }
       >
         <CrmTable minWidth="720px">
           <thead>
@@ -152,8 +134,8 @@ export function Workflows() {
             </tr>
           </thead>
           <tbody>
-            {pageItems.length ? (
-              pageItems.map((x, i) => (
+            {log.length ? (
+              log.map((x, i) => (
                 <tr key={`${x.id}-${x.timestamp}-${i}`}>
                   <td className="muted">
                     {new Date(x.timestamp).toLocaleString()}

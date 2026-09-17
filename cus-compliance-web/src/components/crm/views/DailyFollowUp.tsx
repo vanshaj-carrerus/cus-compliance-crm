@@ -1,15 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useCrm } from "../CrmProvider";
 import {
   Badge,
+  ColumnResizeHandle,
   FullscreenButton,
   FullscreenExitFab,
+  PasteProgressOverlay,
+  SheetCaptureField,
   ResetColumnsButton,
   TableShell,
   useColumnOrder,
+  useColumnWidths,
   useFullscreen,
+  useSheetGrid,
+  type SheetColumn,
 } from "../shared";
 import {
   money,
@@ -21,7 +26,10 @@ import {
   rowColorClass,
   phoneOf,
   cleanPhone,
+  normalizeCandidate,
+  newId,
 } from "@/lib/crm";
+import type { Candidate } from "@/lib/crm/types";
 
 type DailyRow = ReturnType<typeof filteredDaily>[number];
 
@@ -39,6 +47,10 @@ export function DailyFollowUp({
 }) {
   const {
     candidates,
+    setCandidates,
+    queueSave,
+    snapshot,
+    toast,
     dailyCategory,
     setDailyCategory,
     dailyFilters,
@@ -66,19 +78,6 @@ export function DailyFollowUp({
 
   const rows = filteredDaily(candidates, dailyCategory, dailyFilters);
 
-  const PAGE_SIZE_OPTIONS = [25, 50, 100] as const;
-  const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(50);
-  const [page, setPage] = useState(0);
-  const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
-  const pageRows = rows.slice(page * pageSize, page * pageSize + pageSize);
-
-  useEffect(() => {
-    setPage(0);
-  }, [rows.length]);
-
-  useEffect(() => {
-    setPage((p) => Math.min(p, pageCount - 1));
-  }, [pageCount]);
   const poMonths = [
     ...new Set(candidates.map((c) => c.poMonth).filter(Boolean)),
   ].sort();
@@ -158,7 +157,7 @@ export function DailyFollowUp({
       render: (r) => (
         <input
           type="date"
-          className="rounded border border-border bg-input px-1 py-0.5 text-xs"
+          className="rounded border border-border bg-input px-1 py-0.5 text-xs sheet-cell"
           value={r.candidate.lastContactDate || ""}
           onChange={(e) =>
             updateContactField(r.candidate.id, "lastContactDate", e.target.value)
@@ -171,8 +170,76 @@ export function DailyFollowUp({
     "dailyFollowUpColumnOrder",
     columns.map((c) => c.key)
   );
+  const { colStyle, resizeHandleProps, resetWidths } = useColumnWidths(
+    "dailyFollowUpColumnWidths",
+    columns.map((c) => c.key),
+    { candidate: 180, default: 130 }
+  );
   const columnsByKey = new Map(columns.map((c) => [c.key, c]));
   const orderedColumns = order.map((k) => columnsByKey.get(k)!);
+
+  // Same select/copy/paste workflow as Master P.O Sheet (see useSheetGrid).
+  // A DailyRow is a projection of one candidate's next-due installment, not
+  // a standalone record, so selection/copy operates on the underlying
+  // candidates (`gridRows`) while getText still reads the DailyRow-specific
+  // fields (amount/date/days) via this lookup.
+  const dailyRowByCandidateId = new Map(rows.map((r) => [r.candidate.id, r]));
+  const gridRows = rows.map((r) => r.candidate);
+  const sheetColumns: SheetColumn<Candidate>[] = [
+    { key: "candidate", editable: false, getText: (x) => x.name || "" },
+    { key: "phone", editable: false, getText: (x) => phoneOf(x) || "" },
+    { key: "poMonth", editable: false, getText: (x) => x.poMonth || "" },
+    { key: "assigned", editable: false, getText: (x) => x.assignedTo || "" },
+    { key: "totalFee", editable: false, getText: (x) => money(x.totalServiceFee) },
+    { key: "paidAmount", editable: false, getText: (x) => money(getTotalPaid(x)) },
+    { key: "remaining", editable: false, getText: (x) => money(getRemaining(x)) },
+    {
+      key: "dueAmount",
+      editable: false,
+      getText: (x) => money(dailyRowByCandidateId.get(x.id)?.amount || 0),
+    },
+    {
+      key: "dueDate",
+      editable: false,
+      getText: (x) => fmtDate(dailyRowByCandidateId.get(x.id)?.date || ""),
+    },
+    {
+      key: "daysOverdue",
+      editable: false,
+      getText: (x) => String(dailyRowByCandidateId.get(x.id)?.days || ""),
+    },
+    {
+      key: "lastContact",
+      editable: true,
+      getText: (x) => x.lastContactDate || "",
+      applyText: (x, v) => {
+        x.lastContactDate = v;
+      },
+    },
+  ];
+  const sheetColumnsByKey = new Map(sheetColumns.map((c) => [c.key, c]));
+  const orderedSheetColumns = order.map((k) => sheetColumnsByKey.get(k)!);
+
+  const {
+    scrollRef,
+    isCellSelected,
+    cellProps,
+    captureProps,
+    handlePaste,
+    pasteProgress,
+  } = useSheetGrid<Candidate>({
+      rows: gridRows,
+      columns: orderedSheetColumns,
+      allRows: candidates,
+      setAllRows: setCandidates,
+      queueSave,
+      snapshot,
+      toast,
+      createBlankRow: () => normalizeCandidate({ id: newId() }),
+      normalize: normalizeCandidate,
+      overflowNote:
+        "New candidates only show up here once they have Name/P.O/Month and a matching due installment set on Master P.O Sheet.",
+    });
 
   return (
     <div className={shellCls}>
@@ -300,6 +367,8 @@ export function DailyFollowUp({
         title={title}
         subtitle={`${rows.length} candidates prioritized by due date`}
         fullscreen={fullscreen}
+        scrollRef={scrollRef}
+        onPaste={handlePaste}
         actions={
           <FullscreenButton fullscreen={fullscreen} onToggle={toggleFullscreen} />
         }
@@ -307,46 +376,17 @@ export function DailyFollowUp({
         {!fullscreen && (
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <span className="rounded-full border border-border bg-secondary px-2.5 py-1 text-xs text-muted">
-              Showing {pageRows.length} of {rows.length} · Page {page + 1}/{pageCount}
+              {rows.length} rows
             </span>
-            <button
-              type="button"
-              className="rounded border border-border bg-secondary px-3 py-1.5 text-xs disabled:opacity-50"
-              disabled={page <= 0}
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-            >
-              ◀ Prev
-            </button>
-            <button
-              type="button"
-              className="rounded border border-border bg-secondary px-3 py-1.5 text-xs disabled:opacity-50"
-              disabled={page >= pageCount - 1}
-              onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
-            >
-              Next ▶
-            </button>
-            <ResetColumnsButton onReset={resetOrder} />
-            <label className="ml-auto flex items-center gap-1 text-xs text-muted">
-              Rows
-              <select
-                className="rounded border border-border bg-input px-2 py-1 text-xs text-foreground"
-                value={pageSize}
-                onChange={(e) => {
-                  const next = Number(e.target.value) as (typeof PAGE_SIZE_OPTIONS)[number];
-                  setPageSize(next);
-                  setPage(0);
-                }}
-              >
-                {PAGE_SIZE_OPTIONS.map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <ResetColumnsButton
+              onReset={() => {
+                resetOrder();
+                resetWidths();
+              }}
+            />
           </div>
         )}
-        <table className="data-table w-full min-w-[1100px] text-sm">
+        <table className="data-table data-table-resizable sheet-selectable w-full min-w-[1100px] text-sm">
           <thead>
             <tr>
               <th>
@@ -361,6 +401,7 @@ export function DailyFollowUp({
                   <th
                     key={col.key}
                     className={hp.className}
+                    style={colStyle(col.key)}
                     onDragOver={hp.onDragOver}
                     onDrop={hp.onDrop}
                   >
@@ -372,6 +413,7 @@ export function DailyFollowUp({
                       ⠿
                     </span>
                     {col.label}
+                    <ColumnResizeHandle {...resizeHandleProps(col.key)} />
                   </th>
                 );
               })}
@@ -379,7 +421,7 @@ export function DailyFollowUp({
             </tr>
           </thead>
           <tbody>
-            {(fullscreen ? rows : pageRows).map((r) => {
+            {rows.map((r, rowIdx) => {
               const c = r.candidate;
               const id = String(c.id);
               return (
@@ -391,18 +433,21 @@ export function DailyFollowUp({
                       onChange={(e) => toggleOne(id, e.target.checked)}
                     />
                   </td>
-                  {orderedColumns.map((col) => (
-                    <td
-                      key={col.key}
-                      className={
-                        typeof col.className === "function"
-                          ? col.className(r)
-                          : col.className
-                      }
-                    >
-                      {col.render(r)}
-                    </td>
-                  ))}
+                  {orderedColumns.map((col, colIdx) => {
+                    const cls =
+                      typeof col.className === "function"
+                        ? col.className(r)
+                        : col.className;
+                    return (
+                      <td
+                        key={col.key}
+                        {...cellProps(rowIdx, colIdx)}
+                        className={`${cls || ""} ${isCellSelected(rowIdx, colIdx) ? "cell-selected" : ""}`}
+                      >
+                        {col.render(r)}
+                      </td>
+                    );
+                  })}
                   <td>
                     <div className="flex flex-wrap gap-1">
                       <button
@@ -447,6 +492,8 @@ export function DailyFollowUp({
           </tbody>
         </table>
       </TableShell>
+      <SheetCaptureField {...captureProps} />
+      <PasteProgressOverlay pasteProgress={pasteProgress} />
     </div>
   );
 }

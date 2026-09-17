@@ -8,11 +8,9 @@ import {
   EmptyTableRow,
   FullscreenButton,
   FullscreenExitFab,
-  PaginationBar,
   RemarksCell,
   StatCard,
   useFullscreen,
-  usePagination,
 } from "../shared";
 import {
   money,
@@ -34,8 +32,6 @@ export function Incentive() {
   end.setHours(23, 59, 59, 999);
 
   const rows = incentiveRows(filtered(), start, end);
-  const { page, pageSize, pageCount, pageItems, setPage, setPageSize } =
-    usePagination(rows, 50);
   const totalPayments = rows.reduce((s, r) => s + r.amount, 0);
   const totalIncentive = rows.reduce((sum, row) => sum + row.incentive, 0);
 
@@ -43,7 +39,6 @@ export function Incentive() {
     updateSettings({ incentiveFrom: fromVal, incentiveTo: toVal });
   };
   const { fullscreen, toggleFullscreen, shellCls } = useFullscreen();
-  const displayRows = fullscreen ? rows : pageItems;
 
   return (
     <div className={shellCls}>
@@ -130,16 +125,6 @@ export function Incentive() {
         actions={
           <FullscreenButton fullscreen={fullscreen} onToggle={toggleFullscreen} />
         }
-        toolbar={
-          <PaginationBar
-            total={rows.length}
-            page={page}
-            pageSize={pageSize}
-            pageCount={pageCount}
-            onPageChange={setPage}
-            onPageSizeChange={setPageSize}
-          />
-        }
       >
         <CrmTable>
           <thead>
@@ -155,11 +140,10 @@ export function Incentive() {
             </tr>
           </thead>
           <tbody>
-            {displayRows.length ? (
-              displayRows.map((r, i) => {
-                const globalIdx = fullscreen ? i : page * pageSize + i;
+            {rows.length ? (
+              rows.map((r, i) => {
                 const priorRunning = rows
-                  .slice(0, globalIdx)
+                  .slice(0, i)
                   .reduce(
                     (sum, row) =>
                       row.assignedTo === r.assignedTo

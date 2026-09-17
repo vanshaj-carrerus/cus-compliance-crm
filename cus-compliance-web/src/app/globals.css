@@ -206,6 +206,32 @@ body {
 .excel-grid .col-head-selectable {
   cursor: pointer;
 }
+/* thead th is already position:sticky (below), which is a positioned
+   ancestor too, so it anchors .col-resize-handle without needing relative. */
+.excel-grid .col-head-selectable,
+.data-table-resizable th {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Drag handle on the right edge of a header cell to resize its column.
+   Works in both .excel-grid and .data-table since their th are already
+   position:sticky, which serves as the positioned ancestor this anchors to. */
+.col-resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 5;
+  touch-action: none;
+}
+.col-resize-handle:hover,
+.col-resize-handle:active {
+  background: var(--primary);
+  opacity: 0.5;
+}
 .excel-grid .row-head-selectable:hover,
 .excel-grid .col-head-selectable:hover {
   background-color: rgba(21, 153, 154, 0.14) !important;
@@ -237,6 +263,15 @@ body {
 }
 .excel-grid .calc-cell {
   font-weight: 700;
+}
+/* .excel-grid .sheet-cell sets its own `color`, which otherwise beats the
+   single-class .success-text/.danger-text (higher specificity), so the
+   Paid/Remaining columns need it reasserted here. */
+.excel-grid .sheet-cell.success-text {
+  color: var(--success);
+}
+.excel-grid .sheet-cell.danger-text {
+  color: var(--danger);
 }
 .excel-grid .remarks-editor {
   min-width: 180px;
@@ -717,6 +752,23 @@ body {
   font-size: 13px;
   color: var(--foreground);
 }
+/* Header cell widths (set inline via useColumnWidths) are only a hint under
+   the default auto layout - fixed layout makes them authoritative. Applied
+   only to tables that opt into column resizing (see CrmTable `resizable`),
+   so pages without resize keep their normal content-driven column widths. */
+.data-table-resizable {
+  table-layout: fixed;
+}
+/* Sheet-style click/drag cell selection (see useSheetGrid) - user-select:none
+   so dragging across cells to build a range doesn't also select the page's
+   text underneath, matching .excel-grid's sheet on Master P.O Sheet. */
+.data-table.sheet-selectable {
+  user-select: none;
+}
+.data-table td.cell-selected {
+  background-color: rgba(21, 153, 154, 0.14) !important;
+  box-shadow: inset 0 0 0 1.5px var(--primary);
+}
 .data-table th {
   position: sticky;
   top: 0;
@@ -731,11 +783,17 @@ body {
   background: var(--freeze-bg);
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
+  box-sizing: border-box;
 }
 .data-table td {
   padding: 11px 14px;
   vertical-align: top;
   border-bottom: 1px solid var(--border);
+  box-sizing: border-box;
+}
+.data-table-resizable td {
+  overflow: hidden;
+  word-break: break-word;
 }
 .data-table tbody tr:hover {
   background: rgba(21, 153, 154, 0.05);

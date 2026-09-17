@@ -14,10 +14,10 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "CareerUS Compliance CRM",
-  description: "CareerUS Solutions Compliance CRM v3.30 — MongoDB powered",
+  description: "CareerUS Solutions Compliance CRM",
   icons: {
     icon: [
-      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.png", sizes: "any" },
       { url: "/logo.png", type: "image/png", sizes: "128x128" },
     ],
     apple: [{ url: "/logo.png", sizes: "128x128", type: "image/png" }],

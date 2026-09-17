@@ -281,7 +281,7 @@ export function CandidateModal() {
                   value={form.status}
                   onChange={(e) => setValue("status", e.target.value)}
                 >
-                  <option value="">-</option>
+                  <option value="">Active</option>
                   {DEFAULT_STATUSES.map((s) => (
                     <option key={s}>{s}</option>
                   ))}
