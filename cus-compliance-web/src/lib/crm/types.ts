@@ -1,4 +1,4 @@
-export type Assignee = "Yatin" | "Jayraj";
+export type Assignee = string;
 
 export type ContactMethod =
   | "Call"

@@ -20,7 +20,7 @@ import {
 type FormState = {
   name: string;
   phoneNumber: string;
-  assignedTo: "Yatin" | "Jayraj";
+  assignedTo: string;
   floor: string;
   annualPackage: string;
   serviceFeePercent: string;
@@ -61,7 +61,7 @@ function createEmptyForm(): FormState {
   return {
     name: "",
     phoneNumber: "",
-    assignedTo: "Yatin",
+    assignedTo: "",
     floor: "",
     annualPackage: "",
     serviceFeePercent: "",
@@ -140,6 +140,7 @@ export function CandidateModal() {
     editingId,
     candidates,
     saveCandidateForm,
+    assignableUsers,
   } = useCrm();
 
   const [form, setForm] = useState<FormState>(createEmptyForm());
@@ -266,12 +267,18 @@ export function CandidateModal() {
                 <select
                   className={inputCls}
                   value={form.assignedTo}
-                  onChange={(e) =>
-                    setValue("assignedTo", e.target.value as "Yatin" | "Jayraj")
-                  }
+                  onChange={(e) => setValue("assignedTo", e.target.value)}
                 >
-                  <option>Yatin</option>
-                  <option>Jayraj</option>
+                  <option value="">Select…</option>
+                  {[
+                    ...new Set(
+                      form.assignedTo
+                        ? [...assignableUsers, form.assignedTo]
+                        : assignableUsers
+                    ),
+                  ].map((name) => (
+                    <option key={name}>{name}</option>
+                  ))}
                 </select>
               </Field>
 

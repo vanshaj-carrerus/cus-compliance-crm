@@ -151,6 +151,7 @@ export function MasterSheet() {
     setBulkSelected,
     smartFilter,
     setSmartFilter,
+    assignableUsers,
     getRemaining: _gr,
   } = useCrm() as ReturnType<typeof useCrm> & {
     getRemaining?: typeof getRemaining;
@@ -932,8 +933,13 @@ export function MasterSheet() {
             onChange={(e) => updateMasterField(c.id, "assignedTo", e.target.value)}
           >
             <option value="">-</option>
-            <option>Yatin</option>
-            <option>Jayraj</option>
+            {[
+              ...new Set(
+                c.assignedTo ? [...assignableUsers, c.assignedTo] : assignableUsers
+              ),
+            ].map((name) => (
+              <option key={name}>{name}</option>
+            ))}
           </select>
         </td>
       );
@@ -1398,6 +1404,7 @@ function BulkBar({ list }: { list: Candidate[] }) {
     snapshot,
     queueSave,
     toast,
+    assignableUsers,
     normalizeCandidate: _n,
   } = useCrm() as ReturnType<typeof useCrm> & {
     normalizeCandidate?: typeof import("@/lib/crm").normalizeCandidate;
@@ -1472,15 +1479,16 @@ function BulkBar({ list }: { list: Candidate[] }) {
           if (!e.target.value) return;
           apply((c) => ({
             ...c,
-            assignedTo: e.target.value as "Yatin" | "Jayraj",
+            assignedTo: e.target.value,
           }));
           e.target.value = "";
           toast("Bulk update completed", "success");
         }}
       >
         <option value="">Change Assigned</option>
-        <option>Yatin</option>
-        <option>Jayraj</option>
+        {assignableUsers.map((name) => (
+          <option key={name}>{name}</option>
+        ))}
       </select>
       <button
         type="button"

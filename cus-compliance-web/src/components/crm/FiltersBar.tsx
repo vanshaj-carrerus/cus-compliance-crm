@@ -5,7 +5,13 @@ import { useCrm } from "./CrmProvider";
 import { DEFAULT_STATUSES } from "@/lib/crm/types";
 
 export function FiltersBar({ children }: { children?: ReactNode }) {
-  const { candidates, activeFilters, setActiveFilters } = useCrm();
+  const { candidates, activeFilters, setActiveFilters, assignableUsers } = useCrm();
+  const assignees = [
+    ...new Set([
+      ...assignableUsers,
+      ...candidates.map((c) => c.assignedTo).filter(Boolean),
+    ]),
+  ].sort();
   const floors = [...new Set(candidates.map((c) => c.floor).filter(Boolean))].sort();
   const pos = [...new Set(candidates.map((c) => c.po).filter(Boolean))].sort();
   const months = [
@@ -34,8 +40,9 @@ export function FiltersBar({ children }: { children?: ReactNode }) {
           onChange={(e) => set("assignedTo", e.target.value)}
         >
           <option value="">All</option>
-          <option>Yatin</option>
-          <option>Jayraj</option>
+          {assignees.map((v) => (
+            <option key={v}>{v}</option>
+          ))}
         </select>
       </label>
       <label className="filter-group">

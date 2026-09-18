@@ -52,6 +52,7 @@ interface CrmContextValue {
   activeFilters: ActiveFilters;
   saveState: SaveState;
   toasts: ToastItem[];
+  assignableUsers: string[];
   sidebarOpen: boolean;
   sidebarCollapsed: boolean;
   bulkSelected: Set<string>;
@@ -161,6 +162,7 @@ export function CrmProvider({
   const [activeFilters, setActiveFilters] = useState<ActiveFilters>({});
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [assignableUsers, setAssignableUsers] = useState<string[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
@@ -359,6 +361,23 @@ export function CrmProvider({
           );
           setReady(true);
         }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/crm/assignees");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setAssignableUsers(data.assignees || []);
+      } catch (e) {
+        console.error(e);
       }
     })();
     return () => {
@@ -838,6 +857,7 @@ export function CrmProvider({
     activeFilters,
     saveState,
     toasts,
+    assignableUsers,
     sidebarOpen,
     sidebarCollapsed,
     bulkSelected,

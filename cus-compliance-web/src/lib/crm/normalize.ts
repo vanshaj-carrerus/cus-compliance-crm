@@ -74,9 +74,8 @@ export function normalizeCandidate(c: Partial<Candidate> = {}): Candidate {
   const rawTotal = Number(c.totalServiceFee) || 0;
   const totalServiceFee = round(annual && pct ? (annual * pct) / 100 : rawTotal);
 
-  let assignedTo = String(c.assignedTo || "Yatin");
+  let assignedTo = String(c.assignedTo || "").trim();
   if (assignedTo === "Jayraj bhai") assignedTo = "Jayraj";
-  if (assignedTo !== "Jayraj") assignedTo = "Yatin";
 
   const phoneNumber =
     String(
@@ -110,7 +109,7 @@ export function normalizeCandidate(c: Partial<Candidate> = {}): Candidate {
     id: typeof c.id === "number" ? c.id : Number(c.id) || newId(),
     name: String(c.name || ""),
     phoneNumber,
-    assignedTo: assignedTo as "Yatin" | "Jayraj",
+    assignedTo,
     floor: String(c.floor || ""),
     annualPackage: annual,
     serviceFeePercent: pct,
