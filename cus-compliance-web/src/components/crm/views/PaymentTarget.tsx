@@ -79,6 +79,7 @@ export function PaymentTarget() {
     { key: "assignedTo", label: "Assigned", render: (r) => r.x.assignedTo },
     { key: "candidate", label: "Candidate", render: (r) => <strong>{r.x.name}</strong> },
     { key: "floor", label: "Floor", render: (r) => r.x.floor || "-" },
+    { key: "phoneNumber", label: "Phone Number", render: (r) => r.x.phoneNumber || "-" },
     { key: "po", label: "P.O", render: (r) => r.x.po || "-" },
     {
       key: "installmentDue",
@@ -174,6 +175,7 @@ export function PaymentTarget() {
     { key: "assignedTo", editable: false, getText: (x) => x.assignedTo || "" },
     { key: "candidate", editable: false, getText: (x) => x.name || "" },
     { key: "floor", editable: false, getText: (x) => x.floor || "" },
+    { key: "phoneNumber", editable: false, getText: (x) => x.phoneNumber || "" },
     { key: "po", editable: false, getText: (x) => x.po || "" },
     {
       key: "installmentDue",

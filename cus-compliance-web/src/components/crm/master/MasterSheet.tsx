@@ -88,6 +88,12 @@ const DATA_COLS: DataCol[] = [
   },
   { key: "startDate", label: "Start Date", editable: true, getText: (c) => c.startDate || "" },
   { key: "floor", label: "Floor", editable: true, getText: (c) => c.floor || "" },
+  {
+    key: "phoneNumber",
+    label: "Phone Number",
+    editable: true,
+    getText: (c) => c.phoneNumber || "",
+  },
   { key: "assignedTo", label: "Terms", editable: true, getText: (c) => c.assignedTo || "" },
   { key: "po", label: "P.O.", editable: true, getText: (c) => c.po || "" },
   { key: "status", label: "Status", editable: true, getText: (c) => c.status || "" },
@@ -114,6 +120,7 @@ const DATA_COL_DEFAULT_WIDTHS: Record<string, number> = {
   name: 220,
   poMonth: 110,
   floor: 90,
+  phoneNumber: 130,
   assignedTo: 110,
   status: 120,
   paid: 110,
@@ -1008,6 +1015,21 @@ export function MasterSheet() {
         </td>
       );
     }
+    if (col.key === "phoneNumber") {
+      return (
+        <td key={col.key} {...cellProps} className={selectedCls}>
+          <input
+            className="sheet-cell"
+            defaultValue={c.phoneNumber || ""}
+            key={c.id + "-phoneNumber-" + (c.phoneNumber || "")}
+            onBlur={(e) =>
+              e.target.value !== (c.phoneNumber || "") &&
+              updateMasterField(c.id, "phoneNumber", e.target.value)
+            }
+          />
+        </td>
+      );
+    }
     // Installment columns are keyed "inst0".."inst8"
     const idx = Number(col.key.slice(4));
     const st = instStatus(c.installments[idx]);
@@ -1124,10 +1146,10 @@ export function MasterSheet() {
                 paste - just like pasting into a Google Sheet. Click or drag
                 across row numbers / column headers to select whole
                 rows/columns. Click directly into any cell (Month, Name,
-                Offer Amount, Percentage, Total, Start Date, Floor, Terms,
-                P.O. or an installment) to type or edit it right there - no
-                need to open ✏️ Edit unless you want phone, status, remarks
-                or other contact fields. Data saves to
+                Offer Amount, Percentage, Total, Start Date, Floor, Phone
+                Number, Terms, P.O. or an installment) to type or edit it
+                right there - no need to open ✏️ Edit unless you want status,
+                remarks or other contact fields. Data saves to
                 MongoDB.
               </div>
             </div>

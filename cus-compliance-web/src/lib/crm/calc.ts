@@ -82,13 +82,23 @@ export function getComplianceStatus(c: Candidate): string {
 }
 
 export function getDueForMonth(c: Candidate, d: Date): number {
+  // Carry-forward: an unpaid installment stays "due" for every month from
+  // its own date onward until it's paid, not just the exact month it was
+  // scheduled for - otherwise a missed installment silently disappears
+  // instead of showing up as outstanding in later months.
+  const endOfMonth = new Date(
+    d.getFullYear(),
+    d.getMonth() + 1,
+    0,
+    23,
+    59,
+    59,
+    999
+  );
   return c.installments.reduce((s, i) => {
     if (!i.paid && i.date) {
       const x = new Date(i.date + "T00:00:00");
-      if (
-        x.getMonth() === d.getMonth() &&
-        x.getFullYear() === d.getFullYear()
-      ) {
+      if (!isNaN(x.getTime()) && x.getTime() <= endOfMonth.getTime()) {
         s += Number(i.amount) || 0;
       }
     }
