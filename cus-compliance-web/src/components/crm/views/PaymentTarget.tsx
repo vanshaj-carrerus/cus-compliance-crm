@@ -29,6 +29,8 @@ import {
   getNextDueDate,
   getComplianceStatus,
   getDueForMonth,
+  getDefaultExpectedDate,
+  applyPaidAmount,
   priority,
   statusExcluded,
   fmtDate,
@@ -51,11 +53,13 @@ export function PaymentTarget() {
     settings,
     updateSettings,
     updateMasterField,
+    setPaidAmount,
     candidates,
     setCandidates,
     queueSave,
     snapshot,
     toast,
+    showAddModal,
   } = useCrm();
   const d = new Date(settings.targetMonth);
   const list = filtered().filter(
@@ -76,16 +80,118 @@ export function PaymentTarget() {
     className?: string | ((r: Row) => string);
     render: (r: Row) => React.ReactNode;
   }[] = [
-    { key: "assignedTo", label: "Assigned", render: (r) => r.x.assignedTo },
-    { key: "candidate", label: "Candidate", render: (r) => <strong>{r.x.name}</strong> },
-    { key: "floor", label: "Floor", render: (r) => r.x.floor || "-" },
-    { key: "phoneNumber", label: "Phone Number", render: (r) => r.x.phoneNumber || "-" },
-    { key: "po", label: "P.O", render: (r) => r.x.po || "-" },
+    {
+      key: "assignedTo",
+      label: "Assigned",
+      render: (r) => (
+        <select
+          className="sheet-cell"
+          value={r.x.assignedTo || ""}
+          onChange={(e) => updateMasterField(r.x.id, "assignedTo", e.target.value)}
+        >
+          <option value="">-</option>
+          <option>Yatin</option>
+          <option>Jayraj</option>
+        </select>
+      ),
+    },
+    {
+      key: "candidate",
+      label: "Candidate",
+      render: (r) => (
+        <input
+          className="sheet-cell name-priority"
+          defaultValue={r.x.name || ""}
+          key={r.x.id + "-name-" + (r.x.name || "")}
+          onBlur={(e) =>
+            e.target.value !== (r.x.name || "") &&
+            updateMasterField(r.x.id, "name", e.target.value)
+          }
+        />
+      ),
+    },
+    {
+      key: "phoneNumber",
+      label: "Phone Number",
+      render: (r) => (
+        <input
+          className="sheet-cell"
+          defaultValue={r.x.phoneNumber || ""}
+          key={r.x.id + "-phoneNumber-" + (r.x.phoneNumber || "")}
+          onBlur={(e) =>
+            e.target.value !== (r.x.phoneNumber || "") &&
+            updateMasterField(r.x.id, "phoneNumber", e.target.value)
+          }
+        />
+      ),
+    },
     {
       key: "installmentDue",
-      label: "Installment Due",
+      label: "Installment Amount",
       className: "accent-text",
-      render: (r) => (r.due ? money(r.due) : "-"),
+      render: (r) => (
+        <div
+          className="sheet-cell calc-cell accent-text"
+          title="Sum of unpaid installments due through the selected month - not editable, edit installments on Master P.O Sheet instead"
+        >
+          {r.due ? money(r.due) : "-"}
+        </div>
+      ),
+    },
+    {
+      key: "expectedDate",
+      label: "Expected Date",
+      render: (r) => (
+        <input
+          type="date"
+          className="target-input date sheet-cell"
+          value={r.x.expectedDate || getDefaultExpectedDate(r.x)}
+          title="Defaults to one month after the last payment - edit to override"
+          onChange={(e) => updateMasterField(r.x.id, "expectedDate", e.target.value)}
+        />
+      ),
+    },
+    {
+      key: "monthRemarks",
+      label: "Remarks",
+      render: (r) => (
+        <input
+          className="target-input remarks sheet-cell"
+          value={r.x.monthRemarks || ""}
+          placeholder="Monthly remarks"
+          onChange={(e) => updateMasterField(r.x.id, "monthRemarks", e.target.value)}
+        />
+      ),
+    },
+    {
+      key: "floor",
+      label: "Floor",
+      render: (r) => (
+        <input
+          className="sheet-cell"
+          defaultValue={r.x.floor || ""}
+          key={r.x.id + "-floor-" + (r.x.floor || "")}
+          onBlur={(e) =>
+            e.target.value !== (r.x.floor || "") &&
+            updateMasterField(r.x.id, "floor", e.target.value)
+          }
+        />
+      ),
+    },
+    {
+      key: "po",
+      label: "P.O",
+      render: (r) => (
+        <input
+          className="sheet-cell"
+          defaultValue={r.x.po || ""}
+          key={r.x.id + "-po-" + (r.x.po || "")}
+          onBlur={(e) =>
+            e.target.value !== (r.x.po || "") &&
+            updateMasterField(r.x.id, "po", e.target.value)
+          }
+        />
+      ),
     },
     {
       key: "expectedAmount",
@@ -102,61 +208,88 @@ export function PaymentTarget() {
       ),
     },
     {
-      key: "expectedDate",
-      label: "Expected Date",
-      render: (r) => (
-        <input
-          type="date"
-          className="target-input date sheet-cell"
-          value={r.x.expectedDate || ""}
-          onChange={(e) => updateMasterField(r.x.id, "expectedDate", e.target.value)}
-        />
-      ),
-    },
-    {
-      key: "monthRemarks",
-      label: "Month Remarks",
-      render: (r) => (
-        <input
-          className="target-input remarks sheet-cell"
-          value={r.x.monthRemarks || ""}
-          placeholder="Monthly remarks"
-          onChange={(e) => updateMasterField(r.x.id, "monthRemarks", e.target.value)}
-        />
-      ),
-    },
-    {
       key: "paid",
       label: "Paid",
       className: "success-text",
-      render: (r) => money(getTotalPaid(r.x)),
+      render: (r) => (
+        <input
+          className="sheet-cell success-text"
+          defaultValue={String(getTotalPaid(r.x))}
+          key={r.x.id + "-paid-" + getTotalPaid(r.x)}
+          title="Editing this marks/unmarks installments (earliest first) until their paid sum matches what you type"
+          onBlur={(e) => {
+            const parsed = Number(String(e.target.value).replace(/[$,%\s,]/g, "")) || 0;
+            if (parsed === getTotalPaid(r.x)) return;
+            setPaidAmount(r.x.id, parsed);
+          }}
+        />
+      ),
     },
     {
       key: "remaining",
       label: "Remaining",
       className: "danger-text",
-      render: (r) => money(getRemaining(r.x)),
+      render: (r) => (
+        <input
+          className="sheet-cell danger-text"
+          defaultValue={String(getRemaining(r.x))}
+          key={r.x.id + "-remaining-" + getRemaining(r.x)}
+          title="Editing this backs into a new Total Fee (Total = Paid + what you type here)"
+          onBlur={(e) => {
+            const parsed = Number(String(e.target.value).replace(/[$,%\s,]/g, "")) || 0;
+            if (parsed === getRemaining(r.x)) return;
+            updateMasterField(
+              r.x.id,
+              "totalServiceFee",
+              String(getTotalPaid(r.x) + parsed)
+            );
+          }}
+        />
+      ),
     },
     {
       key: "lastPayment",
       label: "Last Payment",
-      render: (r) => fmtDate(getLastPaymentDate(r.x)),
+      render: (r) => (
+        <div className="sheet-cell calc-cell" title="Derived from paid installments">
+          {fmtDate(getLastPaymentDate(r.x))}
+        </div>
+      ),
     },
     {
       key: "nextPayment",
       label: "Next Payment",
-      render: (r) => fmtDate(getNextDueDate(r.x)),
+      render: (r) => (
+        <div className="sheet-cell calc-cell" title="Derived from unpaid installment dates">
+          {fmtDate(getNextDueDate(r.x))}
+        </div>
+      ),
     },
-    { key: "status", label: "Status", render: (r) => <Badge label={getComplianceStatus(r.x)} /> },
+    {
+      key: "status",
+      label: "Status",
+      render: (r) => (
+        <div title="Derived from Remaining and Next Due - not directly editable">
+          <Badge label={getComplianceStatus(r.x)} />
+        </div>
+      ),
+    },
     {
       key: "priority",
       label: "Priority",
       className: (r) => priorityClass(r.pri),
-      render: (r) => r.pri,
+      render: (r) => (
+        <div className="sheet-cell calc-cell" title="Derived from the next due date">
+          {r.pri}
+        </div>
+      ),
     },
   ];
   const { order, gripProps, headerProps, resetOrder } = useColumnOrder(
-    "paymentTargetColumnOrder",
+    // Bumped key so the new default column order (Assigned/Candidate/Phone/
+    // Installment Amount/Expected Date/Remarks first) actually takes effect
+    // for anyone who already had the old order saved locally.
+    "paymentTargetColumnOrderV2",
     columns.map((c) => c.key)
   );
   const { colStyle, resizeHandleProps, resetWidths } = useColumnWidths(
@@ -167,16 +300,52 @@ export function PaymentTarget() {
   const columnsByKey = new Map(columns.map((c) => [c.key, c]));
   const orderedColumns = order.map((k) => columnsByKey.get(k)!);
 
-  // Same select/copy/paste workflow as Master P.O Sheet (see useSheetGrid),
-  // scoped to this page's three editable fields - the rest of the columns
-  // are computed/read-only so paste just skips them, same as Master does
-  // for its own non-editable columns.
+  // Same select/copy/paste workflow as Master P.O Sheet (see useSheetGrid).
+  // Every stored field is editable/pasteable; the derived columns
+  // (Installment Due/Paid/Remaining/Last Payment/Next Payment/Status/
+  // Priority) are read-only so paste skips them, same as Master does for
+  // its own computed columns.
   const sheetColumns: SheetColumn<Candidate>[] = [
-    { key: "assignedTo", editable: false, getText: (x) => x.assignedTo || "" },
-    { key: "candidate", editable: false, getText: (x) => x.name || "" },
-    { key: "floor", editable: false, getText: (x) => x.floor || "" },
-    { key: "phoneNumber", editable: false, getText: (x) => x.phoneNumber || "" },
-    { key: "po", editable: false, getText: (x) => x.po || "" },
+    {
+      key: "assignedTo",
+      editable: true,
+      getText: (x) => x.assignedTo || "",
+      applyText: (x, v) => {
+        x.assignedTo = v as Candidate["assignedTo"];
+      },
+    },
+    {
+      key: "candidate",
+      editable: true,
+      getText: (x) => x.name || "",
+      applyText: (x, v) => {
+        x.name = v;
+      },
+    },
+    {
+      key: "floor",
+      editable: true,
+      getText: (x) => x.floor || "",
+      applyText: (x, v) => {
+        x.floor = v;
+      },
+    },
+    {
+      key: "phoneNumber",
+      editable: true,
+      getText: (x) => x.phoneNumber || "",
+      applyText: (x, v) => {
+        x.phoneNumber = v;
+      },
+    },
+    {
+      key: "po",
+      editable: true,
+      getText: (x) => x.po || "",
+      applyText: (x, v) => {
+        x.po = v;
+      },
+    },
     {
       key: "installmentDue",
       editable: false,
@@ -196,7 +365,7 @@ export function PaymentTarget() {
     {
       key: "expectedDate",
       editable: true,
-      getText: (x) => x.expectedDate || "",
+      getText: (x) => x.expectedDate || getDefaultExpectedDate(x),
       applyText: (x, v) => {
         x.expectedDate = v;
       },
@@ -209,8 +378,26 @@ export function PaymentTarget() {
         x.monthRemarks = v;
       },
     },
-    { key: "paid", editable: false, getText: (x) => money(getTotalPaid(x)) },
-    { key: "remaining", editable: false, getText: (x) => money(getRemaining(x)) },
+    {
+      key: "paid",
+      editable: true,
+      getText: (x) => String(getTotalPaid(x)),
+      applyText: (x, v) => {
+        const parsed = Number(String(v).replace(/[$,%\s,]/g, "")) || 0;
+        applyPaidAmount(x, parsed);
+      },
+    },
+    {
+      key: "remaining",
+      editable: true,
+      getText: (x) => String(getRemaining(x)),
+      applyText: (x, v) => {
+        const parsed = Number(String(v).replace(/[$,%\s,]/g, "")) || 0;
+        x.totalServiceFee = getTotalPaid(x) + parsed;
+        x.annualPackage = 0;
+        x.serviceFeePercent = 0;
+      },
+    },
     { key: "lastPayment", editable: false, getText: (x) => fmtDate(getLastPaymentDate(x)) },
     { key: "nextPayment", editable: false, getText: (x) => fmtDate(getNextDueDate(x)) },
     { key: "status", editable: false, getText: (x) => getComplianceStatus(x) },
@@ -264,6 +451,14 @@ export function PaymentTarget() {
         }
         toolbar={
           <TableCountBar total={list.length}>
+            <button
+              type="button"
+              title="Manually add a new candidate here"
+              className="rounded border border-border bg-secondary px-3 py-1.5 text-xs"
+              onClick={showAddModal}
+            >
+              ➕ Add Candidate
+            </button>
             <ResetColumnsButton
               onReset={() => {
                 resetOrder();

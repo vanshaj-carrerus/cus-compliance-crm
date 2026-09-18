@@ -21,12 +21,12 @@ import {
   type SheetColumn,
 } from "../shared";
 import {
-  money,
   getTotalPaid,
   getRemaining,
   getLastPaymentDate,
   getNextDueDate,
   getComplianceStatus,
+  applyPaidAmount,
   statusExcluded,
   fmtDate,
   normalizeCandidate,
@@ -34,59 +34,187 @@ import {
 } from "@/lib/crm";
 import type { Candidate } from "@/lib/crm/types";
 
-const COLUMNS: {
-  key: string;
-  label: string;
-  className?: string;
-  render: (x: Candidate, onEditRemarks: (id: number, v: string) => void) => React.ReactNode;
-}[] = [
-  { key: "assignedTo", label: "Assigned", render: (x) => x.assignedTo },
-  { key: "candidate", label: "Candidate", render: (x) => <strong>{x.name}</strong> },
-  { key: "floor", label: "Floor", render: (x) => x.floor || "-" },
-  { key: "po", label: "P.O", render: (x) => x.po || "-" },
-  {
-    key: "totalFee",
-    label: "Total Fee",
-    className: "accent-text",
-    render: (x) => money(x.totalServiceFee),
-  },
-  {
-    key: "paid",
-    label: "Paid",
-    className: "success-text",
-    render: (x) => money(getTotalPaid(x)),
-  },
-  {
-    key: "remaining",
-    label: "Remaining",
-    className: "danger-text",
-    render: (x) => money(getRemaining(x)),
-  },
-  { key: "lastPay", label: "Last Pay", render: (x) => fmtDate(getLastPaymentDate(x)) },
-  { key: "nextDue", label: "Next Due", render: (x) => fmtDate(getNextDueDate(x)) },
-  { key: "status", label: "Status", render: (x) => <Badge label={getComplianceStatus(x)} /> },
-  {
-    key: "remarks",
-    label: "Remarks",
-    render: (x, onEditRemarks) => (
-      <input
-        className="target-input remarks sheet-cell"
-        value={x.remarks || ""}
-        placeholder="Remarks"
-        onChange={(e) => onEditRemarks(x.id, e.target.value)}
-      />
-    ),
-  },
-];
-
 export function Compliance() {
-  const { filtered, updateMasterField, candidates, setCandidates, queueSave, snapshot, toast } =
-    useCrm();
+  const {
+    filtered,
+    updateMasterField,
+    setPaidAmount,
+    candidates,
+    setCandidates,
+    queueSave,
+    snapshot,
+    toast,
+  } = useCrm();
   const list = filtered().filter(
     (x) => !statusExcluded(x.status) && getRemaining(x) > 0
   );
   const { fullscreen, toggleFullscreen, shellCls } = useFullscreen();
   const rows = list;
+
+  // Every stored field (Assigned, Candidate, Floor, P.O, Total Fee, Remarks)
+  // is directly editable here, same as Master P.O Sheet. Paid/Remaining/Last
+  // Pay/Next Due/Status are derived from the installment schedule, not
+  // stored values, so they stay read-only - edit installments on Master to
+  // change them.
+  const COLUMNS: {
+    key: string;
+    label: string;
+    className?: string;
+    render: (x: Candidate) => React.ReactNode;
+  }[] = [
+    {
+      key: "assignedTo",
+      label: "Assigned",
+      render: (x) => (
+        <select
+          className="sheet-cell"
+          value={x.assignedTo || ""}
+          onChange={(e) => updateMasterField(x.id, "assignedTo", e.target.value)}
+        >
+          <option value="">-</option>
+          <option>Yatin</option>
+          <option>Jayraj</option>
+        </select>
+      ),
+    },
+    {
+      key: "candidate",
+      label: "Candidate",
+      render: (x) => (
+        <input
+          className="sheet-cell name-priority"
+          defaultValue={x.name || ""}
+          key={x.id + "-name-" + (x.name || "")}
+          onBlur={(e) =>
+            e.target.value !== (x.name || "") &&
+            updateMasterField(x.id, "name", e.target.value)
+          }
+        />
+      ),
+    },
+    {
+      key: "floor",
+      label: "Floor",
+      render: (x) => (
+        <input
+          className="sheet-cell"
+          defaultValue={x.floor || ""}
+          key={x.id + "-floor-" + (x.floor || "")}
+          onBlur={(e) =>
+            e.target.value !== (x.floor || "") &&
+            updateMasterField(x.id, "floor", e.target.value)
+          }
+        />
+      ),
+    },
+    {
+      key: "po",
+      label: "P.O",
+      render: (x) => (
+        <input
+          className="sheet-cell"
+          defaultValue={x.po || ""}
+          key={x.id + "-po-" + (x.po || "")}
+          onBlur={(e) =>
+            e.target.value !== (x.po || "") &&
+            updateMasterField(x.id, "po", e.target.value)
+          }
+        />
+      ),
+    },
+    {
+      key: "totalFee",
+      label: "Total Fee",
+      className: "accent-text",
+      render: (x) => (
+        <input
+          className="sheet-cell"
+          defaultValue={x.totalServiceFee ? String(x.totalServiceFee) : ""}
+          key={x.id + "-totalFee-" + (x.totalServiceFee || "")}
+          onBlur={(e) => {
+            if (e.target.value === (x.totalServiceFee ? String(x.totalServiceFee) : "")) return;
+            updateMasterField(x.id, "totalServiceFee", e.target.value);
+          }}
+        />
+      ),
+    },
+    {
+      key: "paid",
+      label: "Paid",
+      className: "success-text",
+      render: (x) => (
+        <input
+          className="sheet-cell success-text"
+          defaultValue={String(getTotalPaid(x))}
+          key={x.id + "-paid-" + getTotalPaid(x)}
+          title="Editing this marks/unmarks installments (earliest first) until their paid sum matches what you type"
+          onBlur={(e) => {
+            const parsed = Number(String(e.target.value).replace(/[$,%\s,]/g, "")) || 0;
+            if (parsed === getTotalPaid(x)) return;
+            setPaidAmount(x.id, parsed);
+          }}
+        />
+      ),
+    },
+    {
+      key: "remaining",
+      label: "Remaining",
+      className: "danger-text",
+      render: (x) => (
+        <input
+          className="sheet-cell danger-text"
+          defaultValue={String(getRemaining(x))}
+          key={x.id + "-remaining-" + getRemaining(x)}
+          title="Editing this backs into a new Total Fee (Total = Paid + what you type here)"
+          onBlur={(e) => {
+            const parsed = Number(String(e.target.value).replace(/[$,%\s,]/g, "")) || 0;
+            if (parsed === getRemaining(x)) return;
+            updateMasterField(x.id, "totalServiceFee", String(getTotalPaid(x) + parsed));
+          }}
+        />
+      ),
+    },
+    {
+      key: "lastPay",
+      label: "Last Pay",
+      render: (x) => (
+        <div className="sheet-cell calc-cell" title="Derived from paid installments">
+          {fmtDate(getLastPaymentDate(x))}
+        </div>
+      ),
+    },
+    {
+      key: "nextDue",
+      label: "Next Due",
+      render: (x) => (
+        <div className="sheet-cell calc-cell" title="Derived from unpaid installment dates">
+          {fmtDate(getNextDueDate(x))}
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      label: "Status",
+      render: (x) => (
+        <div title="Derived from Remaining and Next Due - not directly editable">
+          <Badge label={getComplianceStatus(x)} />
+        </div>
+      ),
+    },
+    {
+      key: "remarks",
+      label: "Remarks",
+      render: (x) => (
+        <input
+          className="target-input remarks sheet-cell"
+          value={x.remarks || ""}
+          placeholder="Remarks"
+          onChange={(e) => updateMasterField(x.id, "remarks", e.target.value)}
+        />
+      ),
+    },
+  ];
+
   const { order, gripProps, headerProps, resetOrder } = useColumnOrder(
     "complianceColumnOrder",
     COLUMNS.map((c) => c.key)
@@ -98,19 +226,74 @@ export function Compliance() {
   );
   const columnsByKey = new Map(COLUMNS.map((c) => [c.key, c]));
   const orderedColumns = order.map((k) => columnsByKey.get(k)!);
-  const onEditRemarks = (id: number, v: string) => updateMasterField(id, "remarks", v);
 
-  // Same select/copy/paste workflow as Master P.O Sheet (see useSheetGrid) -
-  // Remarks is this page's only editable field, the rest are computed/badge
-  // columns so paste just skips them.
+  // Same select/copy/paste workflow as Master P.O Sheet (see useSheetGrid).
+  // Every stored field is editable/pasteable; the derived columns
+  // (Paid/Remaining/Last Pay/Next Due/Status) are read-only so paste skips
+  // them, same as Master does for its own computed columns.
   const sheetColumns: SheetColumn<Candidate>[] = [
-    { key: "assignedTo", editable: false, getText: (x) => x.assignedTo || "" },
-    { key: "candidate", editable: false, getText: (x) => x.name || "" },
-    { key: "floor", editable: false, getText: (x) => x.floor || "" },
-    { key: "po", editable: false, getText: (x) => x.po || "" },
-    { key: "totalFee", editable: false, getText: (x) => money(x.totalServiceFee) },
-    { key: "paid", editable: false, getText: (x) => money(getTotalPaid(x)) },
-    { key: "remaining", editable: false, getText: (x) => money(getRemaining(x)) },
+    {
+      key: "assignedTo",
+      editable: true,
+      getText: (x) => x.assignedTo || "",
+      applyText: (x, v) => {
+        x.assignedTo = v as Candidate["assignedTo"];
+      },
+    },
+    {
+      key: "candidate",
+      editable: true,
+      getText: (x) => x.name || "",
+      applyText: (x, v) => {
+        x.name = v;
+      },
+    },
+    {
+      key: "floor",
+      editable: true,
+      getText: (x) => x.floor || "",
+      applyText: (x, v) => {
+        x.floor = v;
+      },
+    },
+    {
+      key: "po",
+      editable: true,
+      getText: (x) => x.po || "",
+      applyText: (x, v) => {
+        x.po = v;
+      },
+    },
+    {
+      key: "totalFee",
+      editable: true,
+      getText: (x) => (x.totalServiceFee ? String(x.totalServiceFee) : ""),
+      applyText: (x, v) => {
+        x.totalServiceFee = Number(String(v).replace(/[$,%\s,]/g, "")) || 0;
+        x.annualPackage = 0;
+        x.serviceFeePercent = 0;
+      },
+    },
+    {
+      key: "paid",
+      editable: true,
+      getText: (x) => String(getTotalPaid(x)),
+      applyText: (x, v) => {
+        const parsed = Number(String(v).replace(/[$,%\s,]/g, "")) || 0;
+        applyPaidAmount(x, parsed);
+      },
+    },
+    {
+      key: "remaining",
+      editable: true,
+      getText: (x) => String(getRemaining(x)),
+      applyText: (x, v) => {
+        const parsed = Number(String(v).replace(/[$,%\s,]/g, "")) || 0;
+        x.totalServiceFee = getTotalPaid(x) + parsed;
+        x.annualPackage = 0;
+        x.serviceFeePercent = 0;
+      },
+    },
     { key: "lastPay", editable: false, getText: (x) => fmtDate(getLastPaymentDate(x)) },
     { key: "nextDue", editable: false, getText: (x) => fmtDate(getNextDueDate(x)) },
     { key: "status", editable: false, getText: (x) => getComplianceStatus(x) },
@@ -208,7 +391,7 @@ export function Compliance() {
                       {...cellProps(rowIdx, colIdx)}
                       className={`${col.className || ""} ${isCellSelected(rowIdx, colIdx) ? "cell-selected" : ""}`}
                     >
-                      {col.render(x, onEditRemarks)}
+                      {col.render(x)}
                     </td>
                   ))}
                 </tr>

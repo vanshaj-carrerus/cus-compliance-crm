@@ -25,7 +25,7 @@ import {
   defaultSettings,
   mergeSettings,
 } from "@/lib/crm/normalize";
-import { getRemaining, nextUnpaid } from "@/lib/crm/calc";
+import { getRemaining, nextUnpaid, applyPaidAmount } from "@/lib/crm/calc";
 import { todayIso, addDays } from "@/lib/crm/dates";
 import { filterCandidates } from "@/lib/crm/incentive";
 import { runWorkflows as runWorkflowsFn } from "@/lib/crm/workflows";
@@ -98,6 +98,7 @@ interface CrmContextValue {
   ) => void;
   updateInstallment: (id: number, idx: number, value: string) => void;
   togglePaid: (id: number, idx: number, paid: boolean) => void;
+  setPaidAmount: (id: number, targetAmount: number) => void;
   markContacted: (id: number) => void;
   updateContactField: (id: number, field: string, value: string) => void;
   setBulkSelected: (s: Set<string>) => void;
@@ -687,6 +688,41 @@ export function CrmProvider({
     toast(paid ? "Payment marked paid" : "Payment marked unpaid", "success");
   };
 
+  // Backs the Paid cell on Compliance/Payment Target: typing a new total
+  // there marks/unmarks this candidate's installments (earliest first, same
+  // order as the schedule) until their paid sum matches what was typed,
+  // rather than storing a disconnected number - Paid always stays "sum of
+  // paid installments" everywhere else that reads it.
+  const setPaidAmount = (id: number, targetAmount: number) => {
+    const ci = candidates.findIndex((x) => x.id === id);
+    if (ci < 0) return;
+    snapshot();
+    const c = { ...candidates[ci], installments: [...candidates[ci].installments] };
+    const newlyPaid = applyPaidAmount(c, targetAmount);
+    if (newlyPaid.length) {
+      setHistory([
+        ...history,
+        ...newlyPaid.map(({ idx, amount }) => ({
+          id: newId(),
+          candidateId: id,
+          candidateName: c.name,
+          assignedTo: c.assignedTo,
+          floor: c.floor,
+          date: c.installments[idx].paymentDate || todayIso(),
+          amount,
+          type: "Payment" as const,
+          notes: "Installment " + (idx + 1),
+          timestamp: new Date().toISOString(),
+        })),
+      ]);
+    }
+    const next = [...candidates];
+    next[ci] = normalizeCandidate(c);
+    setCandidates(next);
+    queueSave();
+    toast("Paid amount updated", "success");
+  };
+
   const markContacted = (id: number) => {
     const ci = candidates.findIndex((x) => String(x.id) === String(id));
     if (ci < 0) return;
@@ -844,6 +880,7 @@ export function CrmProvider({
     updateMasterField,
     updateInstallment,
     togglePaid,
+    setPaidAmount,
     markContacted,
     updateContactField,
     setBulkSelected,

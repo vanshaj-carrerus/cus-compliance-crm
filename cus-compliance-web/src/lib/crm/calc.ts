@@ -1,5 +1,5 @@
 import type { Candidate, Installment } from "./types";
-import { validDateString } from "./dates";
+import { validDateString, todayIso } from "./dates";
 
 export function round(n: number): number {
   return Math.round((Number(n) || 0) * 100) / 100;
@@ -46,6 +46,34 @@ export function getRemaining(c: Candidate): number {
   return Math.max(0, (Number(c.totalServiceFee) || 0) - getTotalPaid(c));
 }
 
+// Backs the editable Paid cell on Compliance/Payment Target: rather than
+// storing a disconnected number, typing a new Paid total marks/unmarks this
+// candidate's installments in schedule order until their paid sum matches
+// it, so Paid always stays "sum of paid installments" everywhere it's read.
+// Mutates c.installments in place and returns the installments that were
+// newly marked paid (for callers that want to log payment history).
+export function applyPaidAmount(
+  c: Candidate,
+  targetAmount: number
+): { idx: number; amount: number }[] {
+  const newlyPaid: { idx: number; amount: number }[] = [];
+  let remaining = Math.max(0, targetAmount);
+  c.installments = (c.installments || []).map((inst, idx) => {
+    const amount = Number(inst.amount) || 0;
+    if (amount <= 0) return inst;
+    const shouldBePaid = remaining >= amount;
+    if (shouldBePaid) remaining -= amount;
+    if (shouldBePaid === !!inst.paid) return inst;
+    const updated = { ...inst, paid: shouldBePaid };
+    if (shouldBePaid) {
+      updated.paymentDate = inst.paymentDate || inst.date || todayIso();
+      newlyPaid.push({ idx, amount });
+    }
+    return updated;
+  });
+  return newlyPaid;
+}
+
 export function getLastPaymentDate(c: Candidate): string {
   const installments = c.installments || [];
   for (let idx = installments.length - 1; idx >= 0; idx--) {
@@ -56,6 +84,26 @@ export function getLastPaymentDate(c: Candidate): string {
     }
   }
   return "";
+}
+
+// One calendar month after an ISO date, e.g. "2026-06-19" -> "2026-07-19".
+// Clamps to the last day of the target month when it's shorter (Jan 31 -> Feb 28/29).
+export function addOneMonthIso(dateIso: string): string {
+  if (!dateIso) return "";
+  const d = new Date(dateIso + "T00:00:00");
+  if (isNaN(d.getTime())) return "";
+  const day = d.getDate();
+  d.setMonth(d.getMonth() + 1);
+  if (d.getDate() !== day) d.setDate(0);
+  return d.toISOString().slice(0, 10);
+}
+
+// Payment Target's default Expected Date: one month after the candidate's
+// last actual payment, so each new month automatically proposes "same day
+// next month" until someone overrides it by hand.
+export function getDefaultExpectedDate(c: Candidate): string {
+  const last = getLastPaymentDate(c);
+  return last ? addOneMonthIso(last) : "";
 }
 
 export function getNextDueDate(c: Candidate): string {
