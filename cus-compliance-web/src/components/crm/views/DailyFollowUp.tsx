@@ -20,6 +20,7 @@ import {
   money,
   getTotalPaid,
   getRemaining,
+  applyPaidAmount,
   fmtDate,
   filteredDaily,
   priorityStats,
@@ -59,7 +60,10 @@ export function DailyFollowUp({
     setDailySelected,
     markContacted,
     updateContactField,
+    updateMasterField,
+    setPaidAmount,
     navigate,
+    assignableUsers,
   } = useCrm();
 
   const title =
@@ -78,6 +82,12 @@ export function DailyFollowUp({
 
   const rows = filteredDaily(candidates, dailyCategory, dailyFilters);
 
+  const assignees = [
+    ...new Set([
+      ...assignableUsers,
+      ...candidates.map((c) => c.assignedTo).filter(Boolean),
+    ]),
+  ].sort();
   const poMonths = [
     ...new Set(candidates.map((c) => c.poMonth).filter(Boolean)),
   ].sort();
@@ -115,28 +125,127 @@ export function DailyFollowUp({
       label: "Candidate",
       render: (r) => (
         <>
-          <strong>{r.candidate.name || "Unnamed"}</strong>
+          <input
+            className="sheet-cell name-priority"
+            defaultValue={r.candidate.name || ""}
+            key={r.candidate.id + "-name-" + (r.candidate.name || "")}
+            onBlur={(e) =>
+              e.target.value !== (r.candidate.name || "") &&
+              updateMasterField(r.candidate.id, "name", e.target.value)
+            }
+          />
           <div className="mt-1 md:hidden">
             <Badge label={r.candidate.status || "Unset"} />
           </div>
         </>
       ),
     },
-    { key: "phone", label: "Phone", render: (r) => phoneOf(r.candidate) || "-" },
-    { key: "poMonth", label: "P.O Month", render: (r) => r.candidate.poMonth || "-" },
-    { key: "assigned", label: "Assigned", render: (r) => r.candidate.assignedTo || "-" },
-    { key: "totalFee", label: "Total Fee", render: (r) => money(r.candidate.totalServiceFee) },
+    {
+      key: "phone",
+      label: "Phone",
+      render: (r) => (
+        <input
+          className="sheet-cell"
+          defaultValue={phoneOf(r.candidate) || ""}
+          key={r.candidate.id + "-phone-" + (phoneOf(r.candidate) || "")}
+          onBlur={(e) =>
+            e.target.value !== (phoneOf(r.candidate) || "") &&
+            updateMasterField(r.candidate.id, "phoneNumber", e.target.value)
+          }
+        />
+      ),
+    },
+    {
+      key: "poMonth",
+      label: "P.O Month",
+      render: (r) => (
+        <input
+          className="sheet-cell"
+          defaultValue={r.candidate.poMonth || ""}
+          key={r.candidate.id + "-poMonth-" + (r.candidate.poMonth || "")}
+          onBlur={(e) =>
+            e.target.value !== (r.candidate.poMonth || "") &&
+            updateMasterField(r.candidate.id, "poMonth", e.target.value)
+          }
+        />
+      ),
+    },
+    {
+      key: "assigned",
+      label: "Assigned",
+      render: (r) => (
+        <select
+          className="sheet-cell"
+          value={r.candidate.assignedTo || ""}
+          onChange={(e) =>
+            updateMasterField(r.candidate.id, "assignedTo", e.target.value)
+          }
+        >
+          <option value="">-</option>
+          {[
+            ...new Set(
+              r.candidate.assignedTo
+                ? [...assignableUsers, r.candidate.assignedTo]
+                : assignableUsers
+            ),
+          ].map((name) => (
+            <option key={name}>{name}</option>
+          ))}
+        </select>
+      ),
+    },
+    {
+      key: "totalFee",
+      label: "Total Fee",
+      render: (r) => (
+        <input
+          className="sheet-cell"
+          defaultValue={r.candidate.totalServiceFee ? String(r.candidate.totalServiceFee) : ""}
+          key={r.candidate.id + "-totalFee-" + (r.candidate.totalServiceFee || "")}
+          onBlur={(e) => {
+            const c = r.candidate;
+            if (e.target.value === (c.totalServiceFee ? String(c.totalServiceFee) : "")) return;
+            updateMasterField(c.id, "totalServiceFee", e.target.value);
+          }}
+        />
+      ),
+    },
     {
       key: "paidAmount",
       label: "Paid",
       className: "text-success",
-      render: (r) => money(getTotalPaid(r.candidate)),
+      render: (r) => (
+        <input
+          className="sheet-cell text-success"
+          defaultValue={String(getTotalPaid(r.candidate))}
+          key={r.candidate.id + "-paid-" + getTotalPaid(r.candidate)}
+          title="Editing this marks/unmarks installments (earliest first) until their paid sum matches what you type"
+          onBlur={(e) => {
+            const parsed = Number(String(e.target.value).replace(/[$,%\s,]/g, "")) || 0;
+            if (parsed === getTotalPaid(r.candidate)) return;
+            setPaidAmount(r.candidate.id, parsed);
+          }}
+        />
+      ),
     },
     {
       key: "remaining",
       label: "Remaining",
       className: "text-danger",
-      render: (r) => money(getRemaining(r.candidate)),
+      render: (r) => (
+        <input
+          className="sheet-cell text-danger"
+          defaultValue={String(getRemaining(r.candidate))}
+          key={r.candidate.id + "-remaining-" + getRemaining(r.candidate)}
+          title="Editing this backs into a new Total Fee (Total = Paid + what you type here)"
+          onBlur={(e) => {
+            const c = r.candidate;
+            const parsed = Number(String(e.target.value).replace(/[$,%\s,]/g, "")) || 0;
+            if (parsed === getRemaining(c)) return;
+            updateMasterField(c.id, "totalServiceFee", String(getTotalPaid(c) + parsed));
+          }}
+        />
+      ),
     },
     {
       key: "dueAmount",
@@ -186,13 +295,68 @@ export function DailyFollowUp({
   const dailyRowByCandidateId = new Map(rows.map((r) => [r.candidate.id, r]));
   const gridRows = rows.map((r) => r.candidate);
   const sheetColumns: SheetColumn<Candidate>[] = [
-    { key: "candidate", editable: false, getText: (x) => x.name || "" },
-    { key: "phone", editable: false, getText: (x) => phoneOf(x) || "" },
-    { key: "poMonth", editable: false, getText: (x) => x.poMonth || "" },
-    { key: "assigned", editable: false, getText: (x) => x.assignedTo || "" },
-    { key: "totalFee", editable: false, getText: (x) => money(x.totalServiceFee) },
-    { key: "paidAmount", editable: false, getText: (x) => money(getTotalPaid(x)) },
-    { key: "remaining", editable: false, getText: (x) => money(getRemaining(x)) },
+    {
+      key: "candidate",
+      editable: true,
+      getText: (x) => x.name || "",
+      applyText: (x, v) => {
+        x.name = v;
+      },
+    },
+    {
+      key: "phone",
+      editable: true,
+      getText: (x) => phoneOf(x) || "",
+      applyText: (x, v) => {
+        x.phoneNumber = v;
+      },
+    },
+    {
+      key: "poMonth",
+      editable: true,
+      getText: (x) => x.poMonth || "",
+      applyText: (x, v) => {
+        x.poMonth = v;
+      },
+    },
+    {
+      key: "assigned",
+      editable: true,
+      getText: (x) => x.assignedTo || "",
+      applyText: (x, v) => {
+        x.assignedTo = v;
+      },
+    },
+    {
+      key: "totalFee",
+      editable: true,
+      getText: (x) => (x.totalServiceFee ? String(x.totalServiceFee) : ""),
+      applyText: (x, v) => {
+        x.totalServiceFee = Number(String(v).replace(/[$,%\s,]/g, "")) || 0;
+        x.annualPackage = 0;
+        x.serviceFeePercent = 0;
+      },
+    },
+    {
+      key: "paidAmount",
+      editable: true,
+      getText: (x) => String(getTotalPaid(x)),
+      applyText: (x, v) => {
+        const parsed = Number(String(v).replace(/[$,%\s,]/g, "")) || 0;
+        applyPaidAmount(x, parsed);
+      },
+    },
+    {
+      key: "remaining",
+      editable: true,
+      getText: (x) => String(getRemaining(x)),
+      applyText: (x, v) => {
+        const parsed = Number(String(v).replace(/[$,%\s,]/g, "")) || 0;
+        x.totalServiceFee = getTotalPaid(x) + parsed;
+        x.annualPackage = 0;
+        x.serviceFeePercent = 0;
+      },
+    },
     {
       key: "dueAmount",
       editable: false,
@@ -291,8 +455,9 @@ export function DailyFollowUp({
             }
           >
             <option value="">All</option>
-            <option>Yatin</option>
-            <option>Jayraj</option>
+            {assignees.map((v) => (
+              <option key={v}>{v}</option>
+            ))}
           </select>
         </label>
         <label className="flex min-w-0 flex-col gap-1 text-xs text-muted">
@@ -386,7 +551,7 @@ export function DailyFollowUp({
             />
           </div>
         )}
-        <table className="data-table data-table-resizable sheet-selectable w-full min-w-[1100px] text-sm">
+        <table className="data-table data-table-resizable sheet-selectable w-full min-w-275 text-sm">
           <thead>
             <tr>
               <th>

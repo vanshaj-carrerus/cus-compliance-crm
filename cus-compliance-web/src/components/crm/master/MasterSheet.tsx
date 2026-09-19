@@ -697,11 +697,28 @@ export function MasterSheet() {
   // *other* focused input/textarea/select on the page - a filter, a modal -
   // keeps its normal Backspace/Delete behavior even if a stale selection is
   // still technically active underneath it.
+  //
+  // A single editable text cell that's actively focused (the normal case
+  // while typing a correction into it) is a second exception: let the
+  // browser delete one character at a time there instead of wiping the
+  // whole value. A multi-cell range still bulk-clears on Backspace/Delete
+  // regardless of what's focused, since that's the deliberate "select a
+  // range, clear it" gesture this shortcut exists for.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Backspace" && e.key !== "Delete") return;
       if (!hasSelection) return;
       const active = document.activeElement as HTMLElement | null;
+      const isGridTextInput =
+        (active instanceof HTMLInputElement ||
+          active instanceof HTMLTextAreaElement) &&
+        active.classList.contains("sheet-cell");
+      if (isGridTextInput) {
+        const isSingleCell = allRects.every(
+          (r) => r.r0 === r.r1 && r.c0 === r.c1
+        );
+        if (allRects.length <= 1 && isSingleCell) return;
+      }
       const isForeignInput =
         active &&
         (active instanceof HTMLInputElement ||
@@ -714,7 +731,7 @@ export function MasterSheet() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [hasSelection, clearSelection]);
+  }, [hasSelection, clearSelection, allRects]);
 
   // Arrow-key navigation between sheet cells - only kicks in when focus is
   // already inside one of the grid's own inputs/selects (marked with the

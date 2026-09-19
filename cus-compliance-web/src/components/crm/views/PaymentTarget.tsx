@@ -60,6 +60,7 @@ export function PaymentTarget() {
     snapshot,
     toast,
     showAddModal,
+    assignableUsers,
   } = useCrm();
   const d = new Date(settings.targetMonth);
   const list = filtered().filter(
@@ -90,8 +91,15 @@ export function PaymentTarget() {
           onChange={(e) => updateMasterField(r.x.id, "assignedTo", e.target.value)}
         >
           <option value="">-</option>
-          <option>Yatin</option>
-          <option>Jayraj</option>
+          {[
+            ...new Set(
+              r.x.assignedTo
+                ? [...assignableUsers, r.x.assignedTo]
+                : assignableUsers
+            ),
+          ].map((name) => (
+            <option key={name}>{name}</option>
+          ))}
         </select>
       ),
     },

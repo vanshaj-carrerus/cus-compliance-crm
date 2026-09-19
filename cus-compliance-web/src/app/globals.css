@@ -1014,3 +1014,78 @@ body {
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   }
 }
+
+/* Ctrl/Cmd+Left/Right page switching (see CrmShell) - a quick fade+slide on
+   the page content itself so landing on the new page reads as a deliberate
+   transition rather than an abrupt swap. */
+@keyframes crm-view-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.crm-view-transition {
+  animation: crm-view-enter 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Cmd/Alt-Tab-style page switcher dock (see CrmShell) - appears while
+   Ctrl/Cmd is held and Left/Right cycles the highlighted icon; each icon's
+   own magnify/lift/label transition is handled inline via Tailwind, this
+   just animates the dock itself in and out. */
+@keyframes crm-switcher-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes crm-switcher-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(10px) scale(0.92);
+  }
+}
+.crm-switcher-dock {
+  animation: crm-switcher-in 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  /* Layered glass: soft ambient drop shadow plus a hairline inner highlight
+     along the top/left edge to sell the frosted-glass bevel, like macOS's
+     Dock. Combined with border-white/25 + bg-white/10 + backdrop-blur on the
+     element itself (see CrmShell). */
+  box-shadow:
+    0 20px 40px -12px rgba(0, 0, 0, 0.45),
+    0 2px 8px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+.crm-switcher-dock.crm-switcher-closing {
+  animation: crm-switcher-out 160ms ease-in forwards;
+}
+/* Icon tile scales with viewport width instead of a fixed px size, so the
+   whole dock shrinks to fit on narrower laptop screens before it ever needs
+   to scroll. */
+.crm-switcher-icon {
+  width: clamp(28px, 3.4vw, 40px);
+  height: clamp(28px, 3.4vw, 40px);
+  font-size: clamp(13px, 1.6vw, 18px);
+}
+/* Safety net for very narrow viewports where even the shrunk icons don't
+   all fit - scrolls instead of overflowing the screen, scrollbar hidden
+   since the row is short enough to swipe/drag without one. */
+.crm-switcher-track {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.crm-switcher-track::-webkit-scrollbar {
+  display: none;
+}

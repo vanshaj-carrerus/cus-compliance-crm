@@ -305,8 +305,8 @@ export function importSheetRows(
             String(row[col.start] || "")
           : prev?.startDate || "",
       assignedTo: (col.assigned >= 0
-        ? String(row[col.assigned] || "Yatin").trim()
-        : prev?.assignedTo || "Yatin") as Assignee,
+        ? String(row[col.assigned] || "").trim()
+        : prev?.assignedTo || "") as Assignee,
       status:
         col.status >= 0
           ? String(row[col.status] || "").trim()

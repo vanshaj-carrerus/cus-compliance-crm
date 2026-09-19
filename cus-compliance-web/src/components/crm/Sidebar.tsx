@@ -5,7 +5,7 @@ import { useCrm } from "./CrmProvider";
 import type { CrmView } from "@/lib/crm/types";
 import { todayIso, statusExcluded } from "@/lib/crm";
 
-const NAV: { view: CrmView; icon: string; label: string }[] = [
+export const NAV: { view: CrmView; icon: string; label: string }[] = [
   { view: "dashboard", icon: "📊", label: "Dashboard" },
   { view: "daily", icon: "📅", label: "Daily Follow-up" },
   { view: "master", icon: "📋", label: "Master P.O Sheet" },
@@ -61,13 +61,13 @@ export function Sidebar() {
     <>
       {open && (
         <div
-          className="absolute inset-0 z-[1400] bg-black/30 backdrop-blur-[1px]"
+          className="absolute inset-0 z-1400 bg-black/30 backdrop-blur-[1px]"
           onClick={close}
           aria-hidden
         />
       )}
       <nav
-        className={`absolute left-0 top-0 bottom-0 z-[1500] flex w-[min(240px,88vw)] flex-col border-r border-border bg-sidebar shadow-xl transition-transform duration-200 ease-out ${
+        className={`absolute left-0 top-0 bottom-0 z-1500 flex w-[min(240px,88vw)] flex-col border-r border-border bg-sidebar shadow-xl transition-transform duration-200 ease-out ${
           open ? "translate-x-0" : "-translate-x-full pointer-events-none"
         }`}
         aria-hidden={!open}

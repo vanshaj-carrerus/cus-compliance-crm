@@ -692,7 +692,7 @@ export async function parseCrmWorkbook(
           recordGet(record, "Phone Number", "phoneNumber")
         ),
         assignedTo: String(
-          recordGet(record, "Assigned To", "assignedTo") || "Yatin"
+          recordGet(record, "Assigned To", "assignedTo") || ""
         ),
         floor: String(recordGet(record, "floor")),
         annualPackage: annual || asNumber(record.annualPackage),

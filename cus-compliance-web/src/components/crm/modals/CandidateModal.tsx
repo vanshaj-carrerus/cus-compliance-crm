@@ -131,7 +131,7 @@ function Field({
 }
 
 const inputCls =
-  "rounded-[var(--radius)] border border-border bg-input px-3.5 py-2.5 text-sm outline-none focus:border-primary";
+  "rounded-(--radius) border border-border bg-input px-3.5 py-2.5 text-sm outline-none focus:border-primary";
 
 export function CandidateModal() {
   const {
@@ -206,8 +206,8 @@ export function CandidateModal() {
   ).length;
 
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 p-4">
-      <div className="max-h-[92vh] w-full max-w-[1180px] overflow-auto rounded-[var(--radius)] border border-border bg-card shadow-xl">
+    <div className="fixed inset-0 z-1000 flex items-center justify-center bg-black/50 p-4">
+      <div className="max-h-[92vh] w-full max-w-295 overflow-auto rounded-(--radius) border border-border bg-card shadow-xl">
         <div className="flex items-center justify-between border-b border-border px-6 py-5">
           <div className="text-lg font-semibold">
             {editingId ? "Edit Candidate" : "Add Candidate"}
@@ -321,7 +321,7 @@ export function CandidateModal() {
               <Field label="Target Paid Manual" className="justify-end">
                 <input
                   type="checkbox"
-                  className="h-5 w-5 accent-[var(--primary)]"
+                  className="h-5 w-5 accent-primary"
                   checked={form.targetPaidManual}
                   onChange={(e) => setValue("targetPaidManual", e.target.checked)}
                 />
@@ -329,7 +329,7 @@ export function CandidateModal() {
 
               <Field label="Remarks" className="xl:col-span-2">
                 <textarea
-                  className={`${inputCls} min-h-[90px]`}
+                  className={`${inputCls} min-h-22.5`}
                   value={form.remarks}
                   onChange={(e) => setValue("remarks", e.target.value)}
                 />
@@ -337,7 +337,7 @@ export function CandidateModal() {
 
               <Field label="Month Remarks" className="xl:col-span-2">
                 <textarea
-                  className={`${inputCls} min-h-[90px]`}
+                  className={`${inputCls} min-h-22.5`}
                   value={form.monthRemarks}
                   onChange={(e) => setValue("monthRemarks", e.target.value)}
                 />
@@ -380,7 +380,7 @@ export function CandidateModal() {
               </Field>
               <Field label="Contact Notes" className="md:col-span-2 xl:col-span-4">
                 <textarea
-                  className={`${inputCls} min-h-[90px]`}
+                  className={`${inputCls} min-h-22.5`}
                   value={form.contactNotes}
                   onChange={(e) => setValue("contactNotes", e.target.value)}
                 />
@@ -460,7 +460,7 @@ export function CandidateModal() {
                     <Field label="Paid" className="justify-end">
                       <input
                         type="checkbox"
-                        className="h-5 w-5 accent-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-40"
+                        className="h-5 w-5 accent-primary disabled:cursor-not-allowed disabled:opacity-40"
                         checked={inst.paid}
                         disabled={!canMarkInstallmentPaid(inst)}
                         title={
@@ -475,7 +475,7 @@ export function CandidateModal() {
                     </Field>
                     <Field label="Notes" className="md:col-span-2 xl:col-span-6">
                       <textarea
-                        className={`${inputCls} min-h-[70px]`}
+                        className={`${inputCls} min-h-17.5`}
                         value={inst.notes}
                         onChange={(e) =>
                           setInstallment(idx, "notes", e.target.value)
@@ -492,14 +492,14 @@ export function CandidateModal() {
         <div className="flex justify-end gap-2.5 border-t border-border px-6 py-4">
           <button
             type="button"
-            className="rounded-[var(--radius)] border border-border bg-secondary px-4 py-2 text-sm"
+            className="rounded-(--radius) border border-border bg-secondary px-4 py-2 text-sm"
             onClick={closeModals}
           >
             Cancel
           </button>
           <button
             type="button"
-            className="rounded-[var(--radius)] bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+            className="rounded-(--radius) bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
             onClick={() => {
               const count =
                 Number(form.installmentCount) || filledInstallmentCount || 1;

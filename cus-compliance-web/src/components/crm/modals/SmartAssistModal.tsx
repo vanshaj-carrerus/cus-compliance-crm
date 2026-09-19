@@ -22,6 +22,7 @@ export function SmartAssistModal({
     setActiveFilters,
     navigate,
     toast,
+    assignableUsers,
   } = useCrm();
   const [query, setQuery] = useState("");
   const [result, setResult] = useState("");
@@ -93,14 +94,11 @@ export function SmartAssistModal({
       );
       return;
     }
-    if (/yatin/.test(lower)) {
-      setActiveFilters({ assignedTo: "Yatin" });
-      navigate("master");
-      onClose();
-      return;
-    }
-    if (/jayraj/.test(lower)) {
-      setActiveFilters({ assignedTo: "Jayraj" });
+    const person = assignableUsers.find((name) =>
+      lower.includes(name.toLowerCase())
+    );
+    if (person) {
+      setActiveFilters({ assignedTo: person });
       navigate("master");
       onClose();
       return;
@@ -133,11 +131,11 @@ export function SmartAssistModal({
 
   return (
     <div
-      className="fixed inset-0 z-[4200] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-4200 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-[760px] rounded-[24px] border border-border bg-card shadow-2xl"
+        className="w-full max-w-190 rounded-3xl border border-border bg-card shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal
@@ -175,7 +173,7 @@ export function SmartAssistModal({
         <div className="flex gap-2 px-6 pb-3">
           <input
             id="smartAssistInput"
-            className="flex-1 rounded-[var(--radius)] border border-border bg-input px-4 py-2.5 text-sm outline-none focus:border-primary"
+            className="flex-1 rounded-(--radius) border border-border bg-input px-4 py-2.5 text-sm outline-none focus:border-primary"
             placeholder="Ask: Who should I follow up with first?"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -185,7 +183,7 @@ export function SmartAssistModal({
           />
           <button
             type="button"
-            className="rounded-[var(--radius)] bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+            className="rounded-(--radius) bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
             onClick={() => runCommand(query)}
           >
             Run
@@ -226,7 +224,7 @@ export function SmartAssistModal({
         </div>
 
         <div
-          className="mx-6 mb-6 rounded-[var(--radius)] border border-border bg-secondary p-4 text-sm"
+          className="mx-6 mb-6 rounded-(--radius) border border-border bg-secondary p-4 text-sm"
           dangerouslySetInnerHTML={{ __html: result }}
         />
       </div>

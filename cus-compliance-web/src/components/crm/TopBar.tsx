@@ -74,13 +74,13 @@ export function TopBar({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search candidates, PO, floor, status..."
-            className="w-full rounded-[var(--radius)] border border-border bg-input py-1.5 pl-9 pr-3 text-xs text-foreground outline-none focus:border-primary sm:text-sm"
+            className="w-full rounded-(--radius) border border-border bg-input py-1.5 pl-9 pr-3 text-xs text-foreground outline-none focus:border-primary sm:text-sm"
             aria-label="Search candidates"
           />
         </div>
 
         {/* Full labels kept — scroll horizontally when space is tight */}
-        <div className="flex max-w-[55%] shrink-0 items-center gap-1.5 overflow-x-auto overscroll-x-contain pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] sm:max-w-none [&::-webkit-scrollbar]:hidden">
+        <div className="flex max-w-[55%] shrink-0 items-center gap-1.5 overflow-x-auto overscroll-x-contain pb-0.5 [-ms-overflow-style:none] scrollbar-none sm:max-w-none [&::-webkit-scrollbar]:hidden">
           <button
             type="button"
             className={`${btn} rounded-full ${!ready ? "opacity-60" : ""}`}
@@ -123,7 +123,7 @@ export function TopBar({
           <button
             type="button"
             disabled={!ready}
-            className="inline-flex h-8 shrink-0 items-center justify-center whitespace-nowrap rounded-[var(--radius)] bg-primary px-2.5 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60"
+            className="inline-flex h-8 shrink-0 items-center justify-center whitespace-nowrap rounded-(--radius) bg-primary px-2.5 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60"
             onClick={showAddModal}
           >
             + Add Candidate

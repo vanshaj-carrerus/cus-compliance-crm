@@ -44,6 +44,7 @@ export function Compliance() {
     queueSave,
     snapshot,
     toast,
+    assignableUsers,
   } = useCrm();
   const list = filtered().filter(
     (x) => !statusExcluded(x.status) && getRemaining(x) > 0
@@ -72,8 +73,13 @@ export function Compliance() {
           onChange={(e) => updateMasterField(x.id, "assignedTo", e.target.value)}
         >
           <option value="">-</option>
-          <option>Yatin</option>
-          <option>Jayraj</option>
+          {[
+            ...new Set(
+              x.assignedTo ? [...assignableUsers, x.assignedTo] : assignableUsers
+            ),
+          ].map((name) => (
+            <option key={name}>{name}</option>
+          ))}
         </select>
       ),
     },

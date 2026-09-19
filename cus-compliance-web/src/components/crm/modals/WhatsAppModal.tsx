@@ -30,7 +30,7 @@ function templateData(c: Candidate, overrides: Record<string, string> = {}) {
     Remaining: money(getRemaining(c)),
     DiscountedAmount: overrides.discounted || money(getRemaining(c)),
     Original: money(getRemaining(c)),
-    AssignedTo: c.assignedTo || "Yatin",
+    AssignedTo: c.assignedTo || "",
   };
 }
 
@@ -138,8 +138,8 @@ export function WhatsAppModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[4200] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-      <div className="max-h-[92vh] w-full max-w-[820px] overflow-auto rounded-[26px] border border-border bg-card shadow-2xl">
+    <div className="fixed inset-0 z-4200 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+      <div className="max-h-[92vh] w-full max-w-205 overflow-auto rounded-[26px] border border-border bg-card shadow-2xl">
         <div className="flex items-start justify-between gap-3 border-b border-border px-6 py-5">
           <div>
             <div className="text-xl font-bold">💬 WhatsApp Message</div>
@@ -203,7 +203,7 @@ export function WhatsAppModal({
           <label className="col-span-full flex flex-col gap-1 text-xs text-muted">
             Custom / Template Text
             <textarea
-              className="min-h-[100px] rounded border border-border bg-input px-3 py-2 text-sm"
+              className="min-h-25 rounded border border-border bg-input px-3 py-2 text-sm"
               value={text}
               onChange={(e) => setText(e.target.value)}
             />
@@ -212,7 +212,7 @@ export function WhatsAppModal({
             <div className="mb-1 text-xs font-bold uppercase tracking-wide text-muted">
               Live Preview
             </div>
-            <div className="min-h-[120px] whitespace-pre-wrap rounded-[15px] border border-border bg-secondary p-4 text-sm leading-relaxed">
+            <div className="min-h-30 whitespace-pre-wrap rounded-[15px] border border-border bg-secondary p-4 text-sm leading-relaxed">
               {preview}
             </div>
           </div>

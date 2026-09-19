@@ -316,7 +316,9 @@ export function FullscreenButton({
 // only the table/data is visible. Also exits on Escape (see useFullscreen).
 // Parked bottom-center rather than a corner so it never sits over a header
 // column, and stays invisible until the cursor nears the bottom edge (or it
-// gets keyboard focus) so it doesn't otherwise cover table rows.
+// gets keyboard focus) so it doesn't otherwise cover table rows. On touch
+// devices there's no hover to reveal it, so it's pinned visible (small and
+// low-opacity, like a scrollbar) there instead.
 export function FullscreenExitFab({
   fullscreen,
   onExit,
@@ -326,11 +328,11 @@ export function FullscreenExitFab({
 }) {
   if (!fullscreen) return null;
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[3100] flex justify-center">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-3100 flex justify-center">
       <div className="group pointer-events-auto flex h-28 w-56 items-end justify-center pb-1">
         <button
           type="button"
-          className="translate-y-5 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground opacity-0 shadow-lg transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100 focus-visible:translate-y-0 focus-visible:opacity-100"
+          className="translate-y-5 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground opacity-0 shadow-lg transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100 focus-visible:translate-y-0 focus-visible:opacity-100 [@media(hover:none)]:translate-y-0 [@media(hover:none)]:opacity-70"
           onClick={onExit}
           title="Exit Fullscreen (Esc)"
         >
@@ -358,7 +360,7 @@ export function PasteProgressOverlay({
 }) {
   if (!pasteProgress) return null;
   return (
-    <div className="fixed inset-0 z-[5000] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-5000 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
       <div className="w-full max-w-sm rounded-[20px] border border-border bg-card p-6 text-center shadow-2xl">
         <div className="mb-3 text-2xl">📋</div>
         <div className="mb-1 text-sm font-semibold">Creating new rows…</div>
@@ -448,7 +450,7 @@ export function DataTableContainer({
         ref={scrollRef}
         tabIndex={onPaste ? -1 : undefined}
         onPaste={onPaste}
-        className={`table-scroll ${fullscreen ? "flex-1 !max-h-none" : ""}`}
+        className={`table-scroll ${fullscreen ? "flex-1 max-h-none!" : ""}`}
         style={onPaste ? { outline: "none" } : undefined}
       >
         {children}
@@ -989,11 +991,30 @@ export function useSheetGrid<T extends { id: number }>({
   // its header). Any *other* focused input/textarea/select on the page - a
   // filter, a modal - keeps its normal Backspace/Delete behavior even if a
   // stale selection is still technically active underneath it.
+  //
+  // A single editable text cell that's actively focused (the normal case
+  // while typing a correction into it) is a second exception: let the
+  // browser delete one character at a time there instead of wiping the
+  // whole value, matching how every other text field on the page behaves.
+  // A multi-cell range still bulk-clears on Backspace/Delete regardless of
+  // what's focused, since that's the deliberate "select a range, clear it"
+  // gesture this shortcut exists for.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Backspace" && e.key !== "Delete") return;
       if (!hasSelection) return;
       const active = document.activeElement as HTMLElement | null;
+      const isGridTextInput =
+        active !== hiddenRef.current &&
+        (active instanceof HTMLInputElement ||
+          active instanceof HTMLTextAreaElement) &&
+        active.classList.contains("sheet-cell");
+      if (isGridTextInput) {
+        const isSingleCell = allRects.every(
+          (r) => r.r0 === r.r1 && r.c0 === r.c1
+        );
+        if (allRects.length <= 1 && isSingleCell) return;
+      }
       const isForeignInput =
         active &&
         (active instanceof HTMLInputElement ||
@@ -1007,7 +1028,7 @@ export function useSheetGrid<T extends { id: number }>({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [hasSelection, clearSelectedCells]);
+  }, [hasSelection, clearSelectedCells, allRects]);
 
   // Arrow-key navigation between sheet cells - only kicks in when focus is
   // already inside one of the grid's own inputs/selects (marked with the
