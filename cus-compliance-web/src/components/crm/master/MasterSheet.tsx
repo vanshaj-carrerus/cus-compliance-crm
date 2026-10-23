@@ -6,6 +6,7 @@ import { FiltersBar } from "../FiltersBar";
 import {
   ColumnResizeHandle,
   FullscreenExitFab,
+  isModalOpen,
   ResetColumnsButton,
   useColumnOrder,
   useColumnWidths,
@@ -22,15 +23,34 @@ import {
   phoneOf,
   todayIso,
   normalizeCandidate,
-  parseInstallment,
+  parsePasteInstallment,
   newId,
 } from "@/lib/crm";
 import { DEFAULT_STATUSES, type Candidate } from "@/lib/crm/types";
 
+// True when focus is in a field the user can type into (text input,
+// textarea, select, contenteditable) - checkboxes and buttons don't count.
+function isEditingText(): boolean {
+  const el = document.activeElement as HTMLElement | null;
+  if (!el) return false;
+  if (el.isContentEditable) return true;
+  if (el.tagName === "TEXTAREA" || el.tagName === "SELECT") return true;
+  if (el.tagName !== "INPUT") return false;
+  // Installment cells are inputs too (clicking one focuses it), but a paste
+  // there must go through the amount/date-aware sheet paste - the browser's
+  // native paste would splice raw text into the existing "1500 Jan 14, 2026".
+  if (el.classList.contains("inst-text")) return false;
+  const type = (el as HTMLInputElement).type;
+  return !["checkbox", "radio", "button", "submit", "reset"].includes(type);
+}
+
 function instText(c: Candidate, idx: number): string {
   const i = c.installments[idx];
-  if (!i?.amount) return "";
-  return String(i.amount) + (i.date ? " " + fmtDate(i.date) : "");
+  // A date with no amount is still a value the user entered - show it
+  // instead of rendering the cell blank.
+  return [i?.amount ? String(i.amount) : "", i?.date ? fmtDate(i.date) : ""]
+    .filter(Boolean)
+    .join(" ");
 }
 
 function instStatus(i: Candidate["installments"][0]) {
@@ -104,8 +124,9 @@ const DATA_COLS: DataCol[] = [
     editable: true,
     getText: (c: Candidate) => {
       const inst = c.installments[i];
-      if (!inst?.amount) return "";
-      return String(inst.amount) + (inst.date ? " " + inst.date : "");
+      return [inst?.amount ? String(inst.amount) : "", inst?.date || ""]
+        .filter(Boolean)
+        .join(" ");
     },
   })),
 ];
@@ -211,7 +232,7 @@ export function MasterSheet() {
   useEffect(() => {
     if (!fullscreen) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setFullscreen(false);
+      if (e.key === "Escape" && !isModalOpen()) setFullscreen(false);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -514,9 +535,12 @@ export function MasterSheet() {
         if (colDef.key.startsWith("inst")) {
           const instIdx = Number(colDef.key.slice(4));
           const old = c.installments[instIdx] || normalizeCandidate({}).installments[0];
-          const parsed = parseInstallment(trimmed);
-          const paid =
-            old.paid || (!!parsed.amount && Number(parsed.amount) > 0 && !old.amount);
+          // Only the parts actually present in the pasted text (amount,
+          // date, or both) are applied; the cell's other value is kept.
+          const parsed = parsePasteInstallment(trimmed);
+          // Pasting never changes Paid - that stays whatever the cell's
+          // checkbox already was; only the user ticking it marks a payment.
+          const paid = old.paid;
           c.installments[instIdx] = {
             ...old,
             ...parsed,
@@ -604,14 +628,25 @@ export function MasterSheet() {
     [candidates, applyRowFields, setCandidates, queueSave, toast]
   );
 
+  const lastPasteRef = useRef({ text: "", at: 0 });
+
   const applyPasteText = useCallback(
     (text: string, anchor: CellPos) => {
-      if (!text.includes("\t") && !text.includes("\n")) return false;
+      // A single value is applied to the selected cell too - unless the user
+      // is typing in a text field, where the browser's own paste must win.
+      const isSingle = !text.includes("\t") && !text.includes("\n");
+      if (isSingle && (!text.trim() || isEditingText())) return false;
       const startCandidate = list[anchor.row];
       if (!startCandidate) return false;
       const ids = list.map((c) => c.id);
       const startRow = ids.indexOf(startCandidate.id);
       if (startRow < 0) return false;
+      // One Ctrl+V reaches us twice when focus is inside the grid (the
+      // keydown clipboard read and the native paste event). Apply it once.
+      const now = Date.now();
+      const last = lastPasteRef.current;
+      if (last.text === text && now - last.at < 500) return true;
+      lastPasteRef.current = { text, at: now };
       snapshot();
       void runPaste(text, anchor, ids, startRow);
       return true;
@@ -639,6 +674,9 @@ export function MasterSheet() {
     };
     const onKeyDown = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey)) return;
+      // A modal (e.g. Edit Candidate) owns the clipboard while it's open -
+      // otherwise Ctrl+C/V would copy/paste the sheet selection behind it.
+      if (isModalOpen()) return;
       const key = e.key.toLowerCase();
       if (key === "c") {
         if (!hasSelection || isTypingWithSelection()) return;
@@ -707,7 +745,7 @@ export function MasterSheet() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Backspace" && e.key !== "Delete") return;
-      if (!hasSelection) return;
+      if (!hasSelection || isModalOpen()) return;
       const active = document.activeElement as HTMLElement | null;
       const isGridTextInput =
         (active instanceof HTMLInputElement ||

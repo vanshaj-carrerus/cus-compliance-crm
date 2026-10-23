@@ -31,8 +31,38 @@ import {
   fmtDate,
   normalizeCandidate,
   newId,
+  parseDateInput,
+  setLastPaymentDate,
+  setNextDueDate,
 } from "@/lib/crm";
 import type { Candidate } from "@/lib/crm/types";
+
+// Text cell for a derived date. Shows the date formatted ("Jan 14, 2026"),
+// selects its text on focus so a pasted date replaces it instead of being
+// spliced into it, and reports the typed/pasted text on blur when it changed.
+function DateCell({
+  value,
+  cellKey,
+  title,
+  onCommit,
+}: {
+  value: string;
+  cellKey: string;
+  title: string;
+  onCommit: (text: string) => void;
+}) {
+  const shown = value ? fmtDate(value) : "";
+  return (
+    <input
+      className="sheet-cell"
+      defaultValue={shown}
+      key={cellKey + "-" + value}
+      title={title}
+      onFocus={(e) => e.target.select()}
+      onBlur={(e) => e.target.value !== shown && onCommit(e.target.value)}
+    />
+  );
+}
 
 export function Compliance() {
   const {
@@ -51,6 +81,30 @@ export function Compliance() {
   );
   const { fullscreen, toggleFullscreen, shellCls } = useFullscreen();
   const rows = list;
+
+  // Last Pay / Next Due are derived from the installment schedule, so an edit
+  // is written onto the installment they come from (see setLastPaymentDate /
+  // setNextDueDate in calc.ts).
+  const commitDate = (
+    x: Candidate,
+    apply: (c: Candidate, iso: string) => boolean,
+    text: string,
+    noTargetMsg: string
+  ) => {
+    const iso = parseDateInput(text);
+    if (text.trim() && !iso) {
+      toast("Couldn't read that as a date", "error");
+      return;
+    }
+    const c = { ...x };
+    if (!apply(c, iso)) {
+      toast(noTargetMsg, "error");
+      return;
+    }
+    snapshot();
+    setCandidates(candidates.map((r) => (r.id === x.id ? normalizeCandidate(c) : r)));
+    queueSave();
+  };
 
   // Every stored field (Assigned, Candidate, Floor, P.O, Total Fee, Remarks)
   // is directly editable here, same as Master P.O Sheet. Paid/Remaining/Last
@@ -184,18 +238,24 @@ export function Compliance() {
       key: "lastPay",
       label: "Last Pay",
       render: (x) => (
-        <div className="sheet-cell calc-cell" title="Derived from paid installments">
-          {fmtDate(getLastPaymentDate(x))}
-        </div>
+        <DateCell
+          value={getLastPaymentDate(x)}
+          cellKey={x.id + "-lastPay"}
+          title="Payment date of the latest paid installment - edit to change it"
+          onCommit={(text) => commitDate(x, setLastPaymentDate, text, "No paid installment to set a payment date on")}
+        />
       ),
     },
     {
       key: "nextDue",
       label: "Next Due",
       render: (x) => (
-        <div className="sheet-cell calc-cell" title="Derived from unpaid installment dates">
-          {fmtDate(getNextDueDate(x))}
-        </div>
+        <DateCell
+          value={getNextDueDate(x)}
+          cellKey={x.id + "-nextDue"}
+          title="Date of the next unpaid installment - edit to change it"
+          onCommit={(text) => commitDate(x, setNextDueDate, text, "No unpaid installment to set a due date on")}
+        />
       ),
     },
     {
@@ -300,8 +360,28 @@ export function Compliance() {
         x.serviceFeePercent = 0;
       },
     },
-    { key: "lastPay", editable: false, getText: (x) => fmtDate(getLastPaymentDate(x)) },
-    { key: "nextDue", editable: false, getText: (x) => fmtDate(getNextDueDate(x)) },
+    // Dates copy as ISO (YYYY-MM-DD) so they paste straight back in; paste
+    // accepts any bare date format and skips text it can't read as a date.
+    {
+      key: "lastPay",
+      editable: true,
+      getText: (x) => getLastPaymentDate(x),
+      applyText: (x, v) => {
+        const iso = parseDateInput(v);
+        if (v && !iso) return;
+        setLastPaymentDate(x, iso);
+      },
+    },
+    {
+      key: "nextDue",
+      editable: true,
+      getText: (x) => getNextDueDate(x),
+      applyText: (x, v) => {
+        const iso = parseDateInput(v);
+        if (v && !iso) return;
+        setNextDueDate(x, iso);
+      },
+    },
     { key: "status", editable: false, getText: (x) => getComplianceStatus(x) },
     {
       key: "remarks",

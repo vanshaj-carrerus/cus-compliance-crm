@@ -206,7 +206,10 @@ export function CandidateModal() {
   ).length;
 
   return (
-    <div className="fixed inset-0 z-1000 flex items-center justify-center bg-black/50 p-4">
+    <div
+      data-modal-overlay
+      className="fixed inset-0 z-4000 flex items-center justify-center bg-black/50 p-4"
+    >
       <div className="max-h-[92vh] w-full max-w-295 overflow-auto rounded-(--radius) border border-border bg-card shadow-xl">
         <div className="flex items-center justify-between border-b border-border px-6 py-5">
           <div className="text-lg font-semibold">

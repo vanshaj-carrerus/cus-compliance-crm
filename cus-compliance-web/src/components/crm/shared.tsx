@@ -274,6 +274,13 @@ export function ResetColumnsButton({ onReset }: { onReset: () => void }) {
 // Starts true so these table-heavy pages open straight into fullscreen -
 // users asked to land on the full table rather than have to click the
 // Fullscreen button every time.
+// True while any modal dialog (marked `data-modal-overlay`) is on screen.
+// Page-level keyboard shortcuts (copy/paste/delete/Esc) check this so they
+// don't act on the sheet sitting behind a modal.
+export function isModalOpen(): boolean {
+  return typeof document !== "undefined" && !!document.querySelector("[data-modal-overlay]");
+}
+
 export function useFullscreen() {
   const [fullscreen, setFullscreen] = useState(true);
   const toggleFullscreen = () => setFullscreen((f) => !f);
@@ -281,7 +288,7 @@ export function useFullscreen() {
   useEffect(() => {
     if (!fullscreen) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setFullscreen(false);
+      if (e.key === "Escape" && !isModalOpen()) setFullscreen(false);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);

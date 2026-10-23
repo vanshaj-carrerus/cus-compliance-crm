@@ -131,6 +131,7 @@ export function SmartAssistModal({
 
   return (
     <div
+      data-modal-overlay
       className="fixed inset-0 z-4200 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
       onClick={onClose}
     >

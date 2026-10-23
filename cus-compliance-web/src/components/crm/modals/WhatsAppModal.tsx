@@ -138,7 +138,7 @@ export function WhatsAppModal({
   };
 
   return (
-    <div className="fixed inset-0 z-4200 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+    <div data-modal-overlay className="fixed inset-0 z-4200 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
       <div className="max-h-[92vh] w-full max-w-205 overflow-auto rounded-[26px] border border-border bg-card shadow-2xl">
         <div className="flex items-start justify-between gap-3 border-b border-border px-6 py-5">
           <div>

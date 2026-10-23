@@ -5,6 +5,7 @@ import { applyCorsHeaders, corsPreflightResponse } from "@/lib/cors";
 import { canAccessCrm, normalizeRole } from "@/lib/roles";
 
 const PUBLIC_PATHS = ["/login"];
+
 const PUBLIC_API_PREFIXES = [
   "/api/auth/send-code",
   "/api/auth/verify-code",

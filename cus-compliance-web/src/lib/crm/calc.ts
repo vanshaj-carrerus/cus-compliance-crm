@@ -1,5 +1,5 @@
 import type { Candidate, Installment } from "./types";
-import { validDateString, todayIso } from "./dates";
+import { validDateString, todayIso, toIsoDate } from "./dates";
 
 export function round(n: number): number {
   return Math.round((Number(n) || 0) * 100) / 100;
@@ -95,7 +95,7 @@ export function addOneMonthIso(dateIso: string): string {
   const day = d.getDate();
   d.setMonth(d.getMonth() + 1);
   if (d.getDate() !== day) d.setDate(0);
-  return d.toISOString().slice(0, 10);
+  return toIsoDate(d);
 }
 
 // Payment Target's default Expected Date: one month after the candidate's
@@ -112,10 +112,63 @@ export function getNextDueDate(c: Candidate): string {
     .map((i) => new Date(i.date + "T00:00:00"))
     .filter((d) => !isNaN(d.getTime()));
   return dates.length
-    ? new Date(Math.min(...dates.map((d) => d.getTime())))
-        .toISOString()
-        .slice(0, 10)
+    ? toIsoDate(new Date(Math.min(...dates.map((d) => d.getTime()))))
     : "";
+}
+
+// Index of the installment getNextDueDate() reads from: the unpaid, amount-
+// carrying installment with the earliest date, else the first unpaid one that
+// has an amount but no date yet. -1 when there is nothing unpaid.
+function nextDueIndex(c: Candidate): number {
+  const insts = c.installments || [];
+  let best = -1;
+  let bestTime = Infinity;
+  insts.forEach((i, idx) => {
+    if (!i || i.paid || !((Number(i.amount) || 0) > 0) || !i.date) return;
+    const t = new Date(i.date + "T00:00:00").getTime();
+    if (!isNaN(t) && t < bestTime) {
+      best = idx;
+      bestTime = t;
+    }
+  });
+  if (best >= 0) return best;
+  return insts.findIndex((i) => i && !i.paid && (Number(i.amount) || 0) > 0);
+}
+
+// Backs the editable Next Due cell on Compliance: Next Due is derived, so
+// editing it moves the date of the installment it is derived from. Replaces
+// c.installments rather than mutating it. "" clears that installment's date.
+// Returns false when there is no unpaid installment to put the date on.
+export function setNextDueDate(c: Candidate, iso: string): boolean {
+  const idx = nextDueIndex(c);
+  if (idx < 0) return false;
+  c.installments = c.installments.map((i, k) =>
+    k === idx ? { ...i, date: iso } : i
+  );
+  return true;
+}
+
+// Backs the editable Last Pay cell: sets the payment date of the latest paid
+// installment (the one getLastPaymentDate() reads). Returns false when no
+// installment has been paid yet.
+export function setLastPaymentDate(c: Candidate, iso: string): boolean {
+  const insts = c.installments || [];
+  let idx = -1;
+  for (let k = insts.length - 1; k >= 0; k--) {
+    const i = insts[k];
+    if (i && i.paid && (Number(i.amount) || 0) > 0) {
+      if (paymentDateFor(i)) {
+        idx = k;
+        break;
+      }
+      if (idx < 0) idx = k;
+    }
+  }
+  if (idx < 0) return false;
+  c.installments = insts.map((i, k) =>
+    k === idx ? { ...i, paymentDate: iso } : i
+  );
+  return true;
 }
 
 export function getComplianceStatus(c: Candidate): string {

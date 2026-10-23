@@ -43,8 +43,17 @@ export function addDaysDate(d: Date, n: number): Date {
   return x;
 }
 
+// Formats a Date's *local* calendar day as YYYY-MM-DD. Never use
+// toISOString() for this: it converts to UTC first, so a local-midnight Date
+// lands on the previous day in any timezone ahead of UTC (e.g. IST).
 export function toIsoDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  return (
+    d.getFullYear() +
+    "-" +
+    String(d.getMonth() + 1).padStart(2, "0") +
+    "-" +
+    String(d.getDate()).padStart(2, "0")
+  );
 }
 
 export function fmtDate(v: string): string {
@@ -96,11 +105,55 @@ export function parseDate(str: string): string {
       const year = (
         str.match(/\b(20\d{2}|19\d{2})\b/) || [String(new Date().getFullYear())]
       )[0];
-      return new Date(Number(year), m, Number(day)).toISOString().slice(0, 10);
+      return toIsoDate(new Date(Number(year), m, Number(day)));
     }
   }
   const d = new Date(str);
-  return isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
+  return isNaN(d.getTime()) ? "" : toIsoDate(d);
+}
+
+function validYmd(y: number, m: number, d: number): string {
+  const dt = new Date(y, m - 1, d);
+  if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d)
+    return "";
+  return toIsoDate(dt);
+}
+
+// Returns YYYY-MM-DD when `v` is nothing but a date, else "". Unlike
+// parseDate it never guesses at free text, so callers can safely use it to
+// tell "this is a date" apart from "this starts with an amount".
+// Numeric day/month order: a part > 12 settles it, otherwise day-first.
+export function parseBareDate(v: string): string {
+  const s = String(v || "").trim();
+  if (!s) return "";
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s].*)?$/);
+  if (iso) return validYmd(+iso[1], +iso[2], +iso[3]);
+  const num = s.match(/^(\d{1,4})[/.-](\d{1,2})[/.-](\d{1,4})$/);
+  if (num) {
+    const [a, b, c] = [num[1], num[2], num[3]];
+    if (a.length === 4) return validYmd(+a, +b, +c);
+    if (c.length !== 4 && c.length !== 2) return "";
+    const year = c.length === 2 ? 2000 + +c : +c;
+    return +b > 12 ? validYmd(year, +a, +b) : validYmd(year, +b, +a);
+  }
+  const txt = s.match(
+    /^(?:(\d{1,2})(?:st|nd|rd|th)?[\s-]+)?([a-z]{3,9})\.?[\s-]*(?:(\d{1,2})(?:st|nd|rd|th)?)?,?[\s-]+(\d{4})$/i
+  );
+  if (txt && (txt[1] != null) !== (txt[3] != null)) {
+    const mi = MONTHS.findIndex(
+      (m) => m.toLowerCase().slice(0, 3) === txt[2].slice(0, 3).toLowerCase()
+    );
+    if (mi >= 0) return validYmd(+txt[4], mi + 1, +(txt[1] ?? txt[3]));
+  }
+  return "";
+}
+
+// For a cell that holds only a date: accepts everything parseBareDate does,
+// plus month-name text without a year ("Jan 14"). Returns "" if unreadable.
+export function parseDateInput(v: string): string {
+  const s = String(v || "").trim();
+  if (!s) return "";
+  return parseBareDate(s) || (/[a-z]/i.test(s) ? parseDate(s) : "");
 }
 
 export function validDateString(v?: string): string {

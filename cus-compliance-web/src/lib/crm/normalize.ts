@@ -15,6 +15,7 @@ import {
   addDaysDate,
   toIsoDate,
   parseDate,
+  parseBareDate,
   normalizeMonthLabel,
   monthFromDateText,
 } from "./dates";
@@ -148,12 +149,36 @@ export function parseInstallment(v: string): Partial<Installment> {
   };
   v = String(v || "").trim();
   if (!v) return r;
+  // A bare date ("2026-01-10", "14 Jan 2026") must not fall through to the
+  // amount regex below, which would read its leading digits as the amount.
+  const bare = parseBareDate(v);
+  if (bare) {
+    r.date = bare;
+    return r;
+  }
   const m = v.match(/^\$?\s*(\d[\d,]*\.?\d*)\s*(.*)$/);
   if (m) {
     r.amount = m[1].replace(/,/g, "");
     r.date = parseDate(m[2]);
   }
   return r;
+}
+
+// Clipboard variant of parseInstallment: works out whether the pasted text is
+// an amount, a date, or both, and returns ONLY the parts it found so pasting
+// a single value never wipes the other one already in the cell. Empty text
+// still means "clear the cell"; text that is neither is ignored.
+export function parsePasteInstallment(v: string): Partial<Installment> {
+  const text = String(v || "").trim();
+  if (!text) return parseInstallment(text);
+  // Looks like a date but isn't a real one (2026-13-40): don't read its
+  // leading digits as an amount.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text) && !parseBareDate(text)) return {};
+  const parsed = parseInstallment(text);
+  const out: Partial<Installment> = {};
+  if (parsed.amount) out.amount = parsed.amount;
+  if (parsed.date) out.date = parsed.date;
+  return out;
 }
 
 export function defaultSettings(): CrmSettings {
