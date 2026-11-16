@@ -49,6 +49,7 @@ const CANDIDATE_EXTRA_COLUMNS = [
   "expectedAmount",
   "monthRemarks",
   "targetPaidManual",
+  "removedFromPaymentTarget",
   "createdAt",
   "updatedAt",
 ] as const;
@@ -310,6 +311,7 @@ function candidateRows(candidates: Candidate[]): SheetRecord[] {
       expectedAmount: candidate.expectedAmount ?? "",
       monthRemarks: candidate.monthRemarks || "",
       targetPaidManual: !!candidate.targetPaidManual,
+      removedFromPaymentTarget: !!candidate.removedFromPaymentTarget,
       createdAt: candidate.createdAt || "",
       updatedAt: candidate.updatedAt || "",
     };
@@ -723,6 +725,9 @@ export async function parseCrmWorkbook(
         expectedAmount: recordGet(record, "expectedAmount"),
         monthRemarks: String(recordGet(record, "monthRemarks")),
         targetPaidManual: asBoolean(recordGet(record, "targetPaidManual")),
+        removedFromPaymentTarget: asBoolean(
+          recordGet(record, "removedFromPaymentTarget")
+        ),
         createdAt: String(recordGet(record, "createdAt")),
         updatedAt: String(recordGet(record, "updatedAt")),
       } as unknown as Candidate;

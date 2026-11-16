@@ -114,8 +114,6 @@ export function Incentive() {
               tone="info"
             />
           </div>
-
-          <FiltersBar />
         </>
       )}
       <DataTableContainer
@@ -124,6 +122,11 @@ export function Incentive() {
         fullscreen={fullscreen}
         actions={
           <FullscreenButton fullscreen={fullscreen} onToggle={toggleFullscreen} />
+        }
+        toolbar={
+          <div className="table-toolbar">
+            <FiltersBar embedded />
+          </div>
         }
       >
         <CrmTable>

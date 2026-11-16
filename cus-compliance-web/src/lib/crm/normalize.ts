@@ -132,6 +132,7 @@ export function normalizeCandidate(c: Partial<Candidate> = {}): Candidate {
     expectedAmount: c.expectedAmount ?? "",
     monthRemarks: c.monthRemarks ? String(c.monthRemarks) : "",
     targetPaidManual: !!c.targetPaidManual,
+    removedFromPaymentTarget: !!c.removedFromPaymentTarget,
     createdAt: String(c.createdAt || new Date().toISOString()),
     updatedAt: new Date().toISOString(),
   };

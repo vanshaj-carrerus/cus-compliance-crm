@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCrm } from "../CrmProvider";
-import { FiltersBar } from "../FiltersBar";
+import { FiltersBar, FilterGroup, FILTER_ICONS } from "../FiltersBar";
 import {
   ColumnResizeHandle,
   FullscreenExitFab,
@@ -389,11 +389,11 @@ export function MasterSheet() {
   const liveRect: Rect | null =
     liveAnchor && liveFocus
       ? {
-          r0: Math.min(liveAnchor.row, liveFocus.row),
-          r1: Math.max(liveAnchor.row, liveFocus.row),
-          c0: Math.min(liveAnchor.col, liveFocus.col),
-          c1: Math.max(liveAnchor.col, liveFocus.col),
-        }
+        r0: Math.min(liveAnchor.row, liveFocus.row),
+        r1: Math.max(liveAnchor.row, liveFocus.row),
+        c0: Math.min(liveAnchor.col, liveFocus.col),
+        c1: Math.max(liveAnchor.col, liveFocus.col),
+      }
       : null;
   const allRects = useMemo(
     () => (liveRect ? [...ranges, liveRect] : ranges),
@@ -538,14 +538,19 @@ export function MasterSheet() {
           // Only the parts actually present in the pasted text (amount,
           // date, or both) are applied; the cell's other value is kept.
           const parsed = parsePasteInstallment(trimmed);
-          // Pasting never changes Paid - that stays whatever the cell's
-          // checkbox already was; only the user ticking it marks a payment.
-          const paid = old.paid;
+          // Pasted values land as PAID (never auto-overdue); the user
+          // unticks the checkbox to mark one unpaid. Pasting an empty cell
+          // clears the installment, so it is unpaid again.
+          const paid = trimmed ? true : false;
+          const merged = { ...old, ...parsed };
           c.installments[instIdx] = {
-            ...old,
-            ...parsed,
+            ...merged,
             paid,
-            paymentDate: paid ? old.paymentDate || parsed.date || todayIso() : old.paymentDate,
+            paymentDate: paid
+              ? old.paid && old.paymentDate
+                ? old.paymentDate
+                : merged.date || todayIso()
+              : "",
             receipt: old.receipt || "",
             notes: old.notes || "",
           };
@@ -863,7 +868,7 @@ export function MasterSheet() {
     } catch (err) {
       toast(
         "Sheet import failed: " +
-          (err instanceof Error ? err.message : "error"),
+        (err instanceof Error ? err.message : "error"),
         "error"
       );
     }
@@ -969,7 +974,7 @@ export function MasterSheet() {
     }
     if (col.key === "remaining") {
       return (
-        <td key={col.key} {...cellProps} className={selectedCls}>
+        <td key={col.key} {...cellProps} className={`remaining-col ${selectedCls}`}>
           <div
             className="sheet-cell calc-cell danger-text"
             title="Total minus Paid - not editable, edit the Total or installment columns instead"
@@ -1099,7 +1104,14 @@ export function MasterSheet() {
         <div className="inst-cell">
           <div className="inst-row">
             <input
-              className="sheet-cell inst-text"
+              className={`sheet-cell inst-text ${
+                st.label === "PAID"
+                  ? "inst-paid"
+                  : st.label === "OVERDUE"
+                    ? "inst-overdue"
+                    : ""
+              }`}
+              title={st.label || undefined}
               type="text"
               defaultValue={instText(c, idx)}
               key={c.id + "-" + idx + "-" + instText(c, idx)}
@@ -1115,7 +1127,6 @@ export function MasterSheet() {
               onChange={(e) => togglePaid(c.id, idx, e.target.checked)}
             />
           </div>
-          {st.label ? <div className={`inst-status ${st.color}`}>{st.label}</div> : null}
         </div>
       </td>
     );
@@ -1129,48 +1140,6 @@ export function MasterSheet() {
     <div className={shellCls}>
       {!fullscreen && (
         <>
-          <FiltersBar>
-            <span className="mx-1 hidden h-6 w-px bg-border sm:block" />
-            <label className="filter-group">
-              <span className="filter-label">Follow-up</span>
-              <select
-                value={followupFilter}
-                onChange={(e) => setFollowupFilter(e.target.value)}
-              >
-                <option value="">All</option>
-                <option value="overdue">Overdue</option>
-                <option value="today">Today</option>
-                <option value="future">Future</option>
-                <option value="never">Not Set</option>
-              </select>
-            </label>
-            <label className="filter-group">
-              <span className="filter-label">Contact Method</span>
-              <select
-                value={methodFilter}
-                onChange={(e) => setMethodFilter(e.target.value)}
-              >
-                <option value="">All</option>
-                {["Call", "WhatsApp", "Email", "In-Person", "No Contact"].map(
-                  (v) => (
-                    <option key={v}>{v}</option>
-                  )
-                )}
-              </select>
-            </label>
-            {(followupFilter || methodFilter) && (
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={() => {
-                  setFollowupFilter("");
-                  setMethodFilter("");
-                }}
-              >
-                Clear Contact Filters
-              </button>
-            )}
-          </FiltersBar>
           {smartFilter && (
             <div className="mb-3 flex items-center justify-between rounded-(--radius) border border-primary/30 bg-primary/5 px-4 py-2 text-sm">
               <span>
@@ -1192,32 +1161,80 @@ export function MasterSheet() {
         onExit={() => setFullscreen(false)}
       />
       <div
-        className={`overflow-hidden rounded-(--radius) border border-border bg-card ${
-          fullscreen ? "flex min-h-0 flex-1 flex-col" : ""
-        }`}
+        className={`master-theme-card overflow-hidden rounded-(--radius) border border-border bg-card ${fullscreen ? "flex min-h-0 flex-1 flex-col" : ""
+          }`}
       >
         {!fullscreen && (
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-4">
-            <div>
-              <div className="text-base font-semibold">Master P.O Sheet</div>
-              <div className="mt-1 text-xs text-muted">
-                Sheet-style grid: click a cell (or drag across cells) to select
-                a range, Shift+click/drag to extend it, Ctrl/Cmd+click to add
-                another row/column/range, Ctrl/Cmd+C to copy, Ctrl/Cmd+V to
-                paste - just like pasting into a Google Sheet. Click or drag
-                across row numbers / column headers to select whole
-                rows/columns. Click directly into any cell (Month, Name,
-                Offer Amount, Percentage, Total, Start Date, Floor, Phone
-                Number, Terms, P.O. or an installment) to type or edit it
-                right there - no need to open ✏️ Edit unless you want status,
-                remarks or other contact fields. Data saves to
-                MongoDB.
+            <div className="master-title-block w-full">
+              <div className="master-title">Master P.O Sheet</div>
+              <div className="master-kpis">
+                <div className="master-kpi">
+                  <div className="master-kpi-label">Total Candidates</div>
+                  <div className="master-kpi-value">{list.length}</div>
+                </div>
+                <div className="master-kpi">
+                  <div className="master-kpi-label">Total Committed</div>
+                  <div className="master-kpi-value">
+                    {money(list.reduce((s, c) => s + (Number(c.totalServiceFee) || 0), 0))}
+                  </div>
+                </div>
+                <div className="master-kpi">
+                  <div className="master-kpi-label">Total Realized</div>
+                  <div className="master-kpi-value">
+                    {money(list.reduce((s, c) => s + getTotalPaid(c), 0))}
+                  </div>
+                </div>
+                <div className="master-kpi">
+                  <div className="master-kpi-label">Outstanding</div>
+                  <div className="master-kpi-value">
+                    {money(list.reduce((s, c) => s + getRemaining(c), 0))}
+                  </div>
+                </div>
               </div>
             </div>
+            <div className="master-toolbar w-full">
+              <FiltersBar iconOnly embedded>
+                <span className="mx-1 hidden h-6 w-px bg-border sm:block" />
+                <FilterGroup text="Follow-up" icon={FILTER_ICONS.followUp} iconOnly>
+                  <select
+                    value={followupFilter}
+                    onChange={(e) => setFollowupFilter(e.target.value)}
+                  >
+                    <option value="">All</option>
+                    <option value="overdue">Overdue</option>
+                    <option value="today">Today</option>
+                    <option value="future">Future</option>
+                    <option value="never">Not Set</option>
+                  </select>
+                </FilterGroup>
+                <FilterGroup text="Contact Method" icon={FILTER_ICONS.contactMethod} iconOnly>
+                  <select
+                    value={methodFilter}
+                    onChange={(e) => setMethodFilter(e.target.value)}
+                  >
+                    <option value="">All</option>
+                    {["Call", "WhatsApp", "Email", "In-Person", "No Contact"].map(
+                      (v) => (
+                        <option key={v}>{v}</option>
+                      )
+                    )}
+                  </select>
+                </FilterGroup>
+                {(followupFilter || methodFilter) && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => {
+                      setFollowupFilter("");
+                      setMethodFilter("");
+                    }}
+                  >
+                    Clear Contact Filters
+                  </button>
+                )}
+              </FiltersBar>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-border bg-secondary px-2.5 py-1 text-xs text-muted">
-                {list.length} candidates
-              </span>
               <button
                 type="button"
                 className="rounded border border-border bg-secondary px-3 py-1.5 text-xs disabled:opacity-50"
@@ -1292,6 +1309,7 @@ export function MasterSheet() {
                 onChange={(e) => importCsv(e.target.files?.[0])}
               />
             </div>
+            </div>
           </div>
         )}
         <div
@@ -1300,7 +1318,7 @@ export function MasterSheet() {
           className={`table-scroll overflow-auto ${fullscreen ? "flex-1 max-h-none!" : ""}`}
           onPaste={handlePaste}
         >
-          <table className="excel-grid">
+          <table className="excel-grid master-theme">
             <thead>
               <tr>
                 <th className="row-head" title="Drag a row's handle to reorder it">⠿</th>
@@ -1348,17 +1366,14 @@ export function MasterSheet() {
               {list.map((c, rowIndex) => (
                 <tr
                   key={c.id}
-                  className={`${
-                    c.status === "Cancelled" ? "row-cancelled" : ""
-                  } ${
-                    bulkSelected.has(String(c.id)) ? "outline outline-primary/40" : ""
-                  } ${draggingId === c.id ? "opacity-40" : ""} ${
-                    dragOverInfo?.id === c.id && dragOverInfo.pos === "before"
+                  className={`${c.status === "Cancelled" ? "row-cancelled" : ""
+                    } ${bulkSelected.has(String(c.id)) ? "outline outline-primary/40" : ""
+                    } ${draggingId === c.id ? "opacity-40" : ""} ${dragOverInfo?.id === c.id && dragOverInfo.pos === "before"
                       ? "border-t-2 border-t-primary"
                       : dragOverInfo?.id === c.id && dragOverInfo.pos === "after"
                         ? "border-b-2 border-b-primary"
                         : ""
-                  }`}
+                    }`}
                   data-id={c.id}
                   onDragOver={draggingId != null ? handleRowDragOver(c.id) : undefined}
                   onDrop={draggingId != null ? handleRowDrop(c.id) : undefined}

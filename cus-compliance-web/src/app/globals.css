@@ -1089,3 +1089,453 @@ body {
 .crm-switcher-track::-webkit-scrollbar {
   display: none;
 }
+
+/* ------------------------------------------------------------------
+   Master P.O Sheet - spreadsheet look (design only, scoped to
+   .master-theme / .master-theme-card so no other page is affected).
+   ------------------------------------------------------------------ */
+.master-theme-card {
+  --sheet-navy: #2a3350;
+  --sheet-grid: #d9dde3;
+  --sheet-orange-bg: #fce5cd;
+  --sheet-orange-fg: #b45f06;
+  border-radius: 6px;
+  background: #ffffff;
+}
+.master-title-block {
+  text-align: center;
+  padding: 6px 0 2px;
+}
+.master-title {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #1f2937;
+}
+.master-subtitle {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #6b7280;
+}
+.master-kpis {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px 72px;
+  margin: 18px 0 8px;
+}
+.master-kpi {
+  text-align: center;
+  min-width: 140px;
+}
+.master-kpi-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6b7280;
+}
+.master-kpi-value {
+  margin-top: 2px;
+  font-size: 28px;
+  font-weight: 800;
+  color: #1f2937;
+  line-height: 1.15;
+}
+
+/* Header: dark navy bar, white bold centered labels */
+.excel-grid.master-theme thead th,
+.excel-grid.master-theme thead .row-head,
+.excel-grid.master-theme thead .freeze-check {
+  background: var(--sheet-navy) !important;
+  background-color: var(--sheet-navy) !important;
+  color: #ffffff;
+  text-align: center;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 13px;
+  font-weight: 700;
+  border-bottom: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 11px 8px;
+}
+.excel-grid.master-theme thead th .col-resize-handle:hover {
+  background: #ffffff;
+}
+
+/* Body: white cells, light gridlines both ways, centered text */
+.excel-grid.master-theme tbody td {
+  border-bottom: 1px solid var(--sheet-grid);
+  border-right: 1px solid var(--sheet-grid);
+  text-align: center;
+}
+.excel-grid.master-theme .row-head,
+.excel-grid.master-theme .freeze-check {
+  box-shadow: none;
+}
+.excel-grid.master-theme .sheet-cell {
+  text-align: center;
+  font-weight: 500;
+  font-size: 13px;
+  color: #1f2937;
+}
+.excel-grid.master-theme .sheet-cell.calc-cell,
+.excel-grid.master-theme .sheet-cell.text-primary {
+  font-weight: 700;
+}
+.excel-grid.master-theme .sheet-cell.success-text {
+  color: #188038;
+}
+.excel-grid.master-theme .sheet-cell.danger-text {
+  color: #1f2937;
+}
+/* Installment state shown by text colour (no PAID/OVERDUE caption): green
+   when paid, red when overdue, default otherwise. The state name is in the
+   cell's hover tooltip. */
+.excel-grid.master-theme .sheet-cell.inst-paid {
+  color: #188038;
+}
+.excel-grid.master-theme .sheet-cell.inst-overdue {
+  color: #d93025;
+  font-weight: 600;
+}
+.excel-grid.master-theme .inst-status {
+  text-align: center;
+}
+.excel-grid.master-theme .inst-row {
+  justify-content: center;
+}
+
+/* Remaining balance column: orange tint */
+.excel-grid.master-theme tbody td.remaining-col {
+  background-color: var(--sheet-orange-bg);
+}
+.excel-grid.master-theme tbody td.remaining-col .sheet-cell {
+  color: var(--sheet-orange-fg);
+  font-weight: 700;
+}
+
+/* Status never paints the row - every row stays plain white. Cells keep
+   white even for Cancelled (overrides the generic faint-red tint). */
+.excel-grid.master-theme tbody tr.row-cancelled > td,
+.excel-grid.master-theme tbody tr.row-cancelled > td.row-head,
+.excel-grid.master-theme tbody tr.row-cancelled > td.freeze-check {
+  background-color: #ffffff !important;
+}
+.excel-grid.master-theme tbody tr.row-cancelled > td.remaining-col {
+  background-color: var(--sheet-orange-bg) !important;
+}
+.excel-grid.master-theme option {
+  color: #1f2937;
+  background: #ffffff;
+}
+.excel-grid.master-theme tbody tr.row-cancelled > td.cell-selected {
+  background-color: rgba(21, 153, 154, 0.14) !important;
+}
+
+/* Master sheet dropdowns: grey pill chip, centered value, small black
+   down-triangle on the right (design only - same <select> underneath). */
+.excel-grid.master-theme select.sheet-cell {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  background-color: #e8eaed;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0h10L5 6z' fill='%23111827'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  border-radius: 999px;
+  padding: 6px 28px 6px 14px;
+  text-align: center;
+  text-align-last: center;
+  font-weight: 500;
+  color: #1f2937;
+}
+.excel-grid.master-theme select.sheet-cell:hover {
+  background-color: #dfe2e6;
+}
+.excel-grid.master-theme select.sheet-cell:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(21, 153, 154, 0.35);
+}
+
+/* Master sheet dropdown LIST: pill-style options. Uses the customizable
+   <select> (Chrome/Edge 135+); other browsers keep the native list. */
+@supports (appearance: base-select) {
+  .excel-grid.master-theme select.sheet-cell,
+  .excel-grid.master-theme select.sheet-cell::picker(select) {
+    appearance: base-select;
+  }
+  /* keep our own triangle on the chip */
+  .excel-grid.master-theme select.sheet-cell::picker-icon {
+    display: none;
+  }
+  .excel-grid.master-theme select.sheet-cell::picker(select) {
+    box-sizing: border-box;
+    min-width: anchor-size(width);
+    margin-top: 4px;
+    padding: 6px;
+    border: 1px solid #e5e7eb;
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.16);
+  }
+  .excel-grid.master-theme select.sheet-cell option {
+    display: block;
+    box-sizing: border-box;
+    padding: 7px 18px;
+    margin: 2px 0;
+    border-radius: 999px;
+    background: #f1f3f4;
+    color: #1f2937;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .excel-grid.master-theme select.sheet-cell option::checkmark {
+    display: none;
+  }
+  .excel-grid.master-theme select.sheet-cell option:hover,
+  .excel-grid.master-theme select.sheet-cell option:focus {
+    background: #dfe2e6;
+  }
+  .excel-grid.master-theme select.sheet-cell option:checked {
+    background: #d6ecec;
+    font-weight: 700;
+  }
+}
+
+/* Header hover on the Master sheet: stay on the navy bar (a lighter navy),
+   keep the label white - the generic teal hover washed the text out. */
+.excel-grid.master-theme thead th.col-head-selectable:hover,
+.excel-grid.master-theme thead th.row-head-selectable:hover {
+  background: #3a4566 !important;
+  background-color: #3a4566 !important;
+  color: #ffffff;
+}
+
+/* Icon-only filters (Master sheet): the name is hidden, shown as a tooltip. */
+.filter-group-icon {
+  gap: 6px;
+}
+.filter-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--secondary);
+  color: var(--muted);
+  flex: 0 0 auto;
+  cursor: help;
+}
+.filter-group-icon:hover .filter-icon {
+  color: var(--primary);
+}
+
+/* Filters embedded in the Master sheet toolbar: no card of their own, sits
+   on the same wrapping row as the action buttons. */
+.filters-bar.filters-bar-embedded {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.master-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  padding-top: 4px;
+}
+
+/* ==================================================================
+   Spreadsheet look for every table page (Payment Target, Compliance,
+   Incentive, Daily Follow-up, History, Reports, Workflows) - same style
+   as the Master P.O Sheet. Design only, scoped to .data-table-container.
+   ================================================================== */
+.data-table-container {
+  --sheet-navy: #2a3350;
+  --sheet-grid: #d9dde3;
+  --sheet-orange-bg: #fce5cd;
+  --sheet-orange-fg: #b45f06;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+/* Title block: centered title + subtitle, actions underneath */
+.data-table-container > .table-header {
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  background: #ffffff;
+  border-bottom: 0;
+  padding: 18px 20px 8px;
+  min-height: 0;
+}
+.data-table-container > .table-header .table-title {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #1f2937;
+}
+.data-table-container > .table-header .table-subtitle {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #6b7280;
+}
+.data-table-container > .table-header .table-actions {
+  justify-content: center;
+}
+
+/* One toolbar: filters + buttons together on a plain white strip */
+.data-table-container .table-toolbar {
+  background: #ffffff;
+  border-bottom: 0;
+  padding: 8px 16px 12px;
+}
+
+/* Header bar: navy, bold white */
+.data-table-container .data-table th {
+  background: var(--sheet-navy);
+  color: #ffffff;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 11px 10px;
+  border-bottom: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+}
+.data-table-container .data-table-resizable th {
+  text-align: center;
+}
+
+/* Body: plain white rows, gridlines both ways */
+.data-table-container .data-table tbody tr,
+.data-table-container .data-table tbody tr:hover {
+  background: transparent;
+}
+.data-table-container .data-table tbody td {
+  background-color: #ffffff;
+  border-bottom: 1px solid var(--sheet-grid);
+  border-right: 1px solid var(--sheet-grid);
+  vertical-align: middle;
+}
+.data-table-container .data-table tbody tr:hover > td {
+  background-color: #f8fafc;
+}
+.data-table-container .data-table-resizable tbody td {
+  text-align: center;
+}
+.data-table-container .data-table tbody tr[class*="row-"] > td {
+  background-color: #ffffff;
+}
+.data-table-container .data-table tbody td.cell-selected {
+  background-color: rgba(21, 153, 154, 0.14) !important;
+}
+.data-table-container .data-table .sheet-cell,
+.data-table-container .data-table .target-input {
+  text-align: center;
+}
+.data-table-container .data-table .sheet-cell {
+  font-weight: 500;
+}
+.data-table-container .data-table .sheet-cell.calc-cell {
+  font-weight: 700;
+}
+
+/* Remaining balance column: orange tint */
+.data-table-container .data-table tbody td.remaining-col,
+.data-table-container .data-table tbody tr:hover > td.remaining-col {
+  background-color: var(--sheet-orange-bg);
+}
+.data-table-container .data-table td.remaining-col .sheet-cell {
+  color: var(--sheet-orange-fg);
+  font-weight: 700;
+}
+
+/* Dropdowns in table cells: grey pill chip with a black triangle */
+.data-table-container .data-table select {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  background-color: #e8eaed;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0h10L5 6z' fill='%23111827'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 28px 6px 14px;
+  text-align: center;
+  text-align-last: center;
+  font-weight: 500;
+  color: #1f2937;
+}
+.data-table-container .data-table select:hover {
+  background-color: #dfe2e6;
+}
+.data-table-container .data-table select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(21, 153, 154, 0.35);
+}
+@supports (appearance: base-select) {
+  .data-table-container .data-table select,
+  .data-table-container .data-table select::picker(select) {
+    appearance: base-select;
+  }
+  .data-table-container .data-table select::picker-icon {
+    display: none;
+  }
+  .data-table-container .data-table select::picker(select) {
+    box-sizing: border-box;
+    min-width: anchor-size(width);
+    margin-top: 4px;
+    padding: 6px;
+    border: 1px solid #e5e7eb;
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.16);
+  }
+  .data-table-container .data-table select option {
+    display: block;
+    box-sizing: border-box;
+    padding: 7px 18px;
+    margin: 2px 0;
+    border-radius: 999px;
+    background: #f1f3f4;
+    color: #1f2937;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .data-table-container .data-table select option::checkmark {
+    display: none;
+  }
+  .data-table-container .data-table select option:hover,
+  .data-table-container .data-table select option:focus {
+    background: #dfe2e6;
+  }
+  .data-table-container .data-table select option:checked {
+    background: #d6ecec;
+    font-weight: 700;
+  }
+}
+
+/* Filters embedded in a table toolbar already lose their card via
+   .filters-bar-embedded; keep the toolbar group tidy. */
+.table-toolbar-actions .filters-bar.filters-bar-embedded {
+  margin-right: 8px;
+}
+

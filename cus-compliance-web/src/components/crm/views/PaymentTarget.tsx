@@ -32,7 +32,6 @@ import {
   getDefaultExpectedDate,
   applyPaidAmount,
   priority,
-  statusExcluded,
   fmtDate,
   fmtMonth,
   normalizeCandidate,
@@ -63,9 +62,17 @@ export function PaymentTarget() {
     assignableUsers,
   } = useCrm();
   const d = new Date(settings.targetMonth);
-  const list = filtered().filter(
-    (x) => !statusExcluded(x.status) && getRemaining(x) > 0
-  );
+  // Re-evaluated from every candidate on each render:
+  //  - Fully Paid: never shown.
+  //  - Active: always shown.
+  //  - Any other status: shown unless removed from Payment Target.
+  // So a removed candidate whose status goes back to Active shows again.
+  const list = filtered().filter((x) => {
+    const st = String(x.status || "").toLowerCase();
+    if (st === "fully paid") return false;
+    if (st === "active") return true;
+    return !x.removedFromPaymentTarget;
+  });
   const shiftMonth = (delta: number) => {
     const next = new Date(d);
     next.setMonth(next.getMonth() + delta);
@@ -236,7 +243,7 @@ export function PaymentTarget() {
     {
       key: "remaining",
       label: "Remaining",
-      className: "danger-text",
+      className: "danger-text remaining-col",
       render: (r) => (
         <input
           className="sheet-cell danger-text"
@@ -281,6 +288,32 @@ export function PaymentTarget() {
           <Badge label={getComplianceStatus(r.x)} />
         </div>
       ),
+    },
+    {
+      key: "action",
+      label: "Action",
+      render: (r) =>
+        !["active", "fully paid"].includes(
+          String(r.x.status || "").toLowerCase()
+        ) ? (
+          <button
+            type="button"
+            className="rounded border border-border bg-secondary px-2 py-1 text-xs danger-text"
+            title="Remove this candidate from Payment Target (stays on Master P.O Sheet)"
+            onClick={() => {
+              if (
+                !confirm(
+                  `Remove ${r.x.name || "this candidate"} from Payment Target? They will remain on Master P.O Sheet only.`
+                )
+              )
+                return;
+              updateMasterField(r.x.id, "removedFromPaymentTarget", true);
+              toast("Removed from Payment Target", "success");
+            }}
+          >
+            Remove
+          </button>
+        ) : null,
     },
     {
       key: "priority",
@@ -410,6 +443,7 @@ export function PaymentTarget() {
     { key: "nextPayment", editable: false, getText: (x) => fmtDate(getNextDueDate(x)) },
     { key: "status", editable: false, getText: (x) => getComplianceStatus(x) },
     { key: "priority", editable: false, getText: (x) => priority(x, d) },
+    { key: "action", editable: false, getText: () => "" },
   ];
   const sheetColumnsByKey = new Map(sheetColumns.map((c) => [c.key, c]));
   const orderedSheetColumns = order.map((k) => sheetColumnsByKey.get(k)!);
@@ -432,7 +466,7 @@ export function PaymentTarget() {
       createBlankRow: () => normalizeCandidate({ id: newId() }),
       normalize: normalizeCandidate,
       overflowNote:
-        "New candidates only show up here once they have Name/P.O/Month and a remaining balance set on Master P.O Sheet.",
+        "New candidates only show up here once they have Name/P.O/Month set on Master P.O Sheet.",
     });
 
   return (
@@ -445,12 +479,11 @@ export function PaymentTarget() {
             onPrev={() => shiftMonth(-1)}
             onNext={() => shiftMonth(1)}
           />
-          <FiltersBar />
         </>
       )}
       <DataTableContainer
         title={`Payment Target - ${fmtMonth(d)}`}
-        subtitle="Carry-forward active until fully paid"
+        subtitle="Active candidates, plus any other status until removed (Fully Paid never shown)"
         fullscreen={fullscreen}
         scrollRef={scrollRef}
         onPaste={handlePaste}
@@ -459,6 +492,7 @@ export function PaymentTarget() {
         }
         toolbar={
           <TableCountBar total={list.length}>
+            <FiltersBar embedded />
             <button
               type="button"
               title="Manually add a new candidate here"
@@ -529,8 +563,8 @@ export function PaymentTarget() {
               })
             ) : (
               <EmptyTableRow
-                colSpan={14}
-                message="No candidates with remaining balance."
+                colSpan={15}
+                message="No candidates in Payment Target."
               />
             )}
           </tbody>

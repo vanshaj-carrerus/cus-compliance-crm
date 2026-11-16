@@ -1,10 +1,67 @@
 "use client";
 
 import type { ReactNode } from "react";
+import {
+  BellRing,
+  Building2,
+  CalendarDays,
+  CircleDot,
+  FileText,
+  PhoneCall,
+  UserRound,
+  type LucideIcon,
+} from "lucide-react";
 import { useCrm } from "./CrmProvider";
 import { DEFAULT_STATUSES } from "@/lib/crm/types";
 
-export function FiltersBar({ children }: { children?: ReactNode }) {
+// One filter: normally "LABEL [select]". With iconOnly it shows just an icon
+// (full name stays for screen readers and appears as a tooltip on hover of
+// the icon or the dropdown).
+export function FilterGroup({
+  text,
+  icon: Icon,
+  iconOnly,
+  children,
+}: {
+  text: string;
+  icon: LucideIcon;
+  iconOnly?: boolean;
+  children: ReactNode;
+}) {
+  if (!iconOnly) {
+    return (
+      <label className="filter-group">
+        <span className="filter-label">{text}</span>
+        {children}
+      </label>
+    );
+  }
+  return (
+    <label className="filter-group filter-group-icon" title={text}>
+      <span className="filter-icon">
+        <Icon size={16} strokeWidth={2.2} aria-hidden="true" />
+        <span className="sr-only">{text}</span>
+      </span>
+      {children}
+    </label>
+  );
+}
+
+export const FILTER_ICONS = {
+  followUp: BellRing,
+  contactMethod: PhoneCall,
+};
+
+export function FiltersBar({
+  children,
+  iconOnly = true,
+  embedded = false,
+}: {
+  children?: ReactNode;
+  iconOnly?: boolean;
+  // Renders without its own card so it can sit inside another toolbar.
+  embedded?: boolean;
+}) {
   const { candidates, activeFilters, setActiveFilters, assignableUsers } = useCrm();
   const assignees = [
     ...new Set([
@@ -32,9 +89,8 @@ export function FiltersBar({ children }: { children?: ReactNode }) {
   };
 
   return (
-    <div className="filters-bar">
-      <label className="filter-group">
-        <span className="filter-label">Assigned</span>
+    <div className={`filters-bar ${embedded ? "filters-bar-embedded" : ""}`}>
+      <FilterGroup text="Assigned" icon={UserRound} iconOnly={iconOnly}>
         <select
           value={activeFilters.assignedTo || ""}
           onChange={(e) => set("assignedTo", e.target.value)}
@@ -44,9 +100,8 @@ export function FiltersBar({ children }: { children?: ReactNode }) {
             <option key={v}>{v}</option>
           ))}
         </select>
-      </label>
-      <label className="filter-group">
-        <span className="filter-label">Floor</span>
+      </FilterGroup>
+      <FilterGroup text="Floor" icon={Building2} iconOnly={iconOnly}>
         <select
           value={activeFilters.floor || ""}
           onChange={(e) => set("floor", e.target.value)}
@@ -56,9 +111,8 @@ export function FiltersBar({ children }: { children?: ReactNode }) {
             <option key={v}>{v}</option>
           ))}
         </select>
-      </label>
-      <label className="filter-group">
-        <span className="filter-label">Status</span>
+      </FilterGroup>
+      <FilterGroup text="Status" icon={CircleDot} iconOnly={iconOnly}>
         <select
           value={activeFilters.status || ""}
           onChange={(e) => set("status", e.target.value)}
@@ -68,9 +122,8 @@ export function FiltersBar({ children }: { children?: ReactNode }) {
             <option key={v}>{v}</option>
           ))}
         </select>
-      </label>
-      <label className="filter-group">
-        <span className="filter-label">PO</span>
+      </FilterGroup>
+      <FilterGroup text="PO" icon={FileText} iconOnly={iconOnly}>
         <select
           value={activeFilters.po || ""}
           onChange={(e) => set("po", e.target.value)}
@@ -80,9 +133,8 @@ export function FiltersBar({ children }: { children?: ReactNode }) {
             <option key={v}>{v}</option>
           ))}
         </select>
-      </label>
-      <label className="filter-group">
-        <span className="filter-label">P.O Month</span>
+      </FilterGroup>
+      <FilterGroup text="P.O Month" icon={CalendarDays} iconOnly={iconOnly}>
         <select
           value={activeFilters.poMonth || ""}
           onChange={(e) => set("poMonth", e.target.value)}
@@ -92,7 +144,7 @@ export function FiltersBar({ children }: { children?: ReactNode }) {
             <option key={v}>{v}</option>
           ))}
         </select>
-      </label>
+      </FilterGroup>
       <button
         type="button"
         className="btn btn-secondary btn-sm"

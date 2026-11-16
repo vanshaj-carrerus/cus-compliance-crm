@@ -39,6 +39,7 @@ type FormState = {
   expectedAmount: string;
   monthRemarks: string;
   targetPaidManual: boolean;
+  removedFromPaymentTarget: boolean;
   installments: Installment[];
 };
 
@@ -80,6 +81,7 @@ function createEmptyForm(): FormState {
     expectedAmount: "",
     monthRemarks: "",
     targetPaidManual: false,
+    removedFromPaymentTarget: false,
     installments: [emptyInstallment()],
   };
 }
@@ -107,6 +109,7 @@ function formFromCandidate(c: Candidate): FormState {
     expectedAmount: String(c.expectedAmount ?? ""),
     monthRemarks: c.monthRemarks || "",
     targetPaidManual: !!c.targetPaidManual,
+    removedFromPaymentTarget: !!c.removedFromPaymentTarget,
     installments: installmentsFromCandidate(c),
   };
 }
@@ -330,6 +333,31 @@ export function CandidateModal() {
                 />
               </Field>
 
+              <Field
+                label="Removed from Payment Target"
+                className="justify-end"
+              >
+                <div className="flex items-center gap-4 text-sm">
+                  {[
+                    { label: "Yes", value: true },
+                    { label: "No", value: false },
+                  ].map((o) => (
+                    <label key={o.label} className="flex items-center gap-1.5">
+                      <input
+                        type="radio"
+                        name="removedFromPaymentTarget"
+                        className="h-4 w-4 accent-primary"
+                        checked={form.removedFromPaymentTarget === o.value}
+                        onChange={() =>
+                          setValue("removedFromPaymentTarget", o.value)
+                        }
+                      />
+                      {o.label}
+                    </label>
+                  ))}
+                </div>
+              </Field>
+
               <Field label="Remarks" className="xl:col-span-2">
                 <textarea
                   className={`${inputCls} min-h-22.5`}
@@ -528,6 +556,7 @@ export function CandidateModal() {
                 expectedAmount: form.expectedAmount,
                 monthRemarks: form.monthRemarks,
                 targetPaidManual: form.targetPaidManual,
+                removedFromPaymentTarget: form.removedFromPaymentTarget,
                 installments: form.installments.map((inst) =>
                   normalizeInst(inst)
                 ),

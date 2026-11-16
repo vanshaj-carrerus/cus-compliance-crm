@@ -27,7 +27,6 @@ import {
   getNextDueDate,
   getComplianceStatus,
   applyPaidAmount,
-  statusExcluded,
   fmtDate,
   normalizeCandidate,
   newId,
@@ -76,9 +75,9 @@ export function Compliance() {
     toast,
     assignableUsers,
   } = useCrm();
-  const list = filtered().filter(
-    (x) => !statusExcluded(x.status) && getRemaining(x) > 0
-  );
+  // Every candidate from Master shows here (including Cancelled / Fully Paid,
+  // no balance condition) so users can see who each one is assigned to.
+  const list = filtered();
   const { fullscreen, toggleFullscreen, shellCls } = useFullscreen();
   const rows = list;
 
@@ -219,7 +218,7 @@ export function Compliance() {
     {
       key: "remaining",
       label: "Remaining",
-      className: "danger-text",
+      className: "danger-text remaining-col",
       render: (x) => (
         <input
           className="sheet-cell danger-text"
@@ -413,13 +412,12 @@ export function Compliance() {
       createBlankRow: () => normalizeCandidate({ id: newId() }),
       normalize: normalizeCandidate,
       overflowNote:
-        "New candidates only show up here once they have Name/P.O/Month and a remaining balance set on Master P.O Sheet.",
+        "New candidates only show up here once they have Name/P.O/Month set on Master P.O Sheet.",
     });
 
   return (
     <div className={shellCls}>
       <FullscreenExitFab fullscreen={fullscreen} onExit={toggleFullscreen} />
-      {!fullscreen && <FiltersBar />}
       <DataTableContainer
         title="Compliance Sheet"
         subtitle="Auto-generated from Master"
@@ -431,6 +429,7 @@ export function Compliance() {
         }
         toolbar={
           <TableCountBar total={list.length}>
+            <FiltersBar embedded />
             <ResetColumnsButton
               onReset={() => {
                 resetOrder();
@@ -483,7 +482,7 @@ export function Compliance() {
                 </tr>
               ))
             ) : (
-              <EmptyTableRow colSpan={11} message="No active compliance rows." />
+              <EmptyTableRow colSpan={11} message="No candidates." />
             )}
           </tbody>
         </CrmTable>

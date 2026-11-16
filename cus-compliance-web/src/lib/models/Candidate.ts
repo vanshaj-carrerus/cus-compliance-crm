@@ -49,6 +49,7 @@ const CandidateSchema = new Schema(
     expectedAmount: { type: Schema.Types.Mixed, default: "" },
     monthRemarks: { type: String, default: "" },
     targetPaidManual: { type: Boolean, default: false },
+    removedFromPaymentTarget: { type: Boolean, default: false },
     createdAt: { type: String, default: () => new Date().toISOString() },
     updatedAt: { type: String, default: () => new Date().toISOString() },
   },

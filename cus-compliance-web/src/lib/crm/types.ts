@@ -63,6 +63,8 @@ export interface Candidate {
   expectedAmount?: number | string;
   monthRemarks?: string;
   targetPaidManual?: boolean;
+  /** Cancelled candidate dismissed from Payment Target (stays on Master only) */
+  removedFromPaymentTarget?: boolean;
   createdAt: string;
   updatedAt: string;
 }
