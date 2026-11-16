@@ -53,6 +53,68 @@ function instText(c: Candidate, idx: number): string {
     .join(" ");
 }
 
+// Two-column card grid used on phones instead of the wide sheet. Tapping a
+// card opens the existing candidate modal (detailed + editable view).
+function MobileCandidateCards({
+  list,
+  onOpen,
+}: {
+  list: Candidate[];
+  onOpen: (id: number) => void;
+}) {
+  if (!list.length) {
+    return (
+      <div className="p-6 text-center text-sm text-muted">
+        No candidates found.
+      </div>
+    );
+  }
+  return (
+    <div className="grid grid-cols-2 gap-2.5 p-2.5 pb-16">
+      {list.map((c) => {
+        const remaining = getRemaining(c);
+        const next = getNextDueDate(c);
+        return (
+          <button
+            key={c.id}
+            type="button"
+            onClick={() => onOpen(c.id)}
+            className="flex min-w-0 flex-col gap-1.5 rounded-xl border border-border bg-card p-3 text-left shadow-sm active:bg-secondary"
+          >
+            <div className="flex items-start justify-between gap-1">
+              <span className="min-w-0 break-words text-sm font-semibold leading-tight text-card-foreground">
+                {c.name || "Unnamed"}
+              </span>
+            </div>
+            {c.status && (
+              <span className="w-fit max-w-full truncate rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-muted">
+                {c.status}
+              </span>
+            )}
+            <div className="truncate text-xs text-muted">
+              {[c.assignedTo, c.poMonth].filter(Boolean).join(" · ") || "-"}
+            </div>
+            <div className="mt-auto grid grid-cols-2 gap-x-2 border-t border-border pt-1.5 text-[11px]">
+              <span className="text-muted">Paid</span>
+              <span className="text-right font-semibold text-success">
+                {money(getTotalPaid(c))}
+              </span>
+              <span className="text-muted">Left</span>
+              <span
+                className={`text-right font-semibold ${remaining > 0 ? "text-danger" : "text-success"}`}
+              >
+                {money(remaining)}
+              </span>
+              <span className="text-muted">Due</span>
+              <span className="text-right">{next ? fmtDate(next) : "-"}</span>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function instStatus(i: Candidate["installments"][0]) {
   if (!i?.amount) return { label: "", color: "text-muted" };
   if (i.paid) return { label: "PAID", color: "text-success" };
@@ -185,7 +247,14 @@ export function MasterSheet() {
   // users asked to land on the full table rather than have to click the
   // Fullscreen button every time (see useFullscreen in shared.tsx, which
   // this page predates and so duplicates rather than uses directly).
-  const [fullscreen, setFullscreen] = useState(true);
+  // On phones (<768px, the card layout) it starts normal so the search,
+  // filters and navigation stay reachable; the sheet only mounts after the
+  // data has loaded on the client, so reading matchMedia here is safe.
+  const [fullscreen, setFullscreen] = useState(
+    () =>
+      typeof window === "undefined" ||
+      !window.matchMedia("(max-width: 767px)").matches
+  );
   const fileRef = useRef<HTMLInputElement>(null);
   const [pasteProgress, setPasteProgress] = useState<{ done: number; total: number } | null>(
     null
@@ -1312,10 +1381,17 @@ export function MasterSheet() {
             </div>
           </div>
         )}
+        {/* Phone-only card layout (<768px). Hidden from md up, where the
+            full sheet below is shown instead. */}
+        <div
+          className={`md:hidden ${fullscreen ? "min-h-0 flex-1 overflow-auto" : ""}`}
+        >
+          <MobileCandidateCards list={list} onOpen={editCandidate} />
+        </div>
         <div
           ref={scrollRef}
           id="masterScroll"
-          className={`table-scroll overflow-auto ${fullscreen ? "flex-1 max-h-none!" : ""}`}
+          className={`table-scroll hidden overflow-auto md:block ${fullscreen ? "flex-1 max-h-none!" : ""}`}
           onPaste={handlePaste}
         >
           <table className="excel-grid master-theme">

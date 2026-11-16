@@ -1213,10 +1213,7 @@ body {
   justify-content: center;
 }
 
-/* Remaining balance column: orange tint */
-.excel-grid.master-theme tbody td.remaining-col {
-  background-color: var(--sheet-orange-bg);
-}
+/* Remaining balance column: orange text only (no background shade) */
 .excel-grid.master-theme tbody td.remaining-col .sheet-cell {
   color: var(--sheet-orange-fg);
   font-weight: 700;
@@ -1228,9 +1225,6 @@ body {
 .excel-grid.master-theme tbody tr.row-cancelled > td.row-head,
 .excel-grid.master-theme tbody tr.row-cancelled > td.freeze-check {
   background-color: #ffffff !important;
-}
-.excel-grid.master-theme tbody tr.row-cancelled > td.remaining-col {
-  background-color: var(--sheet-orange-bg) !important;
 }
 .excel-grid.master-theme option {
   color: #1f2937;
@@ -1461,11 +1455,7 @@ body {
   font-weight: 700;
 }
 
-/* Remaining balance column: orange tint */
-.data-table-container .data-table tbody td.remaining-col,
-.data-table-container .data-table tbody tr:hover > td.remaining-col {
-  background-color: var(--sheet-orange-bg);
-}
+/* Remaining balance column: orange text only (no background shade) */
 .data-table-container .data-table td.remaining-col .sheet-cell {
   color: var(--sheet-orange-fg);
   font-weight: 700;
