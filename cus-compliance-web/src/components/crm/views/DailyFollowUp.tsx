@@ -32,6 +32,15 @@ import {
 } from "@/lib/crm";
 import type { Candidate } from "@/lib/crm/types";
 
+// With table-layout:fixed a column that has no explicit width collapses to
+// ~0px, which stacks its content vertically and balloons the row height.
+// Every <th> in this table must therefore carry a width.
+const FIXED_COL = (w: number): React.CSSProperties => ({
+  width: w,
+  minWidth: w,
+  maxWidth: w,
+});
+
 type DailyRow = ReturnType<typeof filteredDaily>[number];
 
 const CATEGORIES = [
@@ -554,7 +563,7 @@ export function DailyFollowUp({
         <table className="data-table data-table-resizable sheet-selectable w-full min-w-275 text-sm">
           <thead>
             <tr>
-              <th>
+              <th style={FIXED_COL(44)}>
                 <input
                   type="checkbox"
                   onChange={(e) => toggleAll(e.target.checked)}
@@ -582,7 +591,7 @@ export function DailyFollowUp({
                   </th>
                 );
               })}
-              <th>Actions</th>
+              <th style={FIXED_COL(250)}>Actions</th>
             </tr>
           </thead>
           <tbody>

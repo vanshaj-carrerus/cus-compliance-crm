@@ -791,6 +791,13 @@ body {
   border-bottom: 1px solid var(--border);
   box-sizing: border-box;
 }
+/* Safety net: under fixed layout a header without an explicit width collapses
+   to ~0px and its cell content wraps into a very tall row. Give any unsized
+   header a sane default so this can never happen again. */
+.data-table-resizable th:not([style*="width"]) {
+  width: 140px;
+  min-width: 120px;
+}
 .data-table-resizable td {
   overflow: hidden;
   word-break: break-word;
