@@ -36,6 +36,7 @@ const CandidateSchema = new Schema(
     po: { type: String, default: "" },
     poMonth: { type: String, default: "" },
     startDate: { type: String, default: "" },
+    salaryType: { type: String, default: "" },
     status: { type: String, default: "Active" },
     remarks: { type: String, default: "" },
     installmentCount: { type: Number, default: 0 },
@@ -55,6 +56,13 @@ const CandidateSchema = new Schema(
   },
   { versionKey: false }
 );
+
+// In dev, hot reload keeps the previously registered model alive - with its
+// OLD schema. A field added later (e.g. salaryType) would then be silently
+// dropped on every save. Re-register so the current schema always applies.
+if (process.env.NODE_ENV !== "production" && models.Candidate) {
+  mongoose.deleteModel("Candidate");
+}
 
 export const CandidateModel =
   models.Candidate || model("Candidate", CandidateSchema);

@@ -91,6 +91,19 @@ export function normalizeCandidate(c: Partial<Candidate> = {}): Candidate {
     String(c.poMonth || raw.poMonthName || raw.month || raw.po_month || "")
   );
   const startDate = String(c.startDate || "");
+  // Only the three known choices are kept (case/spacing tolerant, so pasted
+  // or imported "weekly", "biweekly", "Bi Weekly" all land on a valid value).
+  const salaryKey = String(c.salaryType || "")
+    .toLowerCase()
+    .replace(/[^a-z]/g, "");
+  const salaryType: Candidate["salaryType"] =
+    salaryKey === "weekly"
+      ? "Weekly"
+      : salaryKey === "biweekly"
+        ? "Bi-weekly"
+        : salaryKey === "monthly"
+          ? "Monthly"
+          : "";
   if (!poMonth && startDate) poMonth = monthFromDateText(startDate);
 
   const explicit = Number(c.installmentCount) || 0;
@@ -119,6 +132,7 @@ export function normalizeCandidate(c: Partial<Candidate> = {}): Candidate {
     po: String(c.po || ""),
     poMonth,
     startDate,
+    salaryType,
     status: String(c.status || ""),
     remarks: String(c.remarks || ""),
     installmentCount,

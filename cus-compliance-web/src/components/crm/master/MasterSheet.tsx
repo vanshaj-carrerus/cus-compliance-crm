@@ -28,7 +28,7 @@ import {
   parsePasteInstallment,
   newId,
 } from "@/lib/crm";
-import { DEFAULT_STATUSES, type Candidate } from "@/lib/crm/types";
+import { DEFAULT_STATUSES, SALARY_TYPES, type Candidate } from "@/lib/crm/types";
 
 // True when focus is in a field the user can type into (text input,
 // textarea, select, contenteditable) - checkboxes and buttons don't count.
@@ -169,6 +169,7 @@ const DATA_COLS: DataCol[] = [
     getText: (c) => money(getRemaining(c)),
   },
   { key: "startDate", label: "Start Date", editable: true, getText: (c) => c.startDate || "" },
+  { key: "salaryType", label: "Salary Type", editable: true, getText: (c) => c.salaryType || "" },
   { key: "floor", label: "Floor", editable: true, getText: (c) => c.floor || "" },
   {
     key: "phoneNumber",
@@ -204,6 +205,7 @@ const DATA_COL_DEFAULT_WIDTHS: Record<string, number> = {
   poMonth: 110,
   floor: 90,
   phoneNumber: 130,
+  salaryType: 120,
   assignedTo: 110,
   status: 120,
   paid: 110,
@@ -1103,6 +1105,24 @@ export function MasterSheet() {
             <option value="">Active</option>
             {DEFAULT_STATUSES.map((s) => (
               <option key={s}>{s}</option>
+            ))}
+          </select>
+        </td>
+      );
+    }
+    if (col.key === "salaryType") {
+      return (
+        <td key={col.key} {...cellProps} className={selectedCls}>
+          <select
+            className="sheet-cell"
+            value={c.salaryType || ""}
+            onChange={(e) => updateMasterField(c.id, "salaryType", e.target.value)}
+          >
+            <option value="">-</option>
+            {SALARY_TYPES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
             ))}
           </select>
         </td>

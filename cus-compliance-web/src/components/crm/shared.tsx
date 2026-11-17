@@ -340,19 +340,42 @@ export function FullscreenExitFab({
   fullscreen: boolean;
   onExit: () => void;
 }) {
+  // The button fades in when the pointer comes near the bottom-centre. The
+  // area around it must NOT catch clicks (it used to be an invisible hit-zone
+  // that swallowed clicks and selected the label), so proximity is tracked
+  // with a pointer listener and only the button itself is clickable.
+  const [near, setNear] = useState(false);
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onMove = (e: PointerEvent) => {
+      const dx = Math.abs(e.clientX - window.innerWidth / 2);
+      const fromBottom = window.innerHeight - e.clientY;
+      setNear(dx < 112 && fromBottom < 112);
+    };
+    const onLeave = () => setNear(false);
+    window.addEventListener("pointermove", onMove, { passive: true });
+    document.addEventListener("pointerleave", onLeave);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerleave", onLeave);
+    };
+  }, [fullscreen]);
   if (!fullscreen) return null;
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-3100 flex justify-center">
-      <div className="group pointer-events-auto flex h-28 w-56 items-end justify-center pb-1">
-        <button
-          type="button"
-          className="translate-y-5 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground opacity-0 shadow-lg transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100 focus-visible:translate-y-0 focus-visible:opacity-100 [@media(hover:none)]:translate-y-0 [@media(hover:none)]:opacity-70"
-          onClick={onExit}
-          title="Exit Fullscreen (Esc)"
-        >
-          ✕ Exit Fullscreen
-        </button>
-      </div>
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-3100 flex justify-center pb-1">
+      <button
+        type="button"
+        className={`select-none rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-foreground shadow-lg transition-all duration-200 focus-visible:pointer-events-auto focus-visible:translate-y-0 focus-visible:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:translate-y-0 [@media(hover:none)]:opacity-70 ${
+          near
+            ? "pointer-events-auto translate-y-0 opacity-100"
+            : "translate-y-5 opacity-0"
+        }`}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={onExit}
+        title="Exit Fullscreen (Esc)"
+      >
+        ✕ Exit Fullscreen
+      </button>
     </div>
   );
 }

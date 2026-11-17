@@ -30,11 +30,13 @@ type Delta = {
 
 // Top-level candidate fields a patch may touch (everything in the schema
 // except the identity fields), plus `installments.<n>` for a single row.
-const PATCHABLE = new Set(
-  Object.keys(CandidateModel.schema.paths).filter(
-    (k) => !k.includes(".") && !["_id", "__v", "id"].includes(k)
-  )
-);
+// Read per request so a schema change is never served from a stale copy.
+const patchable = () =>
+  new Set(
+    Object.keys(CandidateModel.schema.paths).filter(
+      (k) => !k.includes(".") && !["_id", "__v", "id"].includes(k)
+    )
+  );
 const INSTALLMENT_PATH = /^installments\.\d{1,3}$/;
 
 function cleanPatch(p: Patch): {
@@ -44,6 +46,7 @@ function cleanPatch(p: Patch): {
 } | null {
   const id = Number(p?.id);
   if (!Number.isFinite(id)) return null;
+  const PATCHABLE = patchable();
   const set: Record<string, unknown> = {};
   const unset: Record<string, 1> = {};
   const rawSet = p.set && typeof p.set === "object" ? (p.set as Record<string, unknown>) : {};

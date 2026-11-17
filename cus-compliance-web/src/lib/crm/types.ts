@@ -36,6 +36,10 @@ export interface MessageLogEntry {
   message: string;
 }
 
+export const SALARY_TYPES = ["Weekly", "Bi-weekly", "Monthly"] as const;
+/** "" = not set yet */
+export type SalaryType = "" | (typeof SALARY_TYPES)[number];
+
 export interface Candidate {
   id: number;
   name: string;
@@ -49,6 +53,7 @@ export interface Candidate {
   po: string;
   poMonth: string;
   startDate: string;
+  salaryType: SalaryType;
   status: string;
   remarks: string;
   installmentCount: number;

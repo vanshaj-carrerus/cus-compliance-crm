@@ -11,6 +11,7 @@ import { money } from "@/lib/crm/calc";
 import {
   CONTACT_METHODS,
   DEFAULT_STATUSES,
+  SALARY_TYPES,
   type Candidate,
   type Installment,
 } from "@/lib/crm/types";
@@ -31,6 +32,7 @@ type FormState = {
   po: string;
   poMonth: string;
   startDate: string;
+  salaryType: string;
   status: string;
   remarks: string;
   installmentCount: string;
@@ -73,6 +75,7 @@ function createEmptyForm(): FormState {
     po: "",
     poMonth: "",
     startDate: "",
+    salaryType: "",
     status: "",
     remarks: "",
     installmentCount: "",
@@ -101,6 +104,7 @@ function formFromCandidate(c: Candidate): FormState {
     po: c.po,
     poMonth: c.poMonth,
     startDate: c.startDate,
+    salaryType: c.salaryType || "",
     status: c.status,
     remarks: c.remarks,
     installmentCount: String(c.installmentCount || ""),
@@ -312,6 +316,21 @@ export function CandidateModal() {
                   value={form.startDate}
                   onChange={(v) => setValue("startDate", v)}
                 />
+              </Field>
+
+              <Field label="Salary Type">
+                <select
+                  className={inputCls}
+                  value={form.salaryType}
+                  onChange={(e) => setValue("salaryType", e.target.value)}
+                >
+                  <option value="">Select…</option>
+                  {SALARY_TYPES.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
               </Field>
 
               <Field label="Assigned To">
@@ -590,6 +609,7 @@ export function CandidateModal() {
                 po: form.po,
                 poMonth: form.poMonth,
                 startDate: form.startDate,
+                salaryType: form.salaryType as Candidate["salaryType"],
                 status: form.status,
                 remarks: form.remarks,
                 installmentCount: count,
