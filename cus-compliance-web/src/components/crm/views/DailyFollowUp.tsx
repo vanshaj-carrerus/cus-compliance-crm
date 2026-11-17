@@ -14,7 +14,9 @@ import {
   useColumnWidths,
   useFullscreen,
   useSheetGrid,
+  syncField,
   type SheetColumn,
+  PhoneInput,
 } from "../shared";
 import {
   money,
@@ -23,7 +25,6 @@ import {
   applyPaidAmount,
   fmtDate,
   filteredDaily,
-  priorityStats,
   rowColorClass,
   phoneOf,
   cleanPhone,
@@ -43,13 +44,6 @@ const FIXED_COL = (w: number): React.CSSProperties => ({
 
 type DailyRow = ReturnType<typeof filteredDaily>[number];
 
-const CATEGORIES = [
-  { key: "overdue", label: "🔴 OVERDUE", cls: "border-danger/40" },
-  { key: "today", label: "🔵 TODAY", cls: "border-info/40" },
-  { key: "week", label: "🟡 THIS WEEK", cls: "border-warning/40" },
-  { key: "upcoming", label: "🟢 UPCOMING", cls: "border-success/40" },
-] as const;
-
 export function DailyFollowUp({
   onWhatsApp,
 }: {
@@ -59,6 +53,7 @@ export function DailyFollowUp({
     candidates,
     setCandidates,
     queueSave,
+    cellSync,
     snapshot,
     toast,
     dailyCategory,
@@ -75,21 +70,22 @@ export function DailyFollowUp({
     assignableUsers,
   } = useCrm();
 
+  // One list: everyone with an amount left to pay. (The two "Follow-ups"
+  // buttons below still switch to the follow-up-date lists.)
+  const category =
+    dailyCategory === "followupsToday" || dailyCategory === "followupsOverdue"
+      ? dailyCategory
+      : "all";
+  const isBalanceList = category === "all";
   const title =
-    dailyCategory === "followupsToday"
+    category === "followupsToday"
       ? "Follow-ups Due Today"
-      : dailyCategory === "followupsOverdue"
+      : category === "followupsOverdue"
         ? "Overdue Follow-ups"
-        : (
-            {
-              overdue: "Overdue Payments",
-              today: "Payments Due Today",
-              week: "Payments Due This Week",
-              upcoming: "Upcoming Payments",
-            } as Record<string, string>
-          )[dailyCategory] || "Daily Follow-up";
+        : "Follow-ups - Payment Left to Pay";
 
-  const rows = filteredDaily(candidates, dailyCategory, dailyFilters);
+  const rows = filteredDaily(candidates, category, dailyFilters);
+  const totalLeft = rows.reduce((s, r) => s + (isBalanceList ? r.amount : 0), 0);
 
   const assignees = [
     ...new Set([
@@ -153,14 +149,9 @@ export function DailyFollowUp({
       key: "phone",
       label: "Phone",
       render: (r) => (
-        <input
-          className="sheet-cell"
-          defaultValue={phoneOf(r.candidate) || ""}
-          key={r.candidate.id + "-phone-" + (phoneOf(r.candidate) || "")}
-          onBlur={(e) =>
-            e.target.value !== (phoneOf(r.candidate) || "") &&
-            updateMasterField(r.candidate.id, "phoneNumber", e.target.value)
-          }
+        <PhoneInput
+          value={phoneOf(r.candidate) || ""}
+          onCommit={(v) => updateMasterField(r.candidate.id, "phoneNumber", v)}
         />
       ),
     },
@@ -258,11 +249,15 @@ export function DailyFollowUp({
     },
     {
       key: "dueAmount",
-      label: "Due Amount",
+      label: isBalanceList ? "Amount Left" : "Due Amount",
       className: "text-primary",
       render: (r) => money(r.amount),
     },
-    { key: "dueDate", label: "Due Date", render: (r) => fmtDate(r.date) },
+    {
+      key: "dueDate",
+      label: isBalanceList ? "Next Pay Date" : "Due Date",
+      render: (r) => (r.date ? fmtDate(r.date) : "-"),
+    },
     {
       key: "daysOverdue",
       label: "Days Overdue",
@@ -418,35 +413,6 @@ export function DailyFollowUp({
     <div className={shellCls}>
       {!fullscreen && (
       <>
-      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {CATEGORIES.map(({ key, label, cls }) => {
-          const stats = priorityStats(candidates, key, dailyFilters);
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => {
-                setDailyCategory(key);
-                setDailySelected(new Set());
-              }}
-              className={`rounded-[20px] border bg-card p-4 text-left shadow-sm transition hover:-translate-y-0.5 ${
-                dailyCategory === key
-                  ? "border-primary ring-2 ring-primary/20"
-                  : cls
-              }`}
-            >
-              <div className="text-[11px] font-black uppercase tracking-wider text-muted">
-                {label}
-              </div>
-              <div className="mt-2 text-3xl font-black">{stats.count}</div>
-              <div className="mt-1 text-sm text-muted">
-                {money(stats.amount)} collectible
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
       <div className="mb-4 grid grid-cols-1 gap-3 rounded-[17px] border border-border bg-card p-3 sm:grid-cols-2 sm:items-end lg:flex lg:flex-wrap">
         <div className="mr-auto min-w-0 sm:col-span-2 lg:col-span-1">
           <div className="text-base font-semibold">Daily Follow-up Queue</div>
@@ -501,6 +467,20 @@ export function DailyFollowUp({
         </label>
         <button
           type="button"
+          className={`w-full rounded border px-3 py-2 text-xs font-medium sm:w-auto ${
+            isBalanceList
+              ? "border-primary bg-primary/10 text-primary"
+              : "border-border bg-secondary"
+          }`}
+          onClick={() => {
+            setDailyCategory("all");
+            setDailySelected(new Set());
+          }}
+        >
+          All Pending Payments
+        </button>
+        <button
+          type="button"
           className="w-full rounded border border-border bg-secondary px-3 py-2 text-xs font-medium sm:w-auto"
           onClick={() => {
             setDailyCategory("followupsToday");
@@ -539,7 +519,11 @@ export function DailyFollowUp({
       <FullscreenExitFab fullscreen={fullscreen} onExit={toggleFullscreen} />
       <TableShell
         title={title}
-        subtitle={`${rows.length} candidates prioritized by due date`}
+        subtitle={
+          isBalanceList
+            ? `${rows.length} candidates with a balance · ${money(totalLeft)} left to collect`
+            : `${rows.length} candidates prioritized by due date`
+        }
         fullscreen={fullscreen}
         scrollRef={scrollRef}
         onPaste={handlePaste}
@@ -616,6 +600,9 @@ export function DailyFollowUp({
                       <td
                         key={col.key}
                         {...cellProps(rowIdx, colIdx)}
+                        data-sync={cellSync(c.id, syncField(col.key))}
+                        data-cid={c.id}
+                        data-field={syncField(col.key)}
                         className={`${cls || ""} ${isCellSelected(rowIdx, colIdx) ? "cell-selected" : ""}`}
                       >
                         {col.render(r)}

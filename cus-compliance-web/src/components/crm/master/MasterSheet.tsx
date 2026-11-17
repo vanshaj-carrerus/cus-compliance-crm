@@ -5,6 +5,7 @@ import { useCrm } from "../CrmProvider";
 import { FiltersBar, FilterGroup, FILTER_ICONS } from "../FiltersBar";
 import {
   ColumnResizeHandle,
+  PhoneInput,
   FullscreenExitFab,
   isModalOpen,
   ResetColumnsButton,
@@ -229,6 +230,7 @@ export function MasterSheet() {
     toast,
     setCandidates,
     queueSave,
+    cellSync,
     snapshot,
     bulkSelected,
     setBulkSelected,
@@ -955,6 +957,9 @@ export function MasterSheet() {
     const cellProps = {
       "data-row": rowIndex,
       "data-col": vi,
+      "data-sync": cellSync(c.id, col.key),
+      "data-cid": c.id,
+      "data-field": col.key,
       onMouseDown: (e: React.MouseEvent) => beginCellSelect(rowIndex, vi, e),
       onMouseEnter: () => extendCellSelect(rowIndex, vi),
     };
@@ -1153,14 +1158,9 @@ export function MasterSheet() {
     if (col.key === "phoneNumber") {
       return (
         <td key={col.key} {...cellProps} className={selectedCls}>
-          <input
-            className="sheet-cell"
-            defaultValue={c.phoneNumber || ""}
-            key={c.id + "-phoneNumber-" + (c.phoneNumber || "")}
-            onBlur={(e) =>
-              e.target.value !== (c.phoneNumber || "") &&
-              updateMasterField(c.id, "phoneNumber", e.target.value)
-            }
+          <PhoneInput
+            value={c.phoneNumber || ""}
+            onCommit={(v) => updateMasterField(c.id, "phoneNumber", v)}
           />
         </td>
       );

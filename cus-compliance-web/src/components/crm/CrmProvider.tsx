@@ -30,10 +30,28 @@ import { todayIso, addDays } from "@/lib/crm/dates";
 import { filterCandidates } from "@/lib/crm/incentive";
 import { runWorkflows as runWorkflowsFn } from "@/lib/crm/workflows";
 import {
+  clearCrmCache,
   ensureCrmBootstrap,
+  fetchCrmSnapshot,
   peekCrmCache,
   setCrmCache,
 } from "@/lib/crm-cache";
+import {
+  SyncEngine,
+  type CellSync,
+  type ReconcileResult,
+  type SyncStatus,
+} from "@/lib/crm/sync-engine";
+import { useAuth } from "./AuthProvider";
+import {
+  isRestorableField,
+  adoptOrphanFormDraft,
+  releaseKeys,
+  takeOrphanCellDrafts,
+  writeCellDrafts,
+  writeFormDraft,
+  type CellDraft,
+} from "@/lib/crm/drafts";
 
 interface Snapshot {
   candidates: Candidate[];
@@ -79,6 +97,18 @@ interface CrmContextValue {
   redo: () => void;
   queueSave: () => void;
   saveNow: () => Promise<void>;
+  /** Save everything to MongoDB now; resolves true once fully confirmed. */
+  flushSave: () => Promise<boolean>;
+  /** Flush, then re-read MongoDB and re-send anything that did not land. */
+  saveAndVerify: () => Promise<boolean>;
+  verifying: boolean;
+  syncStatus: SyncStatus;
+  /** Per-cell save state ("dirty" | "saving" | "error" | undefined). */
+  cellSync: (id: number, field: string) => CellSync | undefined;
+  /** True while anything typed/edited is not yet confirmed by MongoDB. */
+  hasUnsavedWork: () => boolean;
+  /** Blur the focused cell so a half-typed value is committed first. */
+  commitActiveEdit: () => void;
   setCandidates: (c: Candidate[]) => void;
   setHistory: (h: PaymentHistory[]) => void;
   setSettings: (s: CrmSettings) => void;
@@ -148,6 +178,8 @@ export function CrmProvider({
   const boot = peekCrmCache();
   const [ready, setReady] = useState(Boolean(boot));
   const [error, setError] = useState<string | null>(null);
+  // true once the sync engine knows what MongoDB holds (and the journal was replayed)
+  const [booted, setBooted] = useState(false);
   const [candidates, setCandidatesState] = useState<Candidate[]>(
     boot?.candidates ?? []
   );
@@ -160,7 +192,16 @@ export function CrmProvider({
   const [currentView, setCurrentView] = useState<CrmView>(initialView);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<ActiveFilters>({});
-  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const { user } = useAuth();
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>({
+    phase: "idle",
+    pending: 0,
+    done: 0,
+    lastSavedAt: null,
+    error: null,
+    retryAt: null,
+    journalFailed: false,
+  });
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [assignableUsers, setAssignableUsers] = useState<string[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -179,22 +220,46 @@ export function CrmProvider({
 
   const undoStack = useRef<string[]>([]);
   const redoStack = useRef<string[]>([]);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Serializes every /api/crm/save call - the endpoint does a full
-  // delete-all + insert-all, which isn't safe to run concurrently. Rapid
-  // undo/redo can queue several saves faster than a slow request resolves;
-  // without this chain two PUTs can overlap and collide on the unique
-  // candidate id index, producing a 500.
-  const saveQueue = useRef<Promise<void>>(Promise.resolve());
+  // The live source of truth for every mutation. Handlers read from (and
+  // write to) this ref instead of the render-time `candidates` closure, so
+  // two edits that land before React re-renders can't overwrite each other
+  // with a stale copy. It is only ever replaced by the setters below - never
+  // by an effect copying render state back (which could clobber a newer edit).
   const stateRef = useRef<Snapshot>({
-    candidates: [],
-    history: [],
-    settings: defaultSettings(),
+    candidates: boot?.candidates ?? [],
+    history: boot?.history ?? [],
+    settings: boot?.settings ?? defaultSettings(),
   });
+  // Cells with typed-but-not-yet-committed text (uncontrolled inputs commit
+  // on blur). Used by the "unsaved changes" guard.
+  const uncommitted = useRef<Set<Element>>(new Set());
+  // Latest save-and-verify, reachable from listeners declared before it.
+  const saveVerifyRef = useRef<() => Promise<boolean>>(async () => false);
+  const userKey = user?.id || user?.email || "anon";
+  // Text typed into a cell, mirrored to localStorage on every keystroke
+  // until the cell commits into state (which journals it itself).
+  const cellDrafts = useRef<Record<string, CellDraft>>({});
 
-  useEffect(() => {
-    stateRef.current = { candidates, history, settings };
-  }, [candidates, history, settings]);
+  // All persistence goes through this engine: it diffs against what MongoDB
+  // last confirmed, journals pending edits to localStorage, and retries until
+  // everything is saved.
+  const [engine] = useState(
+    () =>
+      new SyncEngine({
+        userKey: user?.id || user?.email || "anon",
+        onChange: (st) => setSyncStatus(st),
+        onDirty: () => clearCrmCache(),
+        onIdle: (snap) => setCrmCache({ ...snap }),
+      })
+  );
+  const saveState: SaveState =
+    syncStatus.phase === "saving" || syncStatus.phase === "dirty"
+      ? "saving"
+      : syncStatus.phase === "retrying" || syncStatus.phase === "auth"
+        ? "error"
+        : ready
+          ? "saved"
+          : "idle";
 
   useEffect(() => {
     if (routeView && routeView !== currentView) {
@@ -260,44 +325,49 @@ export function CrmProvider({
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3000);
   }, []);
 
-  const persist = useCallback((snap: Snapshot, silent = false) => {
-    const run = async () => {
-      if (!silent) setSaveState("saving");
-      try {
-        const res = await fetch("/api/crm/save", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(snap),
-        });
-        if (!res.ok) throw new Error("Save failed");
-        if (!silent) setSaveState("saved");
-      } catch (e) {
-        console.error(e);
-        setSaveState("error");
-        throw e;
-      }
-    };
-    // Chain onto the previous save regardless of whether it succeeded, so
-    // one slow/failed request never blocks the next; but never let two
-    // requests run at once.
-    const queued = saveQueue.current.catch(() => {}).then(run);
-    saveQueue.current = queued.catch(() => {});
-    return queued;
-  }, []);
-
   const queueSave = useCallback(() => {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    setSaveState("saving");
-    saveTimer.current = setTimeout(() => {
-      persist(stateRef.current).catch(() => {});
-    }, 250);
-  }, [persist]);
+    engine.markChanged();
+  }, [engine]);
+
+  const flushSave = useCallback(() => engine.flush(), [engine]);
 
   const saveNow = useCallback(async () => {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    await persist(stateRef.current);
-    toast("Saved", "success");
-  }, [persist, toast]);
+    const ok = await engine.flush();
+    if (ok) toast("Saved to database", "success");
+    else
+      toast(
+        "Not saved yet - still retrying. Your data is kept on this device.",
+        "error"
+      );
+  }, [engine, toast]);
+
+  const cellSync = useCallback(
+    (id: number, field: string) => engine.cellState(id, field),
+    // syncStatus changes whenever the dirty/in-flight sets do
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [engine, syncStatus]
+  );
+
+  const commitActiveEdit = useCallback(() => {
+    const el = document.activeElement;
+    if (
+      (el instanceof HTMLInputElement ||
+        el instanceof HTMLTextAreaElement ||
+        el instanceof HTMLSelectElement) &&
+      el.classList.contains("sheet-cell")
+    ) {
+      el.blur(); // fires the cell's onBlur -> updateMasterField -> queueSave
+    }
+  }, []);
+
+  const hasUnsavedWork = useCallback(() => {
+    let typing = false;
+    for (const el of uncommitted.current) {
+      if (el.isConnected) typing = true;
+      else uncommitted.current.delete(el);
+    }
+    return typing || engine.hasUnsaved();
+  }, [engine]);
 
   const snapshot = useCallback(() => {
     undoStack.current.push(JSON.stringify(stateRef.current));
@@ -338,19 +408,33 @@ export function CrmProvider({
 
   useEffect(() => {
     let cancelled = false;
-    if (peekCrmCache()) {
-      setReady(true);
-      return;
-    }
+    engine.bind(() => stateRef.current);
     (async () => {
       try {
-        const data = await ensureCrmBootstrap();
+        const data = peekCrmCache() ?? (await ensureCrmBootstrap());
         if (cancelled) return;
-        setCandidatesState(data.candidates);
-        setHistoryState(data.history);
-        setSettingsState(data.settings);
+        // `data` is what MongoDB holds. Anything typed earlier that never got
+        // confirmed (refresh, crash, expired session...) is still in the local
+        // journal: lay it back over the server copy and keep saving it.
+        engine.setBase(data);
+        const { snapshot: merged, count, keys } = engine.recoverFrom(data);
+        stateRef.current = merged;
+        setCandidatesState(merged.candidates);
+        setHistoryState(merged.history);
+        setSettingsState(merged.settings);
         setReady(true);
-        setSaveState("saved");
+        setBooted(true);
+        if (keys.length) {
+          // Re-journal under THIS tab first, only then release the old copy.
+          engine.markChanged();
+          engine.releaseOrphans(keys);
+        }
+        if (count > 0) {
+          toast(
+            `Recovered ${count} unsaved change${count > 1 ? "s" : ""} from this device - saving now`,
+            "info"
+          );
+        }
       } catch (e) {
         console.error(e);
         if (!cancelled) {
@@ -366,7 +450,96 @@ export function CrmProvider({
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Last line of defence against losing typed data: warn before refresh /
+  // close, push whatever is pending with a keepalive request, and retry as
+  // soon as the browser is back online or the tab is refocused.
+  useEffect(() => {
+    const track = (e: Event) => {
+      const t = e.target;
+      if (!(t instanceof Element)) return;
+      if (t.classList.contains("sheet-cell") || t.closest("[data-track-unsaved]")) {
+        uncommitted.current.add(t);
+      }
+      // Mirror the keystroke into localStorage right now (synchronous).
+      const td = t.closest("td[data-cid]") as HTMLElement | null;
+      if (
+        td &&
+        (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement) &&
+        t.type !== "checkbox"
+      ) {
+        const field = td.dataset.field || "";
+        const id = Number(td.dataset.cid);
+        if (field && isRestorableField(field) && Number.isFinite(id)) {
+          cellDrafts.current[id + "|" + field] = {
+            id,
+            field,
+            value: t.value,
+            ts: Date.now(),
+          };
+          writeCellDrafts(userKey, cellDrafts.current);
+        }
+      }
+    };
+    const untrack = (e: Event) => {
+      const t = e.target;
+      // Sheet cells commit on blur; form fields stay "unsaved" until their
+      // modal is closed (the element is then removed from the DOM).
+      if (t instanceof Element && !t.closest("[data-track-unsaved]")) {
+        uncommitted.current.delete(t);
+      }
+      // The cell's onBlur has committed it into state (and the journal) by
+      // the time this timeout fires, so its draft is no longer needed.
+      const td =
+        t instanceof Element
+          ? (t.closest("td[data-cid]") as HTMLElement | null)
+          : null;
+      if (td) {
+        const k = Number(td.dataset.cid) + "|" + (td.dataset.field || "");
+        setTimeout(() => {
+          if (!cellDrafts.current[k]) return;
+          delete cellDrafts.current[k];
+          writeCellDrafts(userKey, cellDrafts.current);
+        }, 0);
+      }
+    };
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      commitActiveEdit();
+      engine.flushOnExit();
+      if (hasUnsavedWork()) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    const onPageHide = () => {
+      commitActiveEdit();
+      engine.flushOnExit();
+      engine.markTabClosing();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") engine.flushOnExit();
+      else engine.nudge();
+    };
+    const onOnline = () => engine.nudge();
+    engine.activate();
+    document.addEventListener("input", track, true);
+    document.addEventListener("focusout", untrack, true);
+    window.addEventListener("beforeunload", onBeforeUnload);
+    window.addEventListener("pagehide", onPageHide);
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("online", onOnline);
+    return () => {
+      document.removeEventListener("input", track, true);
+      document.removeEventListener("focusout", untrack, true);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      window.removeEventListener("pagehide", onPageHide);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("online", onOnline);
+      engine.dispose();
+    };
+  }, [engine, commitActiveEdit, hasUnsavedWork, userKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -400,7 +573,7 @@ export function CrmProvider({
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
-        saveNow().catch(() => {});
+        void saveVerifyRef.current();
       }
       if (e.key === "Escape") {
         setCandidateModalOpen(false);
@@ -411,7 +584,7 @@ export function CrmProvider({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [undo, redo, saveNow]);
+  }, [undo, redo]);
 
   const applyWorkflowResult = useCallback(
     (
@@ -478,6 +651,7 @@ export function CrmProvider({
   };
 
   const updateSettings = (partial: Partial<CrmSettings>) => {
+    const { settings } = stateRef.current;
     snapshot();
     const next = { ...settings, ...partial };
     setSettings(next);
@@ -493,12 +667,14 @@ export function CrmProvider({
     setCandidateModalOpen(true);
   };
   const closeModals = () => {
+    writeFormDraft(userKey, null);
     setCandidateModalOpen(false);
     setImportModalOpen(false);
     setEditingId(null);
   };
 
   const saveCandidateForm = (data: Partial<Candidate>) => {
+    const { candidates } = stateRef.current;
     const name = String(data.name || "").trim();
     if (!name) return toast("Candidate name is required", "error");
     snapshot();
@@ -522,6 +698,7 @@ export function CrmProvider({
   };
 
   const deleteCandidate = (id: number) => {
+    const { candidates, history } = stateRef.current;
     const c = candidates.find((x) => x.id === id);
     if (!c) return;
     if (
@@ -538,6 +715,7 @@ export function CrmProvider({
   };
 
   const deleteAllCandidates = () => {
+    const { candidates } = stateRef.current;
     if (!candidates.length) return toast("No candidates to delete", "info");
     if (!confirm("Delete ALL candidates from Master P.O Sheet?")) return;
     if (
@@ -554,6 +732,7 @@ export function CrmProvider({
   };
 
   const duplicateLast = () => {
+    const { candidates } = stateRef.current;
     if (!candidates.length) return toast("No candidate to duplicate", "info");
     snapshot();
     const last = candidates[candidates.length - 1];
@@ -574,6 +753,7 @@ export function CrmProvider({
   // that starts on this row overwrites it and auto-creates any further
   // overflow rows (see MasterSheet's paste handling).
   const addBlankRow = (position: "top" | "bottom" = "bottom") => {
+    const { candidates } = stateRef.current;
     snapshot();
     const blank = normalizeCandidate({ id: newId() });
     setCandidates(position === "top" ? [blank, ...candidates] : [...candidates, blank]);
@@ -586,6 +766,7 @@ export function CrmProvider({
     field: string,
     value: string | number | boolean
   ) => {
+    const { candidates } = stateRef.current;
     const idx = candidates.findIndex((x) => x.id === id);
     if (idx < 0) return;
     snapshot();
@@ -624,6 +805,7 @@ export function CrmProvider({
   };
 
   const updateInstallment = (id: number, idx: number, value: string) => {
+    const { candidates, history } = stateRef.current;
     const ci = candidates.findIndex((x) => x.id === id);
     if (ci < 0) return;
     snapshot();
@@ -667,6 +849,7 @@ export function CrmProvider({
   };
 
   const togglePaid = (id: number, idx: number, paid: boolean) => {
+    const { candidates, history } = stateRef.current;
     const ci = candidates.findIndex((x) => x.id === id);
     if (ci < 0) return;
     snapshot();
@@ -713,6 +896,7 @@ export function CrmProvider({
   // rather than storing a disconnected number - Paid always stays "sum of
   // paid installments" everywhere else that reads it.
   const setPaidAmount = (id: number, targetAmount: number) => {
+    const { candidates, history } = stateRef.current;
     const ci = candidates.findIndex((x) => x.id === id);
     if (ci < 0) return;
     snapshot();
@@ -743,6 +927,7 @@ export function CrmProvider({
   };
 
   const markContacted = (id: number) => {
+    const { candidates, history } = stateRef.current;
     const ci = candidates.findIndex((x) => String(x.id) === String(id));
     if (ci < 0) return;
     snapshot();
@@ -772,6 +957,7 @@ export function CrmProvider({
   };
 
   const updateContactField = (id: number, field: string, value: string) => {
+    const { candidates } = stateRef.current;
     const ci = candidates.findIndex((x) => String(x.id) === String(id));
     if (ci < 0) return;
     snapshot();
@@ -792,9 +978,16 @@ export function CrmProvider({
     setHistory(h);
     setSettings(s);
     stateRef.current = { candidates: c, history: h, settings: s };
-    setCrmCache({ candidates: c, history: h, settings: s });
-    await persist(stateRef.current);
-    toast("Backup restored", "success");
+    // The engine diffs against what MongoDB holds: new ids are upserted,
+    // ids missing from the backup are deleted - in small batches.
+    engine.markChanged();
+    const ok = await engine.flush();
+    toast(
+      ok
+        ? "Backup restored"
+        : "Backup restored locally - still saving to the database",
+      ok ? "success" : "info"
+    );
   };
 
   const resetAll = () => {
@@ -805,16 +998,12 @@ export function CrmProvider({
     setCandidates([]);
     setHistory([]);
     setSettings(emptySettings);
-    setCrmCache({
-      candidates: [],
-      history: [],
-      settings: emptySettings,
-    });
     queueSave();
     toast("All data reset", "info");
   };
 
   const runWorkflows = (manual = false) => {
+    const { candidates, settings } = stateRef.current;
     const result = applyWorkflowResult(
       runWorkflowsFn(candidates, settings, manual),
       { manual, notify: true }
@@ -828,6 +1017,276 @@ export function CrmProvider({
       );
     }
   };
+
+  // Pull in unsaved work left behind by tabs that are no longer alive:
+  // their journals, half-typed cells and half-filled candidate form. Runs at
+  // start-up, shortly after (a crashed tab's heartbeat needs a few seconds
+  // to expire) and then periodically.
+  const adoptOrphans = () => {
+    if (!booted) return;
+    let changed = 0;
+
+    const { drafts, keys: draftKeys } = takeOrphanCellDrafts(userKey);
+    for (const d of drafts) {
+      const cand = stateRef.current.candidates.find((x) => x.id === d.id);
+      if (!cand) continue;
+      if (/^inst\d+$/.test(d.field)) {
+        updateInstallment(d.id, Number(d.field.slice(4)), d.value);
+      } else if (d.field === "lastContactDate") {
+        updateContactField(d.id, d.field, d.value);
+      } else {
+        updateMasterField(d.id, d.field, d.value);
+      }
+      changed++;
+    }
+
+    const rec = engine.recoverFrom(stateRef.current, { protectDirty: true });
+    if (rec.count > 0) {
+      stateRef.current = rec.snapshot;
+      setCandidatesState(rec.snapshot.candidates);
+      setHistoryState(rec.snapshot.history);
+      setSettingsState(rec.snapshot.settings);
+      changed += rec.count;
+    }
+
+    if (changed > 0 || rec.keys.length || draftKeys.length) {
+      engine.markChanged(); // journals everything under THIS tab first
+      releaseKeys(draftKeys);
+      engine.releaseOrphans(rec.keys);
+    }
+    if (changed > 0) {
+      toast(
+        `Recovered ${changed} unsaved change${changed > 1 ? "s" : ""} from this device - saving now`,
+        "info"
+      );
+    }
+
+    const formDraft = adoptOrphanFormDraft(userKey);
+    if (formDraft && !candidateModalOpen) {
+      setEditingId(formDraft.editingId);
+      setCandidateModalOpen(true);
+      toast("Restored the candidate form you were filling in", "info");
+    }
+  };
+
+  const adoptRef = useRef(adoptOrphans);
+  useEffect(() => {
+    adoptRef.current = adoptOrphans;
+  });
+  useEffect(() => {
+    if (!booted) return;
+    adoptRef.current();
+    const first = setTimeout(() => adoptRef.current(), 8000);
+    const t = setInterval(() => adoptRef.current(), 30000);
+    return () => {
+      clearTimeout(first);
+      clearInterval(t);
+    };
+  }, [booted]);
+
+  // Verify against the real database: save everything, re-read MongoDB and
+  // compare. Anything of ours that is missing/different is sent again; what
+  // other people changed is adopted. Repeats until clean (max 3 rounds).
+  const [verifying, setVerifying] = useState(false);
+  const verifyRunning = useRef(false);
+  // Lay what the engine took over from the database onto the screen.
+  const applyAdoption = (r: ReconcileResult): number => {
+    const n =
+      r.adoptCandidates.length +
+      r.removeCandidateIds.length +
+      r.adoptHistory.length +
+      r.removeHistoryIds.length +
+      (r.adoptSettings ? 1 : 0);
+    if (!n) return 0;
+    const cur = stateRef.current;
+    const rmC = new Set(r.removeCandidateIds);
+    const upC = new Map(r.adoptCandidates.map((c) => [c.id, c]));
+    const seen = new Set<number>();
+    const nextC = cur.candidates
+      .filter((c) => !rmC.has(c.id))
+      .map((c) => {
+        seen.add(c.id);
+        return upC.get(c.id) ?? c;
+      });
+    for (const c of r.adoptCandidates) if (!seen.has(c.id)) nextC.push(c);
+    const rmH = new Set(r.removeHistoryIds);
+    const upH = new Map(r.adoptHistory.map((h) => [h.id, h]));
+    const seenH = new Set<number>();
+    const nextH = cur.history
+      .filter((h) => !rmH.has(h.id))
+      .map((h) => {
+        seenH.add(h.id);
+        return upH.get(h.id) ?? h;
+      });
+    for (const h of r.adoptHistory) if (!seenH.has(h.id)) nextH.push(h);
+    stateRef.current = {
+      candidates: nextC,
+      history: nextH,
+      settings: r.adoptSettings ?? cur.settings,
+    };
+    setCandidatesState(nextC);
+    setHistoryState(nextH);
+    if (r.adoptSettings) setSettingsState(r.adoptSettings);
+    return n;
+  };
+
+  // Live updates: every few seconds look at what other people saved and take
+  // it over, field by field. Never while there is unsaved work, a save in
+  // flight or a half-typed cell - and a snapshot older than a save that
+  // finished meanwhile is thrown away.
+  const pollRunning = useRef(false);
+  const pollOnce = async () => {
+    if (pollRunning.current || verifyRunning.current) return;
+    if (document.visibilityState !== "visible") return;
+    if (engine.status.phase !== "idle" || hasUnsavedWork()) return;
+    if (uncommitted.current.size > 0) return;
+    pollRunning.current = true;
+    try {
+      const epoch = engine.getEpoch();
+      const server = await fetchCrmSnapshot();
+      if (uncommitted.current.size > 0 || verifyRunning.current) return;
+      const r = engine.reconcile(server, true, "poll", epoch);
+      if (r.stale) return;
+      if (applyAdoption(r) > 0) {
+        engine.markChanged();
+        setCrmCache({ ...stateRef.current });
+      }
+    } catch {
+      /* offline / server busy: try again on the next tick */
+    } finally {
+      pollRunning.current = false;
+    }
+  };
+  const pollRef = useRef(pollOnce);
+  useEffect(() => {
+    pollRef.current = pollOnce;
+  });
+  useEffect(() => {
+    if (!booted) return;
+    const tick = () => void pollRef.current();
+    const t = setInterval(tick, 10_000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") tick();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", tick);
+    window.addEventListener("online", tick);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", tick);
+      window.removeEventListener("online", tick);
+    };
+  }, [booted]);
+
+  const verifyWithDatabase = async (
+      opts: { adopt?: boolean } = {}
+    ): Promise<{
+      ok: boolean;
+      matched: number;
+      resent: number;
+      adopted: number;
+      error?: string;
+    }> => {
+      if (verifyRunning.current)
+        return { ok: false, matched: 0, resent: 0, adopted: 0, error: "Already verifying" };
+      verifyRunning.current = true;
+      setVerifying(true);
+      let resent = 0;
+      let adopted = 0;
+      try {
+        for (let round = 0; round < 5; round++) {
+          if (!(await engine.flush())) {
+            return {
+              ok: false,
+              matched: 0,
+              resent,
+              adopted,
+              error: "Could not finish saving - still retrying",
+            };
+          }
+          const epoch = engine.getEpoch();
+          const server = await fetchCrmSnapshot();
+          const r = engine.reconcile(server, opts.adopt !== false, "verify", epoch);
+          if (r.stale) continue; // a save finished while reading: read again
+          adopted += applyAdoption(r);
+          resent += r.resend;
+          if (r.resend === 0) {
+            engine.markChanged();
+            return { ok: true, matched: r.matched, resent, adopted };
+          }
+          engine.markChanged();
+        }
+        return {
+          ok: false,
+          matched: 0,
+          resent,
+          adopted,
+          error: "Some records did not match after several attempts",
+        };
+      } catch (e) {
+        return {
+          ok: false,
+          matched: 0,
+          resent,
+          adopted,
+          error: e instanceof Error ? e.message : "Verification failed",
+        };
+      } finally {
+        verifyRunning.current = false;
+        setVerifying(false);
+      }
+    };
+
+  // Save button / Ctrl+S: flush + verify against the database.
+  const saveAndVerify = async () => {
+    commitActiveEdit();
+    await new Promise((r) => setTimeout(r, 0));
+    const res = await verifyWithDatabase({ adopt: true });
+    if (res.ok) {
+      toast(
+        `Saved and verified - ${res.matched} candidates match the database${
+          res.resent ? ` (${res.resent} re-sent)` : ""
+        }${res.adopted ? ` · ${res.adopted} updated from others` : ""}`,
+        "success"
+      );
+    } else {
+      toast(
+        `Not fully saved: ${res.error || "unknown error"}. Your data is kept on this device and will keep retrying.`,
+        "error"
+      );
+    }
+    return res.ok;
+  };
+  useEffect(() => {
+    saveVerifyRef.current = saveAndVerify;
+  });
+
+  const verifyRef = useRef(verifyWithDatabase);
+  useEffect(() => {
+    verifyRef.current = verifyWithDatabase;
+  });
+
+  // Background self-check every 3 minutes while idle and not typing.
+  useEffect(() => {
+    if (!booted) return;
+    const t = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      if (engine.status.phase !== "idle" || hasUnsavedWork()) return;
+      const a = document.activeElement;
+      if (a instanceof HTMLElement && a.classList.contains("sheet-cell")) return;
+      void verifyRef.current({ adopt: true }).then((r) => {
+        if (r.ok && (r.resent || r.adopted)) {
+          toast(
+            `Database check: ${r.resent} re-sent, ${r.adopted} updated from others`,
+            "info"
+          );
+        }
+      });
+    }, 3 * 60 * 1000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [booted, engine]);
 
   const dbSizeKb = (
     (JSON.stringify(candidates).length +
@@ -884,6 +1343,13 @@ export function CrmProvider({
     redo,
     queueSave,
     saveNow,
+    flushSave,
+    saveAndVerify,
+    verifying,
+    syncStatus,
+    cellSync,
+    hasUnsavedWork,
+    commitActiveEdit,
     setCandidates,
     setHistory,
     setSettings,

@@ -1,6 +1,12 @@
 import type { ActiveFilters, Candidate } from "./types";
 import { diffDays, todayIso } from "./dates";
-import { nextUnpaid, statusExcluded } from "./calc";
+import {
+  addOneMonthIso,
+  getRemaining,
+  nextUnpaid,
+  paymentDateFor,
+  statusExcluded,
+} from "./calc";
 
 export interface DailyRow {
   candidate: Candidate;
@@ -11,11 +17,72 @@ export interface DailyRow {
   followup: boolean;
 }
 
+/**
+ * When is this candidate's next payment expected? Read-only - nothing is
+ * written back to the candidate.
+ *  1. An unpaid installment that already has a date + amount: that date.
+ *  2. Otherwise assume the candidate pays again the next month, one day
+ *     later than their latest paid installment (paid 27 Aug 2026 -> due
+ *     28 Sep 2026), for as long as they still owe a balance.
+ */
+export function expectedPayment(
+  c: Candidate
+): { date: string; amount: number; idx: number } | null {
+  const scheduled = (c.installments || [])
+    .map((inst, idx) => ({ inst, idx }))
+    .filter(
+      (x) =>
+        x.inst && !x.inst.paid && (Number(x.inst.amount) || 0) > 0 && x.inst.date
+    )
+    .sort((a, b) => String(a.inst.date).localeCompare(String(b.inst.date)))[0];
+  if (scheduled) {
+    return {
+      date: scheduled.inst.date,
+      amount: Number(scheduled.inst.amount) || 0,
+      idx: scheduled.idx,
+    };
+  }
+
+  const remaining = getRemaining(c);
+  if (remaining <= 0) return null; // fully paid, or no total fee to chase
+
+  let last = "";
+  for (const inst of c.installments || []) {
+    if (!inst || !inst.paid || !((Number(inst.amount) || 0) > 0)) continue;
+    const d = paymentDateFor(inst);
+    if (d && d > last) last = d;
+  }
+  if (!last) return null;
+  const month = addOneMonthIso(last);
+  if (!month) return null;
+  const emptySlot = (c.installments || []).findIndex(
+    (i) => i && !i.paid && !(Number(i.amount) || 0) && !i.date
+  );
+  return { date: month, amount: remaining, idx: emptySlot };
+}
+
 export function dailyEntry(
   c: Candidate,
   category: string,
   t = todayIso()
 ): DailyRow | null {
+  // The Follow-up page list: every candidate who still owes money, whatever
+  // their status or installment layout. Nothing else decides membership.
+  // The date is only informational (the assumed next payable date).
+  if (category === "all") {
+    const left = getRemaining(c);
+    if (left <= 0) return null;
+    const due = expectedPayment(c);
+    return {
+      candidate: c,
+      amount: left,
+      date: due?.date ?? "",
+      idx: due?.idx ?? -1,
+      days: due ? Math.max(0, -diffDays(due.date, t)) : 0,
+      followup: false,
+    };
+  }
+
   if (category === "followupsToday" || category === "followupsOverdue") {
     const d = c.nextFollowUpDate || "";
     if (!d) return null;
@@ -32,33 +99,26 @@ export function dailyEntry(
     };
   }
 
-  const matches = (c.installments || [])
-    .map((inst, idx) => ({ inst, idx }))
-    .filter(
-      (x) =>
-        x.inst &&
-        !x.inst.paid &&
-        (Number(x.inst.amount) || 0) > 0 &&
-        x.inst.date
-    )
-    .filter((x) => {
-      const dayDiff = diffDays(x.inst.date, t);
-      if (category === "overdue") return dayDiff < 0;
-      if (category === "today") return dayDiff === 0;
-      if (category === "week") return dayDiff >= 1 && dayDiff <= 7;
-      if (category === "upcoming") return dayDiff >= 8 && dayDiff <= 30;
-      return false;
-    })
-    .sort((a, b) => String(a.inst.date).localeCompare(String(b.inst.date)));
-
-  if (!matches.length) return null;
-  const x = matches[0];
+  const due = expectedPayment(c);
+  if (!due) return null;
+  const dayDiff = diffDays(due.date, t);
+  const inCategory =
+    category === "overdue"
+      ? dayDiff < 0
+      : category === "today"
+        ? dayDiff === 0
+        : category === "week"
+          ? dayDiff >= 1 && dayDiff <= 7
+          : category === "upcoming"
+            ? dayDiff >= 8 && dayDiff <= 30
+            : false;
+  if (!inCategory) return null;
   return {
     candidate: c,
-    amount: Number(x.inst.amount) || 0,
-    date: x.inst.date,
-    idx: x.idx,
-    days: Math.max(0, -diffDays(x.inst.date, t)),
+    amount: due.amount,
+    date: due.date,
+    idx: due.idx,
+    days: Math.max(0, -dayDiff),
     followup: false,
   };
 }
@@ -69,7 +129,7 @@ export function filteredDaily(
   filters: ActiveFilters = {}
 ): DailyRow[] {
   return candidates
-    .filter((c) => !statusExcluded(c.status))
+    .filter((c) => category === "all" || !statusExcluded(c.status))
     .filter((c) => !filters.assignedTo || c.assignedTo === filters.assignedTo)
     .filter((c) => !filters.poMonth || c.poMonth === filters.poMonth)
     .filter((c) => !filters.status || c.status === filters.status)
@@ -77,6 +137,8 @@ export function filteredDaily(
     .filter((x): x is DailyRow => !!x)
     .sort(
       (a, b) =>
+        // rows with no known date go last
+        (a.date ? 0 : 1) - (b.date ? 0 : 1) ||
         String(a.date).localeCompare(String(b.date)) ||
         String(a.candidate.name).localeCompare(String(b.candidate.name))
     );

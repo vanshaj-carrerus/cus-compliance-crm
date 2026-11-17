@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Check, Copy } from "lucide-react";
 import { badgeClass } from "@/lib/crm";
 
 // Google-Sheets-style column drag-to-reorder, shared across every table view.
@@ -214,12 +215,15 @@ export function useColumnWidths(
   // single drop target.
   const resizeHandleProps = useCallback(
     (key: string) => ({
-      onMouseDown: (e: React.MouseEvent) => {
+      // Pointer events (mouse + touch + pen) so columns can also be resized
+      // with a finger; touch-action:none on the handle stops the page from
+      // scrolling while it is dragged.
+      onPointerDown: (e: React.PointerEvent) => {
         e.preventDefault();
         e.stopPropagation();
         const startX = e.clientX;
         const startWidth = widths[key] ?? resolveDefaultWidth(defaultWidth, key);
-        const onMove = (ev: MouseEvent) => {
+        const onMove = (ev: PointerEvent) => {
           const next = Math.min(
             MAX_COL_WIDTH,
             Math.max(MIN_COL_WIDTH, startWidth + (ev.clientX - startX))
@@ -227,11 +231,13 @@ export function useColumnWidths(
           setWidths((prev) => ({ ...prev, [key]: next }));
         };
         const onUp = () => {
-          window.removeEventListener("mousemove", onMove);
-          window.removeEventListener("mouseup", onUp);
+          window.removeEventListener("pointermove", onMove);
+          window.removeEventListener("pointerup", onUp);
+          window.removeEventListener("pointercancel", onUp);
         };
-        window.addEventListener("mousemove", onMove);
-        window.addEventListener("mouseup", onUp);
+        window.addEventListener("pointermove", onMove);
+        window.addEventListener("pointerup", onUp);
+        window.addEventListener("pointercancel", onUp);
       },
       onClick: (e: React.MouseEvent) => e.stopPropagation(),
       onDragStart: (e: React.DragEvent) => e.preventDefault(),
@@ -348,6 +354,19 @@ export function FullscreenExitFab({
       </div>
     </div>
   );
+}
+
+// Table column keys that differ from the candidate field they edit - lets
+// every sheet put a per-cell "saving / not saved" marker on the right <td>.
+const SYNC_FIELD_BY_COLUMN: Record<string, string> = {
+  candidate: "name",
+  totalFee: "totalServiceFee",
+  phone: "phoneNumber",
+  assigned: "assignedTo",
+  lastContact: "lastContactDate",
+};
+export function syncField(columnKey: string): string {
+  return SYNC_FIELD_BY_COLUMN[columnKey] ?? columnKey;
 }
 
 export function Badge({ label }: { label: string }) {
@@ -1161,5 +1180,97 @@ export function SheetCaptureField({
         pointerEvents: "none",
       }}
     />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Phone number copy button. Copies the number (as typed in the cell) to the
+// clipboard; shows a brief "copied" tick. Used next to every phone field.
+// ---------------------------------------------------------------------------
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // Fallback for non-secure contexts / older WebViews.
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+}
+
+export function CopyPhoneButton({
+  value,
+  getValue,
+}: {
+  value: string;
+  // Reads the live text (e.g. what is typed but not yet saved) when given.
+  getValue?: () => string;
+}) {
+  const [copied, setCopied] = useState(false);
+  const timer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+
+  const onCopy = async (e: React.SyntheticEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const text = (getValue ? getValue() : value).trim();
+    if (!text) return;
+    if (await copyText(text)) {
+      setCopied(true);
+      window.clearTimeout(timer.current);
+      timer.current = window.setTimeout(() => setCopied(false), 1200);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      className="phone-copy-btn"
+      title={copied ? "Copied!" : "Copy phone number"}
+      aria-label={copied ? "Copied" : "Copy phone number"}
+      disabled={!value && !getValue}
+      // Keep sheet cell-selection / drag handlers on the <td> from reacting.
+      onMouseDown={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={onCopy}
+    >
+      {copied ? <Check size={15} strokeWidth={2.6} /> : <Copy size={15} />}
+    </button>
+  );
+}
+
+// Editable phone cell: the same input the sheets used before, plus a copy
+// button. `onCommit` fires on blur when the value changed.
+export function PhoneInput({
+  value,
+  onCommit,
+}: {
+  value: string;
+  onCommit: (next: string) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  return (
+    <div className="phone-cell">
+      <input
+        ref={ref}
+        className="sheet-cell"
+        defaultValue={value}
+        key={"phone-" + value}
+        onBlur={(e) => e.target.value !== value && onCommit(e.target.value)}
+      />
+      <CopyPhoneButton value={value} getValue={() => ref.current?.value ?? value} />
+    </div>
   );
 }

@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCrm } from "../CrmProvider";
+import { useAuth } from "../AuthProvider";
+import { readFormDraft, writeFormDraft } from "@/lib/crm/drafts";
 import { MonthYearPicker } from "../MonthYearPicker";
+import { CopyPhoneButton } from "../shared";
 import { DatePicker } from "../DatePicker";
 import { money } from "@/lib/crm/calc";
 import {
@@ -146,17 +149,46 @@ export function CandidateModal() {
     assignableUsers,
   } = useCrm();
 
+  const { user } = useAuth();
+  const userKey = user?.id || user?.email || "anon";
   const [form, setForm] = useState<FormState>(createEmptyForm());
+  const baseline = useRef("");
+  const initKey = useRef<string | null>(null);
 
+  // Initialise the form once per open (not on every background change to
+  // `candidates`, which used to overwrite whatever was being typed).
   useEffect(() => {
-    if (!candidateModalOpen) return;
-    if (editingId) {
-      const candidate = candidates.find((x) => x.id === editingId);
-      if (candidate) setForm(formFromCandidate(candidate));
-    } else {
-      setForm(createEmptyForm());
+    if (!candidateModalOpen) {
+      initKey.current = null;
+      return;
     }
-  }, [candidateModalOpen, editingId, candidates]);
+    const key = String(editingId ?? "new");
+    if (initKey.current === key) return;
+    initKey.current = key;
+    const candidate = editingId
+      ? candidates.find((x) => x.id === editingId)
+      : undefined;
+    const base = candidate ? formFromCandidate(candidate) : createEmptyForm();
+    baseline.current = JSON.stringify(base);
+    const draft = readFormDraft(userKey);
+    if (draft && (draft.editingId ?? null) === (editingId ?? null)) {
+      setForm({ ...base, ...(draft.form as Partial<FormState>) });
+    } else {
+      setForm(base);
+    }
+  }, [candidateModalOpen, editingId, candidates, userKey]);
+
+  // Every change to the form is mirrored to localStorage immediately.
+  useEffect(() => {
+    if (!candidateModalOpen || initKey.current === null) return;
+    const json = JSON.stringify(form);
+    if (json === baseline.current) return;
+    writeFormDraft(userKey, {
+      editingId: editingId ?? null,
+      form,
+      ts: Date.now(),
+    });
+  }, [form, candidateModalOpen, editingId, userKey]);
 
   if (!candidateModalOpen) return null;
 
@@ -211,6 +243,7 @@ export function CandidateModal() {
   return (
     <div
       data-modal-overlay
+      data-track-unsaved
       className="fixed inset-0 z-4000 flex items-center justify-center bg-black/50 p-4"
     >
       <div className="max-h-[92vh] w-full max-w-295 overflow-auto rounded-(--radius) border border-border bg-card shadow-xl">
@@ -246,12 +279,24 @@ export function CandidateModal() {
                 ] as const
               ).map(([key, label, type]) => (
                 <Field key={key} label={label}>
-                  <input
-                    type={type}
-                    className={inputCls}
-                    value={form[key]}
-                    onChange={(e) => setValue(key, e.target.value)}
-                  />
+                  {key === "phoneNumber" ? (
+                    <div className="flex items-center gap-1">
+                      <input
+                        type={type}
+                        className={inputCls}
+                        value={form[key]}
+                        onChange={(e) => setValue(key, e.target.value)}
+                      />
+                      <CopyPhoneButton value={form.phoneNumber} />
+                    </div>
+                  ) : (
+                    <input
+                      type={type}
+                      className={inputCls}
+                      value={form[key]}
+                      onChange={(e) => setValue(key, e.target.value)}
+                    />
+                  )}
                 </Field>
               ))}
 

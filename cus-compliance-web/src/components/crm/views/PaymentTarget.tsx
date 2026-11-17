@@ -11,6 +11,7 @@ import {
   FullscreenButton,
   FullscreenExitFab,
   MonthSelector,
+  PhoneInput,
   PasteProgressOverlay,
   ResetColumnsButton,
   SheetCaptureField,
@@ -19,6 +20,7 @@ import {
   useColumnWidths,
   useFullscreen,
   useSheetGrid,
+  syncField,
   type SheetColumn,
 } from "../shared";
 import {
@@ -56,6 +58,7 @@ export function PaymentTarget() {
     candidates,
     setCandidates,
     queueSave,
+    cellSync,
     snapshot,
     toast,
     showAddModal,
@@ -129,14 +132,9 @@ export function PaymentTarget() {
       key: "phoneNumber",
       label: "Phone Number",
       render: (r) => (
-        <input
-          className="sheet-cell"
-          defaultValue={r.x.phoneNumber || ""}
-          key={r.x.id + "-phoneNumber-" + (r.x.phoneNumber || "")}
-          onBlur={(e) =>
-            e.target.value !== (r.x.phoneNumber || "") &&
-            updateMasterField(r.x.id, "phoneNumber", e.target.value)
-          }
+        <PhoneInput
+          value={r.x.phoneNumber || ""}
+          onCommit={(v) => updateMasterField(r.x.id, "phoneNumber", v)}
         />
       ),
     },
@@ -552,6 +550,9 @@ export function PaymentTarget() {
                         <td
                           key={col.key}
                           {...cellProps(rowIdx, colIdx)}
+                          data-sync={cellSync(x.id, syncField(col.key))}
+                          data-cid={x.id}
+                          data-field={syncField(col.key)}
                           className={`${cls || ""} ${isCellSelected(rowIdx, colIdx) ? "cell-selected" : ""}`}
                         >
                           {col.render(row)}

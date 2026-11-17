@@ -18,6 +18,7 @@ import {
   useColumnWidths,
   useFullscreen,
   useSheetGrid,
+  syncField,
   type SheetColumn,
 } from "../shared";
 import {
@@ -71,6 +72,7 @@ export function Compliance() {
     candidates,
     setCandidates,
     queueSave,
+    cellSync,
     snapshot,
     toast,
     assignableUsers,
@@ -474,6 +476,9 @@ export function Compliance() {
                     <td
                       key={col.key}
                       {...cellProps(rowIdx, colIdx)}
+                      data-sync={cellSync(x.id, syncField(col.key))}
+                      data-cid={x.id}
+                      data-field={syncField(col.key)}
                       className={`${col.className || ""} ${isCellSelected(rowIdx, colIdx) ? "cell-selected" : ""}`}
                     >
                       {col.render(x)}

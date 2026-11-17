@@ -23,6 +23,28 @@ export function clearCrmCache() {
   crmInflight = null;
 }
 
+/** Always hits MongoDB (never the module cache) - used to verify saves. */
+export async function fetchCrmSnapshot(): Promise<CrmBootstrap> {
+  const [cRes, hRes, sRes] = await Promise.all([
+    fetch("/api/candidates?verify=1", { cache: "no-store" }),
+    fetch("/api/history", { cache: "no-store" }),
+    fetch("/api/settings", { cache: "no-store" }),
+  ]);
+  if (!cRes.ok || !hRes.ok || !sRes.ok) {
+    throw new Error("Could not read the database to verify");
+  }
+  const cData = await cRes.json();
+  const hData = await hRes.json();
+  const sData = await sRes.json();
+  return {
+    candidates: (cData.candidates || []).map((x: Candidate) =>
+      normalizeCandidate(x)
+    ),
+    history: hData.history || [],
+    settings: mergeSettings(sData.settings ?? defaultSettings()),
+  };
+}
+
 /** Fetch CRM snapshot once; reuse on remounts within the same tab. */
 export async function ensureCrmBootstrap(): Promise<CrmBootstrap> {
   if (crmCache) return crmCache;
@@ -30,9 +52,9 @@ export async function ensureCrmBootstrap(): Promise<CrmBootstrap> {
 
   crmInflight = (async () => {
     const [cRes, hRes, sRes] = await Promise.all([
-      fetch("/api/candidates"),
-      fetch("/api/history"),
-      fetch("/api/settings"),
+      fetch("/api/candidates", { cache: "no-store" }),
+      fetch("/api/history", { cache: "no-store" }),
+      fetch("/api/settings", { cache: "no-store" }),
     ]);
     if (!cRes.ok || !hRes.ok || !sRes.ok) {
       throw new Error("Failed to load CRM data from MongoDB");

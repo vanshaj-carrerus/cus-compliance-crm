@@ -14,7 +14,8 @@ export async function GET(request: Request) {
   try {
     await connectDB();
     let docs = await CandidateModel.find({}).lean();
-    if (!docs.length) {
+    const noSeed = new URL(request.url).searchParams.get("verify") === "1";
+    if (!docs.length && !noSeed) {
       const seed = demoData();
       await CandidateModel.insertMany(seed);
       docs = await CandidateModel.find({}).lean();

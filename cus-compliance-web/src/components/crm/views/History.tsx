@@ -3,6 +3,7 @@
 import { useCrm } from "../CrmProvider";
 import {
   Badge,
+  CopyPhoneButton,
   CrmTable,
   DataTableContainer,
   EmptyTableRow,
@@ -98,7 +99,12 @@ export function History() {
                   <td>
                     <strong>{m.candidateName}</strong>
                   </td>
-                  <td>{m.phone || "-"}</td>
+                  <td>
+                    <div className="phone-cell">
+                      <span className="min-w-0 flex-1">{m.phone || "-"}</span>
+                      <CopyPhoneButton value={m.phone || ""} />
+                    </div>
+                  </td>
                   <td>{m.template || "Custom"}</td>
                   <td>
                     <RemarksCell>{m.message}</RemarksCell>

@@ -101,7 +101,7 @@ export function Sidebar() {
                 type="button"
                 onClick={() => go(item.view)}
                 title={item.label}
-                className={`mb-0.5 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] leading-tight transition-colors ${
+                className={`mb-0.5 flex w-full items-center gap-2 rounded-lg px-2.5 py-2.5 text-left text-[13px] md:py-2 leading-tight transition-colors ${
                   active
                     ? "bg-secondary font-semibold text-primary"
                     : "text-muted hover:bg-secondary/80 hover:text-foreground"
@@ -125,7 +125,7 @@ export function Sidebar() {
           })}
         </div>
 
-        <div className="shrink-0 border-t border-border px-3 py-2.5 text-[10px] leading-relaxed text-muted">
+        <div className="shrink-0 border-t border-border px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] text-[10px] leading-relaxed text-muted">
           <div>v3.30 Priority Master</div>
           <div>MongoDB Mode · DB: {dbSizeKb} KB</div>
         </div>

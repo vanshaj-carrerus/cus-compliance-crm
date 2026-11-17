@@ -1536,3 +1536,282 @@ body {
   margin-right: 8px;
 }
 
+
+/* ==================================================================
+   Mobile / touch polish (design only - no behaviour changes).
+   ================================================================== */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+body {
+  -webkit-tap-highlight-color: transparent;
+}
+button,
+a,
+select,
+summary,
+label {
+  touch-action: manipulation;
+}
+
+/* Touch devices: column drag-reorder (HTML5 drag) and mouse-drag resizing
+   don't work with a finger, so hide those affordances instead of leaving
+   dead controls in every header. */
+@media (hover: none) and (pointer: coarse) {
+  .data-table th [title^="Drag to reorder"],
+  .excel-grid th [title^="Drag to reorder"] {
+    display: none;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  /* Wider, visible grab area so a fingertip can resize a column. */
+  .col-resize-handle {
+    width: 20px;
+    right: 0;
+    background: linear-gradient(
+      to right,
+      transparent 14px,
+      rgba(255, 255, 255, 0.55) 14px,
+      rgba(255, 255, 255, 0.55) 17px,
+      transparent 17px
+    );
+  }
+}
+
+@media (max-width: 767px) {
+  /* iOS Safari zooms the whole page when a field under 16px is focused.
+     :where() keeps this at zero specificity so the sheet rules below win. */
+  :where(
+      input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+      select,
+      textarea
+    ) {
+    font-size: 16px;
+  }
+
+  /* Sheets: compact text sized for a phone. */
+  .data-table,
+  .excel-grid {
+    font-size: 12px;
+  }
+  .data-table input:not([type="checkbox"]):not([type="radio"]),
+  .data-table select,
+  .data-table textarea,
+  .data-table .target-input,
+  .data-table-container .data-table .sheet-cell,
+  .excel-grid .sheet-cell,
+  .excel-grid.master-theme .sheet-cell,
+  .excel-grid.master-theme select.sheet-cell,
+  .excel-grid input:not([type="checkbox"]):not([type="radio"]),
+  .excel-grid select,
+  .excel-grid textarea {
+    font-size: 12px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+  .data-table .sheet-cell,
+  .excel-grid .sheet-cell {
+    min-width: 0;
+  }
+  .data-table-container .data-table select {
+    padding-left: 8px;
+    padding-right: 20px;
+    background-position: right 7px center;
+  }
+  .excel-grid th,
+  .excel-grid.master-theme thead th {
+    font-size: 11px;
+    padding: 8px 6px;
+  }
+
+  /* Comfortable tap targets */
+  .btn,
+  .btn-sm {
+    min-height: 38px;
+  }
+  .table-actions button,
+  .table-toolbar button,
+  .table-toolbar-actions button {
+    min-height: 36px;
+  }
+
+  /* Page / section headers stack and let their actions wrap full width */
+  .table-header {
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .table-header > div:first-child {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+  .table-actions {
+    width: 100%;
+    gap: 6px;
+  }
+  .table-toolbar {
+    align-items: stretch;
+  }
+  .table-toolbar-actions {
+    width: 100%;
+    gap: 6px;
+  }
+
+  /* Filters: tidy two-column grid; icon-only filters keep their icon */
+  .filters-bar,
+  .filters-bar.filters-bar-embedded {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+  }
+  .filters-bar.filters-bar-embedded {
+    margin-right: 0;
+  }
+  .filter-group-icon {
+    flex-direction: row;
+    align-items: center;
+  }
+  .filter-group-icon select {
+    min-width: 0;
+    flex: 1 1 auto;
+    width: 100%;
+  }
+  .filters-bar .btn {
+    grid-column: 1 / -1;
+  }
+
+  /* Stat tiles: two across instead of one tall column */
+  .stat-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px;
+  }
+  .month-selector {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  /* Table headers/cells: slightly tighter so more fits per screen */
+  .data-table th,
+  .data-table-container .data-table th {
+    padding: 8px 6px;
+    font-size: 11px;
+  }
+  .data-table td {
+    padding: 6px;
+  }
+
+  /* Modals become bottom sheets that never exceed the visible screen */
+  [data-modal-overlay] {
+    align-items: flex-end;
+    padding: 0;
+  }
+  [data-modal-overlay] > div {
+    width: 100%;
+    max-width: none;
+    max-height: 94dvh;
+    border-radius: 18px 18px 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+    overscroll-behavior: contain;
+  }
+}
+
+/* Very small phones */
+@media (max-width: 380px) {
+  .filters-bar,
+  .filters-bar.filters-bar-embedded {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Phone cell: input + copy button */
+.phone-cell {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+.phone-cell .sheet-cell {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.phone-copy-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.phone-copy-btn:hover:not(:disabled) {
+  background: rgba(21, 153, 154, 0.12);
+  color: var(--primary);
+}
+.phone-copy-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+@media (hover: none) and (pointer: coarse) {
+  .phone-copy-btn {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+/* ---- Per-cell save state (see SyncEngine.cellState) ---------------------
+   amber  = edited, waiting to be sent   (also kept in the browser journal)
+   blue   = request in flight to MongoDB (spinner)
+   red    = last attempt failed, retrying - the value is still on this device */
+td[data-sync] {
+  position: relative;
+}
+td[data-sync]::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  pointer-events: none;
+  z-index: 2;
+}
+td[data-sync="dirty"] {
+  box-shadow: inset 0 0 0 2px rgba(245, 158, 11, 0.85);
+  background-image: linear-gradient(rgba(245, 158, 11, 0.12), rgba(245, 158, 11, 0.12));
+}
+td[data-sync="dirty"]::after {
+  background: rgb(245, 158, 11);
+}
+td[data-sync="saving"] {
+  box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.85);
+  background-image: linear-gradient(rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.12));
+}
+td[data-sync="saving"]::after {
+  width: 10px;
+  height: 10px;
+  background: transparent;
+  border: 2px solid rgba(59, 130, 246, 0.3);
+  border-top-color: rgb(59, 130, 246);
+  animation: crm-sync-spin 0.7s linear infinite;
+}
+td[data-sync="error"] {
+  box-shadow: inset 0 0 0 2px rgba(239, 68, 68, 0.9);
+  background-image: linear-gradient(rgba(239, 68, 68, 0.12), rgba(239, 68, 68, 0.12));
+}
+td[data-sync="error"]::after {
+  background: rgb(239, 68, 68);
+}
+@keyframes crm-sync-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
