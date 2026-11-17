@@ -14,7 +14,7 @@ import {
 } from "../shared";
 import {
   money,
-  incentiveRows,
+  incentivePayments,
   currentCycleStart,
   addDaysDate,
   toIsoDate,
@@ -31,7 +31,10 @@ export function Incentive() {
   const end = new Date(to + "T00:00:00");
   end.setHours(23, 59, 59, 999);
 
-  const rows = incentiveRows(filtered(), start, end);
+  // Everyone's payments in the period, each under the person the candidate
+  // is assigned to (the Assigned filter narrows it to one person).
+  const rows = incentivePayments(filtered(), start, end);
+  const people = [...new Set(rows.map((r) => r.assignedTo))];
   const totalPayments = rows.reduce((s, r) => s + r.amount, 0);
   const totalIncentive = rows.reduce((sum, row) => sum + row.incentive, 0);
 
@@ -108,9 +111,13 @@ export function Incentive() {
               tone="success"
             />
             <StatCard
-              label="Yatin Incentive"
+              label={people.length === 1 ? `${people[0]} Incentive` : "Total Incentive"}
               value={money(totalIncentive)}
-              sub="Payment ÷ 2"
+              sub={
+                people.length > 1
+                  ? `Payment ÷ 2 · ${people.length} people`
+                  : "Payment ÷ 2"
+              }
               tone="info"
             />
           </div>

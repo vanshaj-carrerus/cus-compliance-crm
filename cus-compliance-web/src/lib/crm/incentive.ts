@@ -1,5 +1,5 @@
 import type { Candidate, ActiveFilters } from "./types";
-import { getRemaining } from "./calc";
+import { getRemaining, paymentDateFor } from "./calc";
 
 export interface IncentiveRow {
   assignedTo: string;
@@ -76,6 +76,54 @@ export function filterCandidates(
   return r;
 }
 
+const sameName = (a: string, b: string) =>
+  String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+
+/**
+ * Every paid installment whose payment date falls in [start, end], for ALL
+ * assignees (or just `assignee` when given). The payment belongs to whoever
+ * the candidate is assigned to. Names match ignoring case/spaces.
+ */
+export function incentivePayments(
+  candidates: Candidate[],
+  start: Date,
+  end: Date,
+  opts: { assignee?: string } = {}
+): IncentiveRow[] {
+  const endBound = new Date(end);
+  endBound.setHours(23, 59, 59, 999);
+  const rows: IncentiveRow[] = [];
+  candidates.forEach((c) => {
+    if (!String(c.assignedTo || "").trim()) return;
+    if (opts.assignee && !sameName(c.assignedTo, opts.assignee)) return;
+    if (!isIncentiveEligible(c)) return;
+    (c.installments || []).forEach((i, idx) => {
+      if (!i || !i.paid) return;
+      const date = paymentDateFor(i);
+      if (!date) return;
+      const d = new Date(date + "T00:00:00");
+      if (!(d >= start && d <= endBound)) return;
+      const amount = Number(i.amount) || 0;
+      if (amount <= 0) return;
+      rows.push({
+        assignedTo: c.assignedTo,
+        candidateName: c.name,
+        date,
+        amount,
+        incentive: amount / 2,
+        floor: c.floor,
+        notes: i.notes || "Installment " + (idx + 1),
+      });
+    });
+  });
+  return rows.sort(
+    (a, b) =>
+      new Date(a.date).getTime() - new Date(b.date).getTime() ||
+      a.assignedTo.localeCompare(b.assignedTo)
+  );
+}
+
+/** Yatin's rows only (dashboard incentive card). */
 export function incentiveRows(
   candidates: Candidate[],
   start: Date,
@@ -83,34 +131,11 @@ export function incentiveRows(
   searchQuery = "",
   activeFilters: ActiveFilters = {}
 ): IncentiveRow[] {
-  const endBound = new Date(end);
-  endBound.setHours(23, 59, 59, 999);
-  const rows: IncentiveRow[] = [];
-  filterCandidates(candidates, searchQuery, activeFilters).forEach((c) => {
-    if (c.assignedTo !== "Yatin") return;
-    if (!isIncentiveEligible(c)) return;
-    c.installments.forEach((i, idx) => {
-      if (i.paid && i.date) {
-        const d = new Date(i.date + "T00:00:00");
-        if (d >= start && d <= endBound) {
-          const amount = Number(i.amount) || 0;
-          if (amount > 0) {
-            rows.push({
-              assignedTo: c.assignedTo,
-              candidateName: c.name,
-              date: i.date,
-              amount,
-              incentive: amount / 2,
-              floor: c.floor,
-              notes: i.notes || "Installment " + (idx + 1),
-            });
-          }
-        }
-      }
-    });
-  });
-  return rows.sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  return incentivePayments(
+    filterCandidates(candidates, searchQuery, activeFilters),
+    start,
+    end,
+    { assignee: "Yatin" }
   );
 }
 
