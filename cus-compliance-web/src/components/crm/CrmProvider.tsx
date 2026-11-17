@@ -971,24 +971,41 @@ export function CrmProvider({
     queueSave();
   };
 
+  // Import / restore. A MERGE, not a wipe: candidates and history rows in
+  // the file are laid over the current data by id, everything else stays.
+  // The engine then sends only what really differs from the database - new
+  // candidates whole, changed ones as field patches - so an old file can
+  // never erase what other users added or changed in fields it doesn't touch.
   const replaceAll = async (
     c: Candidate[],
     h: PaymentHistory[],
     s: CrmSettings
   ) => {
     snapshot();
-    setCandidates(c);
-    setHistory(h);
+    const cur = stateRef.current;
+    const fileC = new Map(c.map((x) => [x.id, x]));
+    const known = new Set(cur.candidates.map((x) => x.id));
+    const nextC = [
+      ...cur.candidates.map((x) => fileC.get(x.id) ?? x),
+      ...c.filter((x) => !known.has(x.id)),
+    ];
+    const fileH = new Map(h.map((x) => [x.id, x]));
+    const knownH = new Set(cur.history.map((x) => x.id));
+    const nextH = [
+      ...cur.history.map((x) => fileH.get(x.id) ?? x),
+      ...h.filter((x) => !knownH.has(x.id)),
+    ];
+    setCandidates(nextC);
+    setHistory(nextH);
     setSettings(s);
-    stateRef.current = { candidates: c, history: h, settings: s };
-    // The engine diffs against what MongoDB holds: new ids are upserted,
-    // ids missing from the backup are deleted - in small batches.
+    stateRef.current = { candidates: nextC, history: nextH, settings: s };
     engine.markChanged();
+    const added = c.filter((x) => !known.has(x.id)).length;
     const ok = await engine.flush();
     toast(
       ok
-        ? "Backup restored"
-        : "Backup restored locally - still saving to the database",
+        ? `Import saved - ${c.length - added} updated, ${added} new`
+        : "Imported locally - still saving to the database",
       ok ? "success" : "info"
     );
   };

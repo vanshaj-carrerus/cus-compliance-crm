@@ -28,7 +28,9 @@ export function ImportModal() {
       if (!Array.isArray(data.candidates))
         throw new Error("Invalid backup file");
       if (
-        !confirm("Restore this backup? Current CRM data will be replaced.")
+        !confirm(
+          "Import this file? Candidates in it are updated (only the fields that differ are changed) and new ones are added. Nobody else's candidates are removed."
+        )
       )
         return;
       const candidates = data.candidates.map((candidate) =>
@@ -96,7 +98,8 @@ export function ImportModal() {
             onChange={(e) => handleFile(e.target.files?.[0])}
           />
           <p className="mt-4 text-xs text-muted">
-            This import replaces current data only after confirmation.
+            Import merges into the current data after confirmation: only
+            fields that differ are changed, nothing is deleted.
           </p>
         </div>
       </div>
