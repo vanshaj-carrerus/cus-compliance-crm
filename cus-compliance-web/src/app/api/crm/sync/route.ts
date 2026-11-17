@@ -35,7 +35,7 @@ const PATCHABLE = new Set(
     (k) => !k.includes(".") && !["_id", "__v", "id"].includes(k)
   )
 );
-const INSTALLMENT_PATH = /^installments.d{1,3}$/;
+const INSTALLMENT_PATH = /^installments\.\d{1,3}$/;
 
 function cleanPatch(p: Patch): {
   id: number;
@@ -49,6 +49,7 @@ function cleanPatch(p: Patch): {
   const rawSet = p.set && typeof p.set === "object" ? (p.set as Record<string, unknown>) : {};
   for (const [k, v] of Object.entries(rawSet)) {
     if (PATCHABLE.has(k) || INSTALLMENT_PATH.test(k)) set[k] = v;
+    else console.warn("sync: ignored unknown patch field", k);
   }
   if (Array.isArray(p.unset)) {
     for (const k of p.unset) if (typeof k === "string" && PATCHABLE.has(k)) unset[k] = 1;
