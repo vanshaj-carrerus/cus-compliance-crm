@@ -102,6 +102,9 @@ interface CrmContextValue {
   /** Flush, then re-read MongoDB and re-send anything that did not land. */
   saveAndVerify: () => Promise<boolean>;
   verifying: boolean;
+  /** Re-read everything from the database (saves local edits first). */
+  refreshData: () => Promise<boolean>;
+  refreshing: boolean;
   syncStatus: SyncStatus;
   /** Per-cell save state ("dirty" | "saving" | "error" | undefined). */
   cellSync: (id: number, field: string) => CellSync | undefined;
@@ -1262,6 +1265,33 @@ export function CrmProvider({
     saveVerifyRef.current = saveAndVerify;
   });
 
+  // "Refresh data" button: save what is local, re-read MongoDB, take over
+  // whatever is missing or newer on screen.
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshData = async () => {
+    if (!booted) {
+      window.location.reload();
+      return false;
+    }
+    setRefreshing(true);
+    try {
+      commitActiveEdit();
+      const res = await verifyWithDatabase({ adopt: true });
+      if (res.ok) {
+        setCrmCache({ ...stateRef.current });
+        toast(
+          `Data refreshed - ${stateRef.current.candidates.length} candidates loaded`,
+          "success"
+        );
+      } else {
+        toast(`Could not refresh: ${res.error || "unknown error"}`, "error");
+      }
+      return res.ok;
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const verifyRef = useRef(verifyWithDatabase);
   useEffect(() => {
     verifyRef.current = verifyWithDatabase;
@@ -1346,6 +1376,8 @@ export function CrmProvider({
     flushSave,
     saveAndVerify,
     verifying,
+    refreshData,
+    refreshing,
     syncStatus,
     cellSync,
     hasUnsavedWork,

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { badgeClass } from "@/lib/crm";
+import { EmptyDataNotice } from "./DataStates";
 
 // Google-Sheets-style column drag-to-reorder, shared across every table view.
 // Order is keyed by a stable string per column (not position) and persisted
@@ -525,7 +526,7 @@ export function EmptyTableRow({
   return (
     <tr>
       <td colSpan={colSpan} className="empty-row">
-        {message}
+        <EmptyDataNotice message={message} />
       </td>
     </tr>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCrm } from "../CrmProvider";
+import { EmptyDataNotice } from "../DataStates";
 import {
   Badge,
   ColumnResizeHandle,
@@ -652,6 +653,9 @@ export function DailyFollowUp({
             })}
           </tbody>
         </table>
+        {!rows.length && (
+          <EmptyDataNotice message="No candidates with a payment left to collect." />
+        )}
       </TableShell>
       <SheetCaptureField {...captureProps} />
       <PasteProgressOverlay pasteProgress={pasteProgress} />

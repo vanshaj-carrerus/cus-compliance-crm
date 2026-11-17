@@ -1,4 +1,42 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import type { CrmView } from "@/lib/crm/types";
+
+/** Spinner + status line; after a while offers a reload (slow database). */
+function LoadingNotice() {
+  const [secs, setSecs] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setSecs((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const slow = secs >= 8;
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-3 rounded-[var(--radius)] border border-border bg-card px-4 py-3 text-sm sm:mb-5">
+      <span
+        className="inline-block h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-primary border-t-transparent"
+        aria-hidden
+      />
+      <div className="min-w-0 flex-1">
+        <div className="font-medium">Loading your data…</div>
+        <div className="text-xs text-muted">
+          {slow
+            ? "This is taking longer than usual - the database may be waking up or the connection is slow."
+            : "Large workspaces can take a moment."}
+        </div>
+      </div>
+      {slow && (
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="inline-flex h-8 items-center rounded-(--radius) bg-primary px-3 text-xs font-semibold text-primary-foreground"
+        >
+          ↻ Reload
+        </button>
+      )}
+    </div>
+  );
+}
 
 export function Skeleton({
   className = "",
@@ -65,9 +103,7 @@ export function ViewDataSkeleton({ view }: { view: CrmView }) {
         <Skeleton className="h-8 w-36 rounded-full" />
       </div>
 
-      <p className="mb-4 text-xs text-muted sm:mb-5">
-        Loading your data… large workspaces can take a moment.
-      </p>
+      <LoadingNotice />
 
       {isDashboard && (
         <div className="mb-5 grid grid-cols-1 gap-3 sm:mb-6 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3 2xl:grid-cols-4">

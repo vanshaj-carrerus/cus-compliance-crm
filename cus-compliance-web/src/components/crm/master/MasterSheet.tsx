@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCrm } from "../CrmProvider";
+import { EmptyDataNotice } from "../DataStates";
 import { FiltersBar, FilterGroup, FILTER_ICONS } from "../FiltersBar";
 import {
   ColumnResizeHandle,
@@ -65,9 +66,7 @@ function MobileCandidateCards({
 }) {
   if (!list.length) {
     return (
-      <div className="p-6 text-center text-sm text-muted">
-        No candidates found.
-      </div>
+      <EmptyDataNotice message="No candidates found." />
     );
   }
   return (
@@ -1509,6 +1508,7 @@ export function MasterSheet() {
               ))}
             </tbody>
           </table>
+          {!list.length && <EmptyDataNotice message="No candidates found." />}
         </div>
       </div>
 
