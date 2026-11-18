@@ -33,6 +33,7 @@ type FormState = {
   poMonth: string;
   startDate: string;
   salaryType: string;
+  monthlyInstallment: string;
   status: string;
   remarks: string;
   installmentCount: string;
@@ -76,6 +77,7 @@ function createEmptyForm(): FormState {
     poMonth: "",
     startDate: "",
     salaryType: "",
+    monthlyInstallment: "",
     status: "",
     remarks: "",
     installmentCount: "",
@@ -105,6 +107,7 @@ function formFromCandidate(c: Candidate): FormState {
     poMonth: c.poMonth,
     startDate: c.startDate,
     salaryType: c.salaryType || "",
+    monthlyInstallment: String(c.monthlyInstallment || ""),
     status: c.status,
     remarks: c.remarks,
     installmentCount: String(c.installmentCount || ""),
@@ -280,6 +283,7 @@ export function CandidateModal() {
                   ["terms", "Terms", "text"],
                   ["po", "P.O Number", "text"],
                   ["installmentCount", "Installment Count", "number"],
+                  ["monthlyInstallment", "Monthly Installment", "number"],
                 ] as const
               ).map(([key, label, type]) => (
                 <Field key={key} label={label}>
@@ -610,6 +614,7 @@ export function CandidateModal() {
                 poMonth: form.poMonth,
                 startDate: form.startDate,
                 salaryType: form.salaryType as Candidate["salaryType"],
+                monthlyInstallment: Number(form.monthlyInstallment) || 0,
                 status: form.status,
                 remarks: form.remarks,
                 installmentCount: count,

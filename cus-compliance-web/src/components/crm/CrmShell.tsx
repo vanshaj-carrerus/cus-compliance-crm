@@ -6,6 +6,7 @@ import { useCrm } from "./CrmProvider";
 import { Sidebar, NAV } from "./Sidebar";
 import { TopBar } from "./TopBar";
 import { SaveIndicator } from "./SaveIndicator";
+import { TableColumnManager } from "./ColumnVisibility";
 import { ToastContainer } from "./Toast";
 import { CandidateModal } from "./modals/CandidateModal";
 import { ImportModal } from "./modals/ImportModal";
@@ -245,6 +246,7 @@ function CrmShellInner() {
   return (
     <div className="relative flex h-dvh overflow-hidden bg-background">
       <Sidebar />
+      {ready && <TableColumnManager view={currentView} />}
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar
           onExport={handleExport}

@@ -779,6 +779,7 @@ export function CrmProvider({
       "serviceFeePercent",
       "installmentCount",
       "totalServiceFee",
+      "monthlyInstallment",
     ];
     if (numFields.includes(field)) {
       (c as Record<string, unknown>)[field] =

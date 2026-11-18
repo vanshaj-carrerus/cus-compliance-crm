@@ -133,6 +133,8 @@ export function normalizeCandidate(c: Partial<Candidate> = {}): Candidate {
     poMonth,
     startDate,
     salaryType,
+    monthlyInstallment:
+      Number(String(c.monthlyInstallment ?? "").replace(/[$,\s]/g, "")) || 0,
     status: String(c.status || ""),
     remarks: String(c.remarks || ""),
     installmentCount,

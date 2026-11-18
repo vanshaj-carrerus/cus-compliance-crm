@@ -54,6 +54,8 @@ export interface Candidate {
   poMonth: string;
   startDate: string;
   salaryType: SalaryType;
+  /** Plain informational amount - not used in any calculation. */
+  monthlyInstallment: number;
   status: string;
   remarks: string;
   installmentCount: number;

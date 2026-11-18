@@ -72,13 +72,16 @@ body {
   width: 8px;
   height: 8px;
 }
+
 ::-webkit-scrollbar-track {
   background: var(--secondary);
 }
+
 ::-webkit-scrollbar-thumb {
   background: var(--border);
   border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: var(--muted);
 }
@@ -91,22 +94,27 @@ body {
   font-weight: 600;
   text-transform: uppercase;
 }
+
 .badge-success {
   background: rgba(28, 154, 104, 0.15);
   color: var(--success);
 }
+
 .badge-warning {
   background: rgba(214, 138, 37, 0.15);
   color: var(--warning);
 }
+
 .badge-danger {
   background: rgba(233, 87, 97, 0.15);
   color: var(--danger);
 }
+
 .badge-info {
   background: rgba(47, 131, 220, 0.15);
   color: var(--info);
 }
+
 .badge-default {
   background: var(--secondary);
   color: var(--muted);
@@ -121,11 +129,13 @@ body {
   background: var(--card);
   user-select: none;
 }
+
 .excel-grid input,
 .excel-grid select,
 .excel-grid textarea {
   user-select: text;
 }
+
 .excel-grid th,
 .excel-grid td {
   border-bottom: 1px solid var(--border);
@@ -136,6 +146,7 @@ body {
   box-sizing: border-box;
   background-clip: padding-box;
 }
+
 .excel-grid thead th {
   background: var(--freeze-bg);
   color: var(--muted);
@@ -147,20 +158,23 @@ body {
   top: 0;
   z-index: 40;
 }
+
 /* Keep scrolling cells under freeze columns */
 .excel-grid tbody td {
   position: relative;
   z-index: 1;
   background-color: #ffffff;
 }
+
 /* Master P.O Sheet rows are otherwise plain white - flag Cancelled rows
    with a faint red tint so they're easy to spot in the list. Needs
    !important to beat the plain white rule above and any other per-cell
    background (selection highlight aside, which already uses !important
    and rightly wins over this). */
-.excel-grid tbody tr.row-cancelled > td {
+.excel-grid tbody tr.row-cancelled>td {
   background-color: var(--row-cancelled) !important;
 }
+
 .excel-grid td.inst-col {
   white-space: normal;
   overflow: hidden;
@@ -178,6 +192,7 @@ body {
   background-image: none !important;
   box-shadow: 1px 0 0 var(--border);
 }
+
 .excel-grid .row-head {
   left: 0 !important;
   z-index: 330 !important;
@@ -188,6 +203,7 @@ body {
   font-weight: 700;
   color: var(--muted);
 }
+
 .excel-grid .freeze-check {
   left: 46px !important;
   z-index: 329 !important;
@@ -196,16 +212,19 @@ body {
   max-width: 44px !important;
   text-align: center;
 }
+
 .excel-grid thead .row-head,
 .excel-grid thead .freeze-check {
   background-color: var(--freeze-bg) !important;
   z-index: 350 !important;
   top: 0;
 }
+
 .excel-grid .row-head-selectable,
 .excel-grid .col-head-selectable {
   cursor: pointer;
 }
+
 /* thead th is already position:sticky (below), which is a positioned
    ancestor too, so it anchors .col-resize-handle without needing relative. */
 .excel-grid .col-head-selectable,
@@ -227,19 +246,23 @@ body {
   z-index: 5;
   touch-action: none;
 }
+
 .col-resize-handle:hover,
 .col-resize-handle:active {
   background: var(--primary);
   opacity: 0.5;
 }
+
 .excel-grid .row-head-selectable:hover,
 .excel-grid .col-head-selectable:hover {
   background-color: rgba(21, 153, 154, 0.14) !important;
 }
+
 .excel-grid td.cell-selected {
   background-color: rgba(21, 153, 154, 0.14) !important;
   box-shadow: inset 0 0 0 1.5px var(--primary);
 }
+
 .excel-grid .sheet-cell {
   display: block;
   background: transparent;
@@ -255,24 +278,30 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 .excel-grid .inst-text {
   cursor: pointer;
 }
+
 .excel-grid .inst-text:hover {
   background: rgba(21, 153, 154, 0.08);
 }
+
 .excel-grid .calc-cell {
   font-weight: 700;
 }
+
 /* .excel-grid .sheet-cell sets its own `color`, which otherwise beats the
    single-class .success-text/.danger-text (higher specificity), so the
    Paid/Remaining columns need it reasserted here. */
 .excel-grid .sheet-cell.success-text {
   color: var(--success);
 }
+
 .excel-grid .sheet-cell.danger-text {
   color: var(--danger);
 }
+
 .excel-grid .remarks-editor {
   min-width: 180px;
   max-width: 260px;
@@ -281,6 +310,7 @@ body {
   white-space: normal;
   font-weight: 500;
 }
+
 .excel-grid .inst-cell {
   min-width: 200px;
   max-width: 240px;
@@ -288,23 +318,27 @@ body {
   flex-direction: column;
   gap: 4px;
 }
+
 .excel-grid .inst-row {
   display: flex;
   gap: 6px;
   align-items: center;
   min-width: 0;
 }
+
 .excel-grid .inst-row input[type="text"] {
   min-width: 0;
   flex: 1 1 auto;
   width: 100%;
 }
+
 .excel-grid .inst-row input[type="checkbox"] {
   width: 16px;
   height: 16px;
   flex: 0 0 auto;
   accent-color: var(--success);
 }
+
 .excel-grid .inst-status {
   font-size: 10px;
   font-weight: 700;
@@ -315,18 +349,23 @@ body {
 .row-active td {
   background-color: var(--row-active);
 }
+
 .row-fully-paid td {
   background-color: var(--row-paid);
 }
+
 .row-cancelled td {
   background-color: var(--row-cancelled);
 }
+
 .row-run-away td {
   background-color: var(--row-runaway);
 }
+
 .row-job-lost td {
   background-color: var(--row-lost);
 }
+
 .row-refunded td,
 .row-closed td,
 .row-inactive td,
@@ -335,34 +374,39 @@ body {
 }
 
 /* Freeze columns keep opaque row color - critical for fully-paid (near-white) rows */
-.excel-grid tbody tr.row-active > td.row-head,
-.excel-grid tbody tr.row-active > td.freeze-check {
+.excel-grid tbody tr.row-active>td.row-head,
+.excel-grid tbody tr.row-active>td.freeze-check {
   background-color: var(--row-active) !important;
 }
-.excel-grid tbody tr.row-fully-paid > td.row-head,
-.excel-grid tbody tr.row-fully-paid > td.freeze-check {
+
+.excel-grid tbody tr.row-fully-paid>td.row-head,
+.excel-grid tbody tr.row-fully-paid>td.freeze-check {
   background-color: #eef8ff !important;
 }
-.excel-grid tbody tr.row-cancelled > td.row-head,
-.excel-grid tbody tr.row-cancelled > td.freeze-check {
+
+.excel-grid tbody tr.row-cancelled>td.row-head,
+.excel-grid tbody tr.row-cancelled>td.freeze-check {
   background-color: var(--row-cancelled) !important;
 }
-.excel-grid tbody tr.row-run-away > td.row-head,
-.excel-grid tbody tr.row-run-away > td.freeze-check {
+
+.excel-grid tbody tr.row-run-away>td.row-head,
+.excel-grid tbody tr.row-run-away>td.freeze-check {
   background-color: var(--row-runaway) !important;
 }
-.excel-grid tbody tr.row-job-lost > td.row-head,
-.excel-grid tbody tr.row-job-lost > td.freeze-check {
+
+.excel-grid tbody tr.row-job-lost>td.row-head,
+.excel-grid tbody tr.row-job-lost>td.freeze-check {
   background-color: var(--row-lost) !important;
 }
-.excel-grid tbody tr.row-refunded > td.row-head,
-.excel-grid tbody tr.row-refunded > td.freeze-check,
-.excel-grid tbody tr.row-closed > td.row-head,
-.excel-grid tbody tr.row-closed > td.freeze-check,
-.excel-grid tbody tr.row-inactive > td.row-head,
-.excel-grid tbody tr.row-inactive > td.freeze-check,
-.excel-grid tbody tr.row-neutral > td.row-head,
-.excel-grid tbody tr.row-neutral > td.freeze-check {
+
+.excel-grid tbody tr.row-refunded>td.row-head,
+.excel-grid tbody tr.row-refunded>td.freeze-check,
+.excel-grid tbody tr.row-closed>td.row-head,
+.excel-grid tbody tr.row-closed>td.freeze-check,
+.excel-grid tbody tr.row-inactive>td.row-head,
+.excel-grid tbody tr.row-inactive>td.freeze-check,
+.excel-grid tbody tr.row-neutral>td.row-head,
+.excel-grid tbody tr.row-neutral>td.freeze-check {
   background-color: #ffffff !important;
 }
 
@@ -371,9 +415,11 @@ body {
   transform: none !important;
   contain: none;
 }
+
 #masterScroll .excel-grid tbody td:not(.row-head):not(.freeze-check) {
   z-index: 1 !important;
 }
+
 /* CRM data views */
 .btn {
   display: inline-flex;
@@ -391,26 +437,32 @@ body {
   background: var(--secondary);
   color: var(--foreground);
 }
+
 .btn:hover:not(:disabled) {
   filter: brightness(0.98);
 }
+
 .btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
 .btn-primary {
   background: var(--primary);
   border-color: var(--primary);
   color: var(--primary-foreground);
 }
+
 .btn-secondary {
   background: var(--secondary);
 }
+
 .btn-danger {
   background: var(--danger);
   border-color: var(--danger);
   color: #fff;
 }
+
 .btn-sm {
   padding: 6px 12px;
   font-size: 12px;
@@ -421,22 +473,27 @@ body {
   color: var(--primary);
   font-weight: 700;
 }
+
 .success-text {
   color: var(--success);
   font-weight: 700;
 }
+
 .danger-text {
   color: var(--danger);
   font-weight: 700;
 }
+
 .warning-text {
   color: var(--warning);
   font-weight: 700;
 }
+
 .info-text {
   color: var(--info);
   font-weight: 700;
 }
+
 .muted {
   color: var(--muted);
   font-size: 12px;
@@ -453,6 +510,7 @@ body {
   background: var(--card);
   box-shadow: var(--shadow);
 }
+
 @media (min-width: 640px) {
   .filters-bar {
     display: flex;
@@ -462,6 +520,7 @@ body {
     padding: 8px 12px;
   }
 }
+
 .filter-group {
   display: flex;
   flex-direction: column;
@@ -471,6 +530,7 @@ body {
   color: var(--muted);
   min-width: 0;
 }
+
 @media (min-width: 640px) {
   .filter-group {
     flex-direction: row;
@@ -478,6 +538,7 @@ body {
     gap: 6px;
   }
 }
+
 .filter-label {
   font-size: 10.5px;
   font-weight: 700;
@@ -485,6 +546,7 @@ body {
   letter-spacing: 0.04em;
   color: var(--muted);
 }
+
 .filters-bar select,
 .filter-group select {
   width: 100%;
@@ -496,20 +558,25 @@ body {
   font-size: 12.5px;
   outline: none;
 }
+
 @media (min-width: 640px) {
+
   .filters-bar select,
   .filter-group select {
     width: auto;
     min-width: 100px;
   }
 }
+
 .filters-bar select:focus,
 .filter-group select:focus {
   border-color: var(--primary);
 }
+
 .filters-bar .btn {
   width: 100%;
 }
+
 @media (min-width: 640px) {
   .filters-bar .btn {
     width: auto;
@@ -528,6 +595,7 @@ body {
   background: var(--card);
   box-shadow: var(--shadow);
 }
+
 .month-display {
   min-width: 180px;
   text-align: center;
@@ -549,6 +617,7 @@ body {
   background: var(--card);
   box-shadow: var(--shadow);
 }
+
 @media (min-width: 640px) {
   .date-range-bar {
     display: flex;
@@ -556,6 +625,7 @@ body {
     padding: 16px;
   }
 }
+
 .date-range-bar label,
 .date-range-bar .period-field {
   display: flex;
@@ -569,13 +639,16 @@ body {
   min-width: 0;
   width: 100%;
 }
+
 @media (min-width: 640px) {
+
   .date-range-bar label,
   .date-range-bar .period-field {
     width: auto;
     min-width: 140px;
   }
 }
+
 .date-range-bar select,
 .date-range-bar input[type="date"] {
   width: 100%;
@@ -587,6 +660,7 @@ body {
   font-size: 13px;
   outline: none;
 }
+
 .date-range-bar select:focus,
 .date-range-bar input[type="date"]:focus {
   border-color: var(--primary);
@@ -598,6 +672,7 @@ body {
   gap: 14px;
   margin-bottom: 16px;
 }
+
 .stat-card {
   position: relative;
   overflow: hidden;
@@ -608,6 +683,7 @@ body {
   background: var(--card);
   box-shadow: var(--shadow);
 }
+
 .stat-card::after {
   content: "";
   position: absolute;
@@ -619,18 +695,23 @@ body {
   background: rgba(21, 153, 154, 0.1);
   pointer-events: none;
 }
+
 .stat-card.info::after {
   background: rgba(47, 131, 220, 0.12);
 }
+
 .stat-card.warning::after {
   background: rgba(214, 138, 37, 0.14);
 }
+
 .stat-card.danger::after {
   background: rgba(233, 87, 97, 0.13);
 }
+
 .stat-card.success::after {
   background: rgba(28, 154, 104, 0.12);
 }
+
 .stat-label {
   font-size: 11px;
   font-weight: 700;
@@ -638,6 +719,7 @@ body {
   letter-spacing: 0.05em;
   color: var(--muted);
 }
+
 .stat-value {
   margin-top: 8px;
   font-size: 22px;
@@ -645,18 +727,23 @@ body {
   letter-spacing: -0.03em;
   color: var(--foreground);
 }
+
 .stat-card.success .stat-value {
   color: var(--success);
 }
+
 .stat-card.info .stat-value {
   color: var(--info);
 }
+
 .stat-card.warning .stat-value {
   color: var(--warning);
 }
+
 .stat-card.danger .stat-value {
   color: var(--danger);
 }
+
 .stat-change {
   margin-top: 6px;
   font-size: 12px;
@@ -671,6 +758,7 @@ body {
   box-shadow: var(--shadow);
   margin-bottom: 16px;
 }
+
 .chart-card .table-title {
   margin-bottom: 4px;
 }
@@ -685,6 +773,7 @@ body {
   box-shadow: var(--shadow);
   overflow: hidden;
 }
+
 .table-header {
   display: flex;
   align-items: center;
@@ -696,23 +785,27 @@ body {
   background: linear-gradient(180deg, rgba(21, 153, 154, 0.04), transparent);
   min-height: 68px;
 }
+
 .table-title {
   font-size: 16px;
   font-weight: 800;
   letter-spacing: -0.025em;
   color: var(--foreground);
 }
+
 .table-subtitle {
   margin-top: 4px;
   font-size: 12px;
   color: var(--muted);
 }
+
 .table-actions {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
 }
+
 .table-toolbar {
   display: flex;
   align-items: center;
@@ -723,12 +816,14 @@ body {
   border-bottom: 1px solid var(--border);
   background: var(--secondary);
 }
+
 .table-toolbar-actions {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
 }
+
 .pill {
   display: inline-flex;
   align-items: center;
@@ -739,6 +834,7 @@ body {
   font-size: 12px;
   color: var(--muted);
 }
+
 .table-scroll {
   overflow: auto;
   max-height: calc(100vh - 280px);
@@ -746,12 +842,14 @@ body {
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
+
 .data-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
   color: var(--foreground);
 }
+
 /* Header cell widths (set inline via useColumnWidths) are only a hint under
    the default auto layout - fixed layout makes them authoritative. Applied
    only to tables that opt into column resizing (see CrmTable `resizable`),
@@ -759,16 +857,19 @@ body {
 .data-table-resizable {
   table-layout: fixed;
 }
+
 /* Sheet-style click/drag cell selection (see useSheetGrid) - user-select:none
    so dragging across cells to build a range doesn't also select the page's
    text underneath, matching .excel-grid's sheet on Master P.O Sheet. */
 .data-table.sheet-selectable {
   user-select: none;
 }
+
 .data-table td.cell-selected {
   background-color: rgba(21, 153, 154, 0.14) !important;
   box-shadow: inset 0 0 0 1.5px var(--primary);
 }
+
 .data-table th {
   position: sticky;
   top: 0;
@@ -785,12 +886,14 @@ body {
   white-space: nowrap;
   box-sizing: border-box;
 }
+
 .data-table td {
   padding: 11px 14px;
   vertical-align: top;
   border-bottom: 1px solid var(--border);
   box-sizing: border-box;
 }
+
 /* Safety net: under fixed layout a header without an explicit width collapses
    to ~0px and its cell content wraps into a very tall row. Give any unsized
    header a sane default so this can never happen again. */
@@ -798,18 +901,22 @@ body {
   width: 140px;
   min-width: 120px;
 }
+
 .data-table-resizable td {
   overflow: hidden;
   word-break: break-word;
 }
+
 .data-table tbody tr:hover {
   background: rgba(21, 153, 154, 0.05);
 }
+
 .data-table .empty-row {
   text-align: center;
   padding: 32px 16px;
   color: var(--muted);
 }
+
 .remarks {
   max-width: 240px;
   font-size: 12px;
@@ -818,6 +925,7 @@ body {
   white-space: pre-wrap;
   word-break: break-word;
 }
+
 .target-input {
   min-width: 110px;
   border: 1px solid var(--border);
@@ -827,13 +935,16 @@ body {
   font-size: 12px;
   outline: none;
 }
+
 .target-input:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 2px rgba(21, 153, 154, 0.15);
 }
+
 .target-input.date {
   min-width: 130px;
 }
+
 .target-input.remarks {
   min-width: 160px;
 }
@@ -842,6 +953,7 @@ body {
   max-width: 720px;
   margin: 0 auto;
 }
+
 .backup-panel {
   padding: 20px;
   border-radius: var(--radius);
@@ -850,40 +962,48 @@ body {
   box-shadow: var(--shadow);
   margin-bottom: 16px;
 }
+
 .backup-panel-title {
   font-size: 16px;
   font-weight: 800;
   margin-bottom: 8px;
 }
+
 .backup-panel-desc {
   font-size: 13px;
   color: var(--muted);
   margin-bottom: 16px;
   line-height: 1.5;
 }
+
 .backup-actions {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
+
 .backup-actions .btn {
   width: 100%;
   padding: 12px 16px;
 }
+
 .backup-stats {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 16px;
 }
+
 @media (min-width: 768px) {
   .backup-stats {
     grid-template-columns: repeat(4, 1fr);
   }
 }
+
 .backup-stat-label {
   font-size: 12px;
   color: var(--muted);
 }
+
 .backup-stat-value {
   font-size: 28px;
   font-weight: 800;
@@ -898,17 +1018,20 @@ body {
   gap: 16px;
   margin-bottom: 16px;
 }
+
 .workflow-grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: 12px;
   margin-bottom: 16px;
 }
+
 @media (min-width: 1024px) {
   .workflow-grid {
     grid-template-columns: 1fr 1fr;
   }
 }
+
 .workflow-rule-card {
   padding: 16px;
   border-radius: 18px;
@@ -916,12 +1039,14 @@ body {
   background: var(--card);
   box-shadow: var(--shadow);
 }
+
 .workflow-rule-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
+
 .workflow-toggle {
   position: relative;
   display: inline-flex;
@@ -930,12 +1055,14 @@ body {
   cursor: pointer;
   align-items: center;
 }
+
 .workflow-toggle input {
   position: absolute;
   opacity: 0;
   width: 0;
   height: 0;
 }
+
 .workflow-toggle-track {
   position: absolute;
   inset: 0;
@@ -943,9 +1070,11 @@ body {
   background: var(--border);
   transition: background 0.2s;
 }
-.workflow-toggle input:checked + .workflow-toggle-track {
+
+.workflow-toggle input:checked+.workflow-toggle-track {
   background: var(--success);
 }
+
 .workflow-toggle-thumb {
   position: absolute;
   left: 4px;
@@ -957,7 +1086,8 @@ body {
   transition: transform 0.2s;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
-.workflow-toggle input:checked ~ .workflow-toggle-thumb {
+
+.workflow-toggle input:checked~.workflow-toggle-thumb {
   transform: translateX(20px);
 }
 
@@ -967,6 +1097,7 @@ body {
   background: var(--secondary);
   padding: 16px;
 }
+
 .installment-card-head {
   display: flex;
   align-items: center;
@@ -974,6 +1105,7 @@ body {
   gap: 12px;
   margin-bottom: 12px;
 }
+
 .installment-card-title {
   font-size: 14px;
   font-weight: 700;
@@ -985,30 +1117,38 @@ body {
     overflow: auto !important;
     height: auto !important;
   }
+
   .table-scroll {
     max-height: none;
   }
+
   .table-header {
     padding: 12px 14px;
     min-height: 0;
   }
+
   .table-title {
     font-size: 15px;
   }
+
   .table-toolbar {
     padding: 10px 12px;
   }
+
   .stat-grid {
     grid-template-columns: 1fr;
   }
+
   .month-selector {
     flex-wrap: wrap;
   }
+
   .month-display {
     min-width: 0;
     width: 100%;
     order: -1;
   }
+
   .target-input.date,
   .target-input.remarks {
     min-width: 0;
@@ -1030,11 +1170,13 @@ body {
     opacity: 0;
     transform: translateY(6px) scale(0.99);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
 }
+
 .crm-view-transition {
   animation: crm-view-enter 220ms cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -1048,21 +1190,25 @@ body {
     opacity: 0;
     transform: translateY(18px) scale(0.9);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
 }
+
 @keyframes crm-switcher-out {
   from {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
+
   to {
     opacity: 0;
     transform: translateY(10px) scale(0.92);
   }
 }
+
 .crm-switcher-dock {
   animation: crm-switcher-in 200ms cubic-bezier(0.16, 1, 0.3, 1);
   /* Layered glass: soft ambient drop shadow plus a hairline inner highlight
@@ -1075,9 +1221,11 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.35),
     inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
+
 .crm-switcher-dock.crm-switcher-closing {
   animation: crm-switcher-out 160ms ease-in forwards;
 }
+
 /* Icon tile scales with viewport width instead of a fixed px size, so the
    whole dock shrinks to fit on narrower laptop screens before it ever needs
    to scroll. */
@@ -1086,6 +1234,7 @@ body {
   height: clamp(28px, 3.4vw, 40px);
   font-size: clamp(13px, 1.6vw, 18px);
 }
+
 /* Safety net for very narrow viewports where even the shrunk icons don't
    all fit - scrolls instead of overflowing the screen, scrollbar hidden
    since the row is short enough to swipe/drag without one. */
@@ -1093,6 +1242,7 @@ body {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
+
 .crm-switcher-track::-webkit-scrollbar {
   display: none;
 }
@@ -1109,21 +1259,25 @@ body {
   border-radius: 6px;
   background: #ffffff;
 }
+
 .master-title-block {
   text-align: center;
   padding: 6px 0 2px;
 }
+
 .master-title {
   font-size: 24px;
   font-weight: 800;
   letter-spacing: -0.01em;
   color: #1f2937;
 }
+
 .master-subtitle {
   margin-top: 4px;
   font-size: 13px;
   color: #6b7280;
 }
+
 .master-kpis {
   display: flex;
   flex-wrap: wrap;
@@ -1131,10 +1285,12 @@ body {
   gap: 16px 72px;
   margin: 18px 0 8px;
 }
+
 .master-kpi {
   text-align: center;
   min-width: 140px;
 }
+
 .master-kpi-label {
   font-size: 11px;
   font-weight: 700;
@@ -1142,6 +1298,7 @@ body {
   letter-spacing: 0.06em;
   color: #6b7280;
 }
+
 .master-kpi-value {
   margin-top: 2px;
   font-size: 28px;
@@ -1166,6 +1323,7 @@ body {
   border-right: 1px solid rgba(255, 255, 255, 0.12);
   padding: 11px 8px;
 }
+
 .excel-grid.master-theme thead th .col-resize-handle:hover {
   background: #ffffff;
 }
@@ -1176,39 +1334,48 @@ body {
   border-right: 1px solid var(--sheet-grid);
   text-align: center;
 }
+
 .excel-grid.master-theme .row-head,
 .excel-grid.master-theme .freeze-check {
   box-shadow: none;
 }
+
 .excel-grid.master-theme .sheet-cell {
   text-align: center;
   font-weight: 500;
   font-size: 13px;
   color: #1f2937;
 }
+
 .excel-grid.master-theme .sheet-cell.calc-cell,
 .excel-grid.master-theme .sheet-cell.text-primary {
   font-weight: 700;
 }
+
 .excel-grid.master-theme .sheet-cell.success-text {
   color: #188038;
 }
+
 .excel-grid.master-theme .sheet-cell.danger-text {
   color: #1f2937;
 }
+
 /* Installment state shown by text colour (no PAID/OVERDUE caption): green
    when paid, red when overdue, default otherwise. The state name is in the
    cell's hover tooltip. */
 .excel-grid.master-theme .sheet-cell.inst-paid {
   color: #188038;
 }
+
 .excel-grid.master-theme .sheet-cell.inst-overdue {
   color: #d93025;
   font-weight: 600;
 }
+
 .excel-grid.master-theme .inst-status {
   text-align: center;
 }
+
 .excel-grid.master-theme .inst-row {
   justify-content: center;
 }
@@ -1221,16 +1388,18 @@ body {
 
 /* Status never paints the row - every row stays plain white. Cells keep
    white even for Cancelled (overrides the generic faint-red tint). */
-.excel-grid.master-theme tbody tr.row-cancelled > td,
-.excel-grid.master-theme tbody tr.row-cancelled > td.row-head,
-.excel-grid.master-theme tbody tr.row-cancelled > td.freeze-check {
+.excel-grid.master-theme tbody tr.row-cancelled>td,
+.excel-grid.master-theme tbody tr.row-cancelled>td.row-head,
+.excel-grid.master-theme tbody tr.row-cancelled>td.freeze-check {
   background-color: #ffffff !important;
 }
+
 .excel-grid.master-theme option {
   color: #1f2937;
   background: #ffffff;
 }
-.excel-grid.master-theme tbody tr.row-cancelled > td.cell-selected {
+
+.excel-grid.master-theme tbody tr.row-cancelled>td.cell-selected {
   background-color: rgba(21, 153, 154, 0.14) !important;
 }
 
@@ -1251,9 +1420,11 @@ body {
   font-weight: 500;
   color: #1f2937;
 }
+
 .excel-grid.master-theme select.sheet-cell:hover {
   background-color: #dfe2e6;
 }
+
 .excel-grid.master-theme select.sheet-cell:focus {
   outline: none;
   box-shadow: 0 0 0 2px rgba(21, 153, 154, 0.35);
@@ -1262,14 +1433,17 @@ body {
 /* Master sheet dropdown LIST: pill-style options. Uses the customizable
    <select> (Chrome/Edge 135+); other browsers keep the native list. */
 @supports (appearance: base-select) {
+
   .excel-grid.master-theme select.sheet-cell,
   .excel-grid.master-theme select.sheet-cell::picker(select) {
     appearance: base-select;
   }
+
   /* keep our own triangle on the chip */
   .excel-grid.master-theme select.sheet-cell::picker-icon {
     display: none;
   }
+
   .excel-grid.master-theme select.sheet-cell::picker(select) {
     box-sizing: border-box;
     min-width: anchor-size(width);
@@ -1280,6 +1454,7 @@ body {
     background: #ffffff;
     box-shadow: 0 10px 28px rgba(15, 23, 42, 0.16);
   }
+
   .excel-grid.master-theme select.sheet-cell option {
     display: block;
     box-sizing: border-box;
@@ -1294,13 +1469,16 @@ body {
     white-space: nowrap;
     cursor: pointer;
   }
+
   .excel-grid.master-theme select.sheet-cell option::checkmark {
     display: none;
   }
+
   .excel-grid.master-theme select.sheet-cell option:hover,
   .excel-grid.master-theme select.sheet-cell option:focus {
     background: #dfe2e6;
   }
+
   .excel-grid.master-theme select.sheet-cell option:checked {
     background: #d6ecec;
     font-weight: 700;
@@ -1320,6 +1498,7 @@ body {
 .filter-group-icon {
   gap: 6px;
 }
+
 .filter-icon {
   display: inline-flex;
   align-items: center;
@@ -1332,6 +1511,7 @@ body {
   flex: 0 0 auto;
   cursor: help;
 }
+
 .filter-group-icon:hover .filter-icon {
   color: var(--primary);
 }
@@ -1350,6 +1530,7 @@ body {
   background: transparent;
   box-shadow: none;
 }
+
 .master-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -1373,7 +1554,7 @@ body {
 }
 
 /* Title block: centered title + subtitle, actions underneath */
-.data-table-container > .table-header {
+.data-table-container>.table-header {
   flex-direction: column;
   justify-content: center;
   gap: 10px;
@@ -1383,18 +1564,21 @@ body {
   padding: 18px 20px 8px;
   min-height: 0;
 }
-.data-table-container > .table-header .table-title {
+
+.data-table-container>.table-header .table-title {
   font-size: 24px;
   font-weight: 800;
   letter-spacing: -0.01em;
   color: #1f2937;
 }
-.data-table-container > .table-header .table-subtitle {
+
+.data-table-container>.table-header .table-subtitle {
   margin-top: 4px;
   font-size: 13px;
   color: #6b7280;
 }
-.data-table-container > .table-header .table-actions {
+
+.data-table-container>.table-header .table-actions {
   justify-content: center;
 }
 
@@ -1417,6 +1601,7 @@ body {
   border-bottom: 0;
   border-right: 1px solid rgba(255, 255, 255, 0.12);
 }
+
 .data-table-container .data-table-resizable th {
   text-align: center;
 }
@@ -1426,31 +1611,39 @@ body {
 .data-table-container .data-table tbody tr:hover {
   background: transparent;
 }
+
 .data-table-container .data-table tbody td {
   background-color: #ffffff;
   border-bottom: 1px solid var(--sheet-grid);
   border-right: 1px solid var(--sheet-grid);
   vertical-align: middle;
 }
-.data-table-container .data-table tbody tr:hover > td {
+
+.data-table-container .data-table tbody tr:hover>td {
   background-color: #f8fafc;
 }
+
 .data-table-container .data-table-resizable tbody td {
   text-align: center;
 }
-.data-table-container .data-table tbody tr[class*="row-"] > td {
+
+.data-table-container .data-table tbody tr[class*="row-"]>td {
   background-color: #ffffff;
 }
+
 .data-table-container .data-table tbody td.cell-selected {
   background-color: rgba(21, 153, 154, 0.14) !important;
 }
+
 .data-table-container .data-table .sheet-cell,
 .data-table-container .data-table .target-input {
   text-align: center;
 }
+
 .data-table-container .data-table .sheet-cell {
   font-weight: 500;
 }
+
 .data-table-container .data-table .sheet-cell.calc-cell {
   font-weight: 700;
 }
@@ -1478,21 +1671,27 @@ body {
   font-weight: 500;
   color: #1f2937;
 }
+
 .data-table-container .data-table select:hover {
   background-color: #dfe2e6;
 }
+
 .data-table-container .data-table select:focus {
   outline: none;
   box-shadow: 0 0 0 2px rgba(21, 153, 154, 0.35);
 }
+
 @supports (appearance: base-select) {
+
   .data-table-container .data-table select,
   .data-table-container .data-table select::picker(select) {
     appearance: base-select;
   }
+
   .data-table-container .data-table select::picker-icon {
     display: none;
   }
+
   .data-table-container .data-table select::picker(select) {
     box-sizing: border-box;
     min-width: anchor-size(width);
@@ -1503,6 +1702,7 @@ body {
     background: #ffffff;
     box-shadow: 0 10px 28px rgba(15, 23, 42, 0.16);
   }
+
   .data-table-container .data-table select option {
     display: block;
     box-sizing: border-box;
@@ -1517,13 +1717,16 @@ body {
     white-space: nowrap;
     cursor: pointer;
   }
+
   .data-table-container .data-table select option::checkmark {
     display: none;
   }
+
   .data-table-container .data-table select option:hover,
   .data-table-container .data-table select option:focus {
     background: #dfe2e6;
   }
+
   .data-table-container .data-table select option:checked {
     background: #d6ecec;
     font-weight: 700;
@@ -1544,9 +1747,11 @@ html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
+
 body {
   -webkit-tap-highlight-color: transparent;
 }
+
 button,
 a,
 select,
@@ -1559,6 +1764,7 @@ label {
    don't work with a finger, so hide those affordances instead of leaving
    dead controls in every header. */
 @media (hover: none) and (pointer: coarse) {
+
   .data-table th [title^="Drag to reorder"],
   .excel-grid th [title^="Drag to reorder"] {
     display: none;
@@ -1566,28 +1772,26 @@ label {
 }
 
 @media (hover: none) and (pointer: coarse) {
+
   /* Wider, visible grab area so a fingertip can resize a column. */
   .col-resize-handle {
     width: 20px;
     right: 0;
-    background: linear-gradient(
-      to right,
-      transparent 14px,
-      rgba(255, 255, 255, 0.55) 14px,
-      rgba(255, 255, 255, 0.55) 17px,
-      transparent 17px
-    );
+    background: linear-gradient(to right,
+        transparent 14px,
+        rgba(255, 255, 255, 0.55) 14px,
+        rgba(255, 255, 255, 0.55) 17px,
+        transparent 17px);
   }
 }
 
 @media (max-width: 767px) {
+
   /* iOS Safari zooms the whole page when a field under 16px is focused.
      :where() keeps this at zero specificity so the sheet rules below win. */
-  :where(
-      input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
-      select,
-      textarea
-    ) {
+  :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+    select,
+    textarea) {
     font-size: 16px;
   }
 
@@ -1596,6 +1800,7 @@ label {
   .excel-grid {
     font-size: 12px;
   }
+
   .data-table input:not([type="checkbox"]):not([type="radio"]),
   .data-table select,
   .data-table textarea,
@@ -1611,15 +1816,18 @@ label {
     padding-top: 6px;
     padding-bottom: 6px;
   }
+
   .data-table .sheet-cell,
   .excel-grid .sheet-cell {
     min-width: 0;
   }
+
   .data-table-container .data-table select {
     padding-left: 8px;
     padding-right: 20px;
     background-position: right 7px center;
   }
+
   .excel-grid th,
   .excel-grid.master-theme thead th {
     font-size: 11px;
@@ -1631,6 +1839,7 @@ label {
   .btn-sm {
     min-height: 38px;
   }
+
   .table-actions button,
   .table-toolbar button,
   .table-toolbar-actions button {
@@ -1642,17 +1851,21 @@ label {
     align-items: flex-start;
     gap: 10px;
   }
-  .table-header > div:first-child {
+
+  .table-header>div:first-child {
     min-width: 0;
     flex: 1 1 100%;
   }
+
   .table-actions {
     width: 100%;
     gap: 6px;
   }
+
   .table-toolbar {
     align-items: stretch;
   }
+
   .table-toolbar-actions {
     width: 100%;
     gap: 6px;
@@ -1666,18 +1879,22 @@ label {
     gap: 8px;
     width: 100%;
   }
+
   .filters-bar.filters-bar-embedded {
     margin-right: 0;
   }
+
   .filter-group-icon {
     flex-direction: row;
     align-items: center;
   }
+
   .filter-group-icon select {
     min-width: 0;
     flex: 1 1 auto;
     width: 100%;
   }
+
   .filters-bar .btn {
     grid-column: 1 / -1;
   }
@@ -1687,6 +1904,7 @@ label {
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     gap: 8px;
   }
+
   .month-selector {
     padding: 10px 12px;
     gap: 8px;
@@ -1698,6 +1916,7 @@ label {
     padding: 8px 6px;
     font-size: 11px;
   }
+
   .data-table td {
     padding: 6px;
   }
@@ -1707,7 +1926,8 @@ label {
     align-items: flex-end;
     padding: 0;
   }
-  [data-modal-overlay] > div {
+
+  [data-modal-overlay]>div {
     width: 100%;
     max-width: none;
     max-height: 94dvh;
@@ -1719,6 +1939,7 @@ label {
 
 /* Very small phones */
 @media (max-width: 380px) {
+
   .filters-bar,
   .filters-bar.filters-bar-embedded {
     grid-template-columns: 1fr;
@@ -1732,10 +1953,12 @@ label {
   gap: 2px;
   min-width: 0;
 }
+
 .phone-cell .sheet-cell {
   flex: 1 1 auto;
   min-width: 0;
 }
+
 .phone-copy-btn {
   flex: 0 0 auto;
   display: inline-flex;
@@ -1751,14 +1974,17 @@ label {
   line-height: 1;
   cursor: pointer;
 }
+
 .phone-copy-btn:hover:not(:disabled) {
   background: rgba(21, 153, 154, 0.12);
   color: var(--primary);
 }
+
 .phone-copy-btn:disabled {
   opacity: 0.35;
   cursor: default;
 }
+
 @media (hover: none) and (pointer: coarse) {
   .phone-copy-btn {
     width: 32px;
@@ -1773,6 +1999,7 @@ label {
 td[data-sync] {
   position: relative;
 }
+
 td[data-sync]::after {
   content: "";
   position: absolute;
@@ -1784,17 +2011,21 @@ td[data-sync]::after {
   pointer-events: none;
   z-index: 2;
 }
+
 td[data-sync="dirty"] {
   box-shadow: inset 0 0 0 2px rgba(245, 158, 11, 0.85);
   background-image: linear-gradient(rgba(245, 158, 11, 0.12), rgba(245, 158, 11, 0.12));
 }
+
 td[data-sync="dirty"]::after {
   background: rgb(245, 158, 11);
 }
+
 td[data-sync="saving"] {
   box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.85);
   background-image: linear-gradient(rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.12));
 }
+
 td[data-sync="saving"]::after {
   width: 10px;
   height: 10px;
@@ -1803,15 +2034,375 @@ td[data-sync="saving"]::after {
   border-top-color: rgb(59, 130, 246);
   animation: crm-sync-spin 0.7s linear infinite;
 }
+
 td[data-sync="error"] {
   box-shadow: inset 0 0 0 2px rgba(239, 68, 68, 0.9);
   background-image: linear-gradient(rgba(239, 68, 68, 0.12), rgba(239, 68, 68, 0.12));
 }
+
 td[data-sync="error"]::after {
   background: rgb(239, 68, 68);
 }
+
 @keyframes crm-sync-spin {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* ───────── Column hide/show (see components/crm/ColumnVisibility.tsx) ─────────
+   Purely visual: a column is collapsed by data-col-hidden on its header and
+   cells; the DOM and all page logic stay as they are. Transitions only run
+   once the table is marked data-col-ready, so page loads never animate. */
+.col-hide-btn {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.18);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%) scale(0.5);
+  transition:
+    opacity 0.16s ease,
+    transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background-color 0.15s ease,
+    color 0.15s ease;
+  z-index: 8;
+}
+
+th:hover>.col-hide-btn {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(-50%) scale(1);
+}
+
+.col-hide-btn:hover {
+  background: var(--danger);
+  border-color: transparent;
+  color: #fff;
+  transform: translateY(-50%) scale(1.12);
+}
+
+@media (hover: none) {
+  .col-hide-btn {
+    opacity: 0.75;
+    pointer-events: auto;
+    transform: translateY(-50%) scale(1);
+  }
+}
+
+table[data-col-ready] th,
+table[data-col-ready] td {
+  transition:
+    width 0.34s cubic-bezier(0.4, 0, 0.2, 1),
+    min-width 0.34s cubic-bezier(0.4, 0, 0.2, 1),
+    max-width 0.34s cubic-bezier(0.4, 0, 0.2, 1),
+    padding 0.34s cubic-bezier(0.4, 0, 0.2, 1),
+    border-width 0.34s ease,
+    opacity 0.24s ease,
+    visibility 0s linear 0s;
+}
+
+table[data-col-scope] [data-col-hidden] {
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  border-left-width: 0 !important;
+  border-right-width: 0 !important;
+  overflow: hidden !important;
+  opacity: 0;
+  visibility: hidden;
+}
+
+table[data-col-ready] [data-col-hidden] {
+  /* visibility flips only once the collapse has finished */
+  transition:
+    width 0.34s cubic-bezier(0.4, 0, 0.2, 1),
+    min-width 0.34s cubic-bezier(0.4, 0, 0.2, 1),
+    max-width 0.34s cubic-bezier(0.4, 0, 0.2, 1),
+    padding 0.34s cubic-bezier(0.4, 0, 0.2, 1),
+    border-width 0.34s ease,
+    opacity 0.24s ease,
+    visibility 0s linear 0.34s;
+}
+
+/* "Columns" toolbar button + popover */
+.col-menu-wrap {
+  display: inline-flex;
+}
+
+.col-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--secondary);
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.col-menu-btn:hover {
+  border-color: var(--primary);
+  background: var(--card);
+}
+
+.col-menu-btn:active {
+  transform: scale(0.97);
+}
+
+.col-menu-badge {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  animation: col-pop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.col-popover {
+  position: fixed;
+  z-index: 4300;
+  width: 272px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
+  transform-origin: top left;
+  animation: col-pop-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.col-popover-out {
+  animation: col-pop-out 0.14s ease forwards;
+}
+
+.col-popover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.col-popover-all {
+  border: 0;
+  background: transparent;
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.col-popover-all:hover {
+  text-decoration: underline;
+}
+
+.col-popover-empty {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.col-popover-minus {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin: 0 4px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-weight: 800;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.col-popover-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 260px;
+  padding: 4px 0px;
+  overflow-y: auto;
+}
+
+.col-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--secondary);
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  animation: col-pop 0.26s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.col-chip:hover {
+  border-color: var(--primary);
+  background: var(--card);
+  transform: translateY(-1px);
+}
+
+.col-chip-plus {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 13px;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.col-chip:hover .col-chip-plus {
+  transform: rotate(90deg);
+}
+
+@keyframes col-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes col-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes col-pop-out {
+  to {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  table[data-col-ready] th,
+  table[data-col-ready] td,
+  .col-hide-btn,
+  .col-popover,
+  .col-chip,
+  .col-menu-badge {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+/* ───────── Active-filter highlight ─────────
+   Styling only: a filter whose dropdown is set to anything other than its
+   "All"/empty option gets a teal tint, a stronger border, a small dot on its
+   icon, and the Clear Filters button gets the same accent - so it's obvious
+   at a glance that the list is filtered. Driven by :has() on the checked
+   option, so it needs no state or logic. */
+.filters-bar select,
+.filter-group select,
+.filter-icon,
+.filters-bar > button.btn-secondary {
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+.filter-group select:has(option:checked:not([value=""])) {
+  background-color: rgba(21, 153, 154, 0.12);
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 700;
+  box-shadow: 0 0 0 3px rgba(21, 153, 154, 0.14);
+}
+.filter-group:has(select option:checked:not([value=""])) .filter-icon {
+  position: relative;
+  background: rgba(21, 153, 154, 0.16);
+  color: var(--primary);
+}
+.filter-group:has(select option:checked:not([value=""])) .filter-icon::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--primary);
+  border: 2px solid var(--card);
+  animation: col-pop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.filters-bar:has(.filter-group select option:checked:not([value=""])) > button.btn-secondary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+/* ───────── Resizable tables: cell content follows the column width ─────────
+   Inputs in .data-table cells otherwise keep the browser's default width (and
+   .target-input a 110-160px min-width), so a column dragged narrower than
+   that clipped its own text. Make every cell control fill - and never exceed -
+   its column, so resizing a header resizes what's inside it. */
+.data-table-resizable td input:not([type="checkbox"]):not([type="radio"]),
+.data-table-resizable td textarea,
+.data-table-resizable td .sheet-cell,
+.data-table-resizable td .target-input {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  text-overflow: ellipsis;
+}
+.data-table-resizable td select {
+  max-width: 100%;
+  min-width: 0;
+  text-overflow: ellipsis;
 }

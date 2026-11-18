@@ -249,6 +249,23 @@ export function DailyFollowUp({
       ),
     },
     {
+      key: "monthlyInstallment",
+      label: "Monthly Installment",
+      render: (r) => (
+        <input
+          className="sheet-cell"
+          defaultValue={r.candidate.monthlyInstallment ? String(r.candidate.monthlyInstallment) : ""}
+          key={r.candidate.id + "-monthlyInstallment-" + (r.candidate.monthlyInstallment || "")}
+          placeholder="0"
+          onBlur={(e) => {
+            const c = r.candidate;
+            if (e.target.value === (c.monthlyInstallment ? String(c.monthlyInstallment) : "")) return;
+            updateMasterField(c.id, "monthlyInstallment", e.target.value);
+          }}
+        />
+      ),
+    },
+    {
       key: "dueAmount",
       label: isBalanceList ? "Amount Left" : "Due Amount",
       className: "text-primary",
@@ -360,6 +377,14 @@ export function DailyFollowUp({
         x.totalServiceFee = getTotalPaid(x) + parsed;
         x.annualPackage = 0;
         x.serviceFeePercent = 0;
+      },
+    },
+    {
+      key: "monthlyInstallment",
+      editable: true,
+      getText: (x) => (x.monthlyInstallment ? String(x.monthlyInstallment) : ""),
+      applyText: (x, v) => {
+        x.monthlyInstallment = Number(String(v).replace(/[$,%\s,]/g, "")) || 0;
       },
     },
     {

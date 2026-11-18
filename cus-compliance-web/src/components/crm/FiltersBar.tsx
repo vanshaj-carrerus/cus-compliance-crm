@@ -12,6 +12,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useCrm } from "./CrmProvider";
+import { ColumnsMenu } from "./ColumnVisibility";
 import { DEFAULT_STATUSES } from "@/lib/crm/types";
 
 // One filter: normally "LABEL [select]". With iconOnly it shows just an icon
@@ -76,6 +77,9 @@ export function FiltersBar({
   ].sort();
   const statuses = [
     ...new Set([
+      // A blank status is shown as "Active" in the sheet, so it must be
+      // filterable as "Active" too.
+      "Active",
       ...DEFAULT_STATUSES,
       ...candidates.map((c) => c.status).filter(Boolean),
     ]),
@@ -152,6 +156,7 @@ export function FiltersBar({
       >
         Clear Filters
       </button>
+      <ColumnsMenu />
       {children}
     </div>
   );

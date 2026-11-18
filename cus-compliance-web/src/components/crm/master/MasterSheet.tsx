@@ -29,6 +29,8 @@ import {
   newId,
 } from "@/lib/crm";
 import { DEFAULT_STATUSES, SALARY_TYPES, type Candidate } from "@/lib/crm/types";
+import { StatementModal } from "../modals/StatementModal";
+import { hiddenDataCols } from "../ColumnVisibility";
 
 // True when focus is in a field the user can type into (text input,
 // textarea, select, contenteditable) - checkboxes and buttons don't count.
@@ -168,6 +170,12 @@ const DATA_COLS: DataCol[] = [
     editable: false,
     getText: (c) => money(getRemaining(c)),
   },
+  {
+    key: "monthlyInstallment",
+    label: "Monthly Installment",
+    editable: true,
+    getText: (c) => (c.monthlyInstallment ? String(c.monthlyInstallment) : ""),
+  },
   { key: "startDate", label: "Start Date", editable: true, getText: (c) => c.startDate || "" },
   { key: "salaryType", label: "Salary Type", editable: true, getText: (c) => c.salaryType || "" },
   { key: "floor", label: "Floor", editable: true, getText: (c) => c.floor || "" },
@@ -210,6 +218,7 @@ const DATA_COL_DEFAULT_WIDTHS: Record<string, number> = {
   status: 120,
   paid: 110,
   remaining: 110,
+  monthlyInstallment: 150,
   ...Object.fromEntries(DATA_COLS.filter((c) => c.key.startsWith("inst")).map((c) => [c.key, 220])),
 };
 
@@ -259,6 +268,9 @@ export function MasterSheet() {
       !window.matchMedia("(max-width: 767px)").matches
   );
   const fileRef = useRef<HTMLInputElement>(null);
+  const [statementId, setStatementId] = useState<number | null>(null);
+  const statementCandidate =
+    statementId == null ? null : candidates.find((x) => x.id === statementId) ?? null;
   const [pasteProgress, setPasteProgress] = useState<{ done: number; total: number } | null>(
     null
   );
@@ -563,7 +575,9 @@ export function MasterSheet() {
         for (let j = r.c0; j <= r.c1; j++) colSet.add(j);
       });
       const rows = [...rowSet].sort((a, b) => a - b);
-      const cols = [...colSet].sort((a, b) => a - b);
+      // hidden columns aren't copied
+      const hiddenCols = hiddenDataCols(scrollRef.current);
+      const cols = [...colSet].filter((c) => !hiddenCols.has(c)).sort((a, b) => a - b);
       const inSelection = (r: number, c: number) =>
         rects.some((rect) => r >= rect.r0 && r <= rect.r1 && c >= rect.c0 && c <= rect.c1);
       return rows
@@ -600,8 +614,14 @@ export function MasterSheet() {
   const applyRowFields = useCallback(
     (c: Candidate, rowText: string, anchorCol: number) => {
       const cols = rowText.split("\t");
-      cols.forEach((val, ci2) => {
-        const colDef = orderedCols[anchorCol + ci2];
+      // Pasted values fill the visible columns left to right; hidden
+      // columns are skipped so they're never written to.
+      const hiddenCols = hiddenDataCols(scrollRef.current);
+      let target = anchorCol;
+      cols.forEach((val) => {
+        while (hiddenCols.has(target)) target += 1;
+        const colDef = orderedCols[target];
+        target += 1;
         if (!colDef || !colDef.editable) return;
         const trimmed = val.trim();
         if (colDef.key.startsWith("inst")) {
@@ -637,7 +657,8 @@ export function MasterSheet() {
             Number(trimmed.replace(/[$,%\s,]/g, "")) || 0;
         } else if (
           colDef.key === "annualPackage" ||
-          colDef.key === "serviceFeePercent"
+          colDef.key === "serviceFeePercent" ||
+          colDef.key === "monthlyInstallment"
         ) {
           (c as unknown as Record<string, unknown>)[colDef.key] =
             Number(trimmed.replace(/[$,%\s,]/g, "")) || 0;
@@ -782,6 +803,7 @@ export function MasterSheet() {
   const clearSelection = useCallback(() => {
     if (!allRects.length) return;
     const ids = list.map((c) => c.id);
+    const hiddenCols = hiddenDataCols(scrollRef.current);
     let next = [...candidates];
     const touched = new Set<number>();
     for (const rect of allRects) {
@@ -791,7 +813,9 @@ export function MasterSheet() {
         const ci = next.findIndex((c) => c.id === id);
         if (ci < 0) continue;
         const c = { ...next[ci], installments: [...next[ci].installments] };
-        const width = rect.c1 - rect.c0 + 1;
+        // Only the visible columns inside the selection are cleared.
+        let width = 0;
+        for (let k = rect.c0; k <= rect.c1; k++) if (!hiddenCols.has(k)) width += 1;
         applyRowFields(c, Array(width).fill("").join("\t"), rect.c0);
         next[ci] = c;
         touched.add(id);
@@ -889,6 +913,12 @@ export function MasterSheet() {
       else if (e.key === "ArrowDown") newRow += 1;
       else if (e.key === "ArrowLeft") newCol -= 1;
       else newCol += 1;
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        // step over hidden columns
+        const hiddenCols = hiddenDataCols(scrollRef.current);
+        const step = e.key === "ArrowLeft" ? -1 : 1;
+        while (hiddenCols.has(newCol)) newCol += step;
+      }
 
       if (newRow < 0 || newRow >= list.length) return;
       if (newCol < 0 || newCol >= DATA_COLS.length) return;
@@ -992,6 +1022,22 @@ export function MasterSheet() {
             onBlur={(e) => {
               if (e.target.value === (c.annualPackage ? String(c.annualPackage) : "")) return;
               updateMasterField(c.id, "annualPackage", e.target.value);
+            }}
+          />
+        </td>
+      );
+    }
+    if (col.key === "monthlyInstallment") {
+      return (
+        <td key={col.key} {...cellProps} className={selectedCls}>
+          <input
+            className="sheet-cell"
+            defaultValue={c.monthlyInstallment ? String(c.monthlyInstallment) : ""}
+            key={c.id + "-monthlyInstallment-" + c.monthlyInstallment}
+            placeholder="0"
+            onBlur={(e) => {
+              if (e.target.value === (c.monthlyInstallment ? String(c.monthlyInstallment) : "")) return;
+              updateMasterField(c.id, "monthlyInstallment", e.target.value);
             }}
           />
         </td>
@@ -1106,6 +1152,12 @@ export function MasterSheet() {
             {DEFAULT_STATUSES.map((s) => (
               <option key={s}>{s}</option>
             ))}
+            {/* A status outside the defaults (e.g. "No Response", set by the
+                auto workflow) must still show as itself, not fall back to
+                the first option ("Active"). */}
+            {c.status && !(DEFAULT_STATUSES as readonly string[]).includes(c.status) && (
+              <option key={c.status}>{c.status}</option>
+            )}
           </select>
         </td>
       );
@@ -1511,6 +1563,14 @@ export function MasterSheet() {
                   <td>
                     <button
                       type="button"
+                      title="Payment statement (image / PDF)"
+                      className="mr-1 rounded border border-border bg-secondary px-2 py-1 text-xs"
+                      onClick={() => setStatementId(c.id)}
+                    >
+                      🧾
+                    </button>
+                    <button
+                      type="button"
                       className="mr-1 rounded border border-border bg-secondary px-2 py-1 text-xs"
                       onClick={() => editCandidate(c.id)}
                     >
@@ -1534,6 +1594,13 @@ export function MasterSheet() {
 
       {bulkSelected.size > 0 && (
         <BulkBar list={list} />
+      )}
+
+      {statementCandidate && (
+        <StatementModal
+          candidate={statementCandidate}
+          onClose={() => setStatementId(null)}
+        />
       )}
 
       {pasteProgress && (

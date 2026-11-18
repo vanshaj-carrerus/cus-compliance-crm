@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { badgeClass } from "@/lib/crm";
 import { EmptyDataNotice } from "./DataStates";
+import { ColumnsMenu, hiddenDataCols } from "./ColumnVisibility";
 
 // Google-Sheets-style column drag-to-reorder, shared across every table view.
 // Order is keyed by a stable string per column (not position) and persisted
@@ -491,6 +492,7 @@ export function DataTableContainer({
           </div>
           <div className="table-actions">
             {meta}
+            {!toolbar && <ColumnsMenu />}
             {actions}
           </div>
         </div>
@@ -799,12 +801,14 @@ export function useSheetGrid<T extends { id: number }>({
       const c1 = Math.max(...rects.map((r) => r.c1));
       const inSelection = (r: number, c: number) =>
         rects.some((rect) => r >= rect.r0 && r <= rect.r1 && c >= rect.c0 && c <= rect.c1);
+      const hiddenCols = hiddenDataCols(scrollRef.current);
       const outRows: string[] = [];
       for (let r = r0; r <= r1; r++) {
         const row = rows[r];
         if (!row) continue;
         const cells: string[] = [];
         for (let c = c0; c <= c1; c++) {
+          if (hiddenCols.has(c)) continue; // hidden columns aren't copied
           cells.push(inSelection(r, c) ? columns[c]?.getText(row) ?? "" : "");
         }
         outRows.push(cells.join("\t"));
@@ -832,8 +836,14 @@ export function useSheetGrid<T extends { id: number }>({
 
   const applyRowFields = useCallback(
     (row: T, rowText: string, anchorCol: number) => {
-      rowText.split("\t").forEach((val, ci) => {
-        const colDef = columns[anchorCol + ci];
+      // Pasted values fill the visible columns left to right; hidden
+      // columns are skipped so they're never written to.
+      const hiddenCols = hiddenDataCols(scrollRef.current);
+      let target = anchorCol;
+      rowText.split("\t").forEach((val) => {
+        while (hiddenCols.has(target)) target += 1;
+        const colDef = columns[target];
+        target += 1;
         if (!colDef || !colDef.editable || !colDef.applyText) return;
         colDef.applyText(row, val.trim());
       });
@@ -1003,6 +1013,7 @@ export function useSheetGrid<T extends { id: number }>({
   const clearSelectedCells = useCallback(() => {
     if (!allRects.length) return;
     const ids = rows.map((r) => r.id);
+    const hiddenCols = hiddenDataCols(scrollRef.current);
     let next = [...allRows];
     const touched = new Set<number>();
     for (const rect of allRects) {
@@ -1014,6 +1025,7 @@ export function useSheetGrid<T extends { id: number }>({
         const row = { ...next[ci] };
         let changed = false;
         for (let c = rect.c0; c <= rect.c1; c++) {
+          if (hiddenCols.has(c)) continue; // hidden columns aren't cleared
           const colDef = columns[c];
           if (!colDef || !colDef.editable || !colDef.applyText) continue;
           colDef.applyText(row, "");
@@ -1118,6 +1130,12 @@ export function useSheetGrid<T extends { id: number }>({
       else if (e.key === "ArrowDown") newRow += 1;
       else if (e.key === "ArrowLeft") newCol -= 1;
       else newCol += 1;
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        // step over hidden columns
+        const hiddenCols = hiddenDataCols(scrollRef.current);
+        const step = e.key === "ArrowLeft" ? -1 : 1;
+        while (hiddenCols.has(newCol)) newCol += step;
+      }
 
       if (newRow < 0 || newRow >= rows.length) return;
       if (newCol < 0 || newCol >= columns.length) return;

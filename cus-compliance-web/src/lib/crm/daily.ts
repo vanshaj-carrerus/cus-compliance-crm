@@ -132,7 +132,13 @@ export function filteredDaily(
     .filter((c) => category === "all" || !statusExcluded(c.status))
     .filter((c) => !filters.assignedTo || c.assignedTo === filters.assignedTo)
     .filter((c) => !filters.poMonth || c.poMonth === filters.poMonth)
-    .filter((c) => !filters.status || c.status === filters.status)
+    .filter(
+      (c) =>
+        !filters.status ||
+        (filters.status === "Active"
+          ? !c.status || c.status === "Active" // blank status displays as "Active"
+          : c.status === filters.status)
+    )
     .map((c) => dailyEntry(c, category))
     .filter((x): x is DailyRow => !!x)
     .sort(

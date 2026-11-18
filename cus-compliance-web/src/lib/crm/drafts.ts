@@ -89,6 +89,7 @@ const RESTORABLE = new Set([
   "annualPackage",
   "serviceFeePercent",
   "totalServiceFee",
+  "monthlyInstallment",
   "remarks",
   "expectedDate",
   "expectedAmount",

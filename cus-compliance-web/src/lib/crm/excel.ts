@@ -287,6 +287,7 @@ function candidateRows(candidates: Candidate[]): SheetRecord[] {
       "P.O.": candidate.po || "",
       "Start date": candidate.startDate || "",
       "Salary Type": candidate.salaryType || "",
+      "Monthly Installment": candidate.monthlyInstallment || "",
       "Candidate name": candidate.name || "",
       floor: candidate.floor || "",
       "Amount and percentage":
@@ -708,6 +709,9 @@ export async function parseCrmWorkbook(
         salaryType: String(
           recordGet(record, "Salary Type", "salaryType") || ""
         ) as Candidate["salaryType"],
+        monthlyInstallment: asNumber(
+          recordGet(record, "Monthly Installment", "monthlyInstallment")
+        ),
         status: String(recordGet(record, "Status", "status") || ""),
         remarks: String(recordGet(record, "Remarks", "remarks")),
         installmentCount: asNumber(recordGet(record, "installmentCount")),

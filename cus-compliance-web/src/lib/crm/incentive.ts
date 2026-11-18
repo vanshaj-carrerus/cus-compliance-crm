@@ -40,7 +40,11 @@ export function filterCandidates(
   const q = searchQuery.toLowerCase().trim();
   if (activeFilters.floor) r = r.filter((c) => c.floor === activeFilters.floor);
   if (activeFilters.status)
-    r = r.filter((c) => c.status === activeFilters.status);
+    r = r.filter((c) =>
+      activeFilters.status === "Active"
+        ? !c.status || c.status === "Active" // blank status displays as "Active"
+        : c.status === activeFilters.status
+    );
   if (activeFilters.po) r = r.filter((c) => c.po === activeFilters.po);
   if (activeFilters.assignedTo)
     r = r.filter((c) => c.assignedTo === activeFilters.assignedTo);

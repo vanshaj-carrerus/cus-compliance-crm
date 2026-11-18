@@ -37,6 +37,7 @@ const CandidateSchema = new Schema(
     poMonth: { type: String, default: "" },
     startDate: { type: String, default: "" },
     salaryType: { type: String, default: "" },
+    monthlyInstallment: { type: Number, default: 0 },
     status: { type: String, default: "Active" },
     remarks: { type: String, default: "" },
     installmentCount: { type: Number, default: 0 },
