@@ -1,26 +1,37 @@
 "use client";
 
+import { Check, Info, X } from "lucide-react";
 import { useCrm } from "./CrmProvider";
 
 export function ToastContainer() {
   const { toasts } = useCrm();
   return (
-    <div className="fixed inset-x-3 top-[max(0.75rem,env(safe-area-inset-top))] z-[2000] flex flex-col gap-2 sm:inset-x-auto sm:right-5 sm:top-5 sm:max-w-sm">
+    <div className="fixed inset-x-3 top-[max(0.75rem,env(safe-area-inset-top))] z-[2000] flex flex-col gap-2.5 sm:inset-x-auto sm:right-5 sm:top-5 sm:max-w-sm">
       {toasts.map((t) => (
         <div
           key={t.id}
-          className={`flex w-full items-center gap-2.5 rounded-[var(--radius)] border border-border bg-card px-4 py-3 shadow-lg sm:min-w-[280px] sm:px-5 sm:py-3.5 ${
-            t.type === "success"
-              ? "border-l-4 border-l-success"
-              : t.type === "error"
-                ? "border-l-4 border-l-danger"
-                : "border-l-4 border-l-primary"
-          }`}
+          style={
+            {
+              "--toast-accent":
+                t.type === "success"
+                  ? "var(--success)"
+                  : t.type === "error"
+                    ? "var(--danger)"
+                    : "var(--primary)",
+            } as React.CSSProperties
+          }
+          className="crm-toast flex w-full items-center gap-3 border border-border bg-card py-3 pl-5 pr-5 sm:min-w-[300px] sm:py-3.5"
         >
-          <span>
-            {t.type === "success" ? "✓" : t.type === "error" ? "✕" : "ℹ"}
+          <span className="crm-toast-icon">
+            {t.type === "success" ? (
+              <Check className="h-3.5 w-3.5" strokeWidth={3} />
+            ) : t.type === "error" ? (
+              <X className="h-3.5 w-3.5" strokeWidth={3} />
+            ) : (
+              <Info className="h-3.5 w-3.5" strokeWidth={2.6} />
+            )}
           </span>
-          <span className="text-sm leading-snug">{t.message}</span>
+          <span className="text-sm font-medium leading-snug text-(--ink)">{t.message}</span>
         </div>
       ))}
     </div>

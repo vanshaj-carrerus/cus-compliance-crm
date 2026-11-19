@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import "./aurora.css";
+import "./dashboard.css";
 import PwaProvider from "@/components/PwaProvider";
+import GlassFX from "@/components/GlassFX";
+import ThemeFX from "@/components/ThemeFX";
+import "./settings.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,7 +42,7 @@ export const viewport = {
   initialScale: 1,
   maximumScale: 5,
   viewportFit: "cover" as const,
-  themeColor: "#15999a",
+  themeColor: "#5a6cf0",
 };
 
 export default function RootLayout({
@@ -52,6 +57,8 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">{children}
         <PwaProvider />
+        <GlassFX />
+        <ThemeFX />
       </body>
     </html>
   );

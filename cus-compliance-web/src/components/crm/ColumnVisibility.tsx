@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 
 // Presentation-only "manage columns" layer for every table in the CRM.
 //
@@ -287,7 +288,7 @@ export function ColumnsMenu() {
         Columns
         {count > 0 && <span className="col-menu-badge">{count}</span>}
       </button>
-      {open && pos && (
+      {open && pos && createPortal(
         <div
           data-col-popover
           className={`col-popover ${closing ? "col-popover-out" : ""}`}
@@ -326,7 +327,8 @@ export function ColumnsMenu() {
               ))}
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </span>
   );

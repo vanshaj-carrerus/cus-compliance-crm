@@ -13,6 +13,7 @@ const ALLOWED_VIEWS: CrmView[] = [
   "workflows",
   "backup",
   "admin",
+  "settings",
 ];
 
 /** Validates the URL segment; UI is rendered once in the (crm) layout. */

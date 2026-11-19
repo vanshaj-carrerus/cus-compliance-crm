@@ -1,5 +1,6 @@
 import type { Candidate, ActiveFilters } from "./types";
-import { getRemaining, paymentDateFor } from "./calc";
+import { getRemaining } from "./calc";
+import { validDateString } from "./dates";
 
 export interface IncentiveRow {
   assignedTo: string;
@@ -103,7 +104,10 @@ export function incentivePayments(
     if (!isIncentiveEligible(c)) return;
     (c.installments || []).forEach((i, idx) => {
       if (!i || !i.paid) return;
-      const date = paymentDateFor(i);
+      // Must match exactly what the Master P.O Sheet shows for this
+      // installment (i.date). No entered date => not in Incentive at all.
+      // The hidden paymentDate is never used.
+      const date = validDateString(i.date);
       if (!date) return;
       const d = new Date(date + "T00:00:00");
       if (!(d >= start && d <= endBound)) return;

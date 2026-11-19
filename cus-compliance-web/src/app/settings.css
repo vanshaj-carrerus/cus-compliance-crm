@@ -1,0 +1,466 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Wallpaper layer + Settings page. Presentation only.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── wallpaper (image / looping video) sits behind the whole app ── */
+.wallpaper-layer {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  overflow: hidden;
+  pointer-events: none;
+  background: #5b7fe0;
+}
+
+.wallpaper-media {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  animation: wall-in 0.9s ease backwards;
+}
+
+@keyframes wall-in {
+  from { opacity: 0; transform: scale(1.03); }
+  to { opacity: 1; transform: none; }
+}
+
+.wallpaper-dim {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: #070b26;
+  opacity: var(--ui-dim, 0);
+  transition: opacity 0.4s ease;
+}
+
+/* glass strength is driven by the Settings page */
+.dg .dg-card {
+  background: linear-gradient(145deg,
+      rgb(255 255 255 / var(--ui-fill, 0.1)),
+      rgb(255 255 255 / calc(var(--ui-fill, 0.1) * 0.3))) !important;
+  -webkit-backdrop-filter: blur(var(--ui-blur, 3px));
+  backdrop-filter: blur(var(--ui-blur, 3px));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wallpaper-media { animation: none; }
+}
+
+/* ═══════════ Settings page ═══════════ */
+.st .st-card { margin-bottom: 20px; padding: 22px 24px; }
+
+.st .st-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 0.25s ease, transform 0.3s var(--dg-ease);
+}
+.st .st-ghost:hover:not(:disabled) { background: rgba(255, 255, 255, 0.2); transform: translateY(-1px); }
+.st .st-ghost:active:not(:disabled) { transform: scale(0.96); }
+.st .st-ghost:disabled { opacity: 0.6; }
+
+/* wallpaper grid */
+.st .st-wall-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 16px;
+}
+
+.st .st-wall {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  animation: dg-rise 0.7s var(--dg-ease) backwards;
+}
+
+.st .st-thumb {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.08);
+  transition: transform 0.45s var(--dg-ease), border-color 0.3s ease, box-shadow 0.4s var(--dg-ease);
+}
+
+.st .st-thumb img,
+.st .st-thumb video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.8s var(--dg-ease);
+}
+
+@media (hover: hover) {
+  .st .st-wall:hover .st-thumb {
+    transform: translateY(-3px);
+    border-color: rgba(255, 255, 255, 0.6);
+    box-shadow: 0 20px 34px -18px rgba(20, 25, 110, 0.8);
+  }
+  .st .st-wall:hover .st-thumb img,
+  .st .st-wall:hover .st-thumb video { transform: scale(1.06); }
+}
+
+.st .st-wall.is-active .st-thumb {
+  border-color: #fff;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35), 0 20px 34px -18px rgba(20, 25, 110, 0.8);
+}
+
+.st .st-check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: #4a52c4;
+  background: #fff;
+  opacity: 0;
+  transform: scale(0.4);
+  transition: opacity 0.2s ease, transform 0.4s var(--dg-spring);
+}
+.st .st-wall.is-active .st-check { opacity: 1; transform: none; }
+
+.st .st-play {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+}
+
+.st .st-name {
+  padding: 0 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.st .st-hint {
+  margin-top: 16px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--dg-text-dim);
+}
+.st .st-hint code {
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.14);
+  font-size: 12px;
+}
+
+/* glass presets + sliders */
+.st .st-presets { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+
+.st .st-preset {
+  padding: 9px 20px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 14px;
+  font-weight: 600;
+  transition: background 0.25s ease, color 0.25s ease, transform 0.3s var(--dg-ease);
+}
+.st button.st-preset:hover { background: rgba(255, 255, 255, 0.2); transform: translateY(-1px); }
+.st .st-preset.is-active { background: #fff; color: #4a52c4; border-color: #fff; }
+.st .st-preset.is-custom { border-style: dashed; color: var(--dg-text-dim); }
+
+.st .st-sliders {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 22px 32px;
+}
+
+.st .st-slider { display: block; }
+.st .st-slider-top {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+.st .st-slider-top b { font-variant-numeric: tabular-nums; }
+
+.st .st-slider input[type="range"] {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  appearance: none;
+  -webkit-appearance: none;
+  outline: none;
+  cursor: pointer;
+  background: linear-gradient(90deg, #fff var(--pct, 0%), rgba(255, 255, 255, 0.22) var(--pct, 0%));
+}
+.st .st-slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  border: 0;
+  box-shadow: 0 4px 12px rgba(20, 25, 110, 0.5);
+  transition: transform 0.25s var(--dg-spring);
+}
+.st .st-slider input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  border: 0;
+  box-shadow: 0 4px 12px rgba(20, 25, 110, 0.5);
+}
+.st .st-slider input[type="range"]:hover::-webkit-slider-thumb,
+.st .st-slider input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.18); }
+
+@media (max-width: 639px) {
+  .st .st-card { padding: 18px 16px; }
+  .st .st-wall-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+}
+
+/* ── icon accent override (set from Settings → Icon colour) ── */
+html[data-accent] .dg .dg-icon,
+html[data-accent] .dg .dg-tile-ico,
+html[data-accent] .dg .dg-pstat-ico {
+  --c1: var(--ui-accent);
+  --c2: color-mix(in srgb, var(--ui-accent) 55%, #fff);
+}
+
+.st .st-accent { margin-top: 26px; }
+
+.st .st-swatches { display: flex; flex-wrap: wrap; gap: 12px; }
+
+.st .st-swatch {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 6px 14px -6px rgba(20, 25, 110, 0.6);
+  cursor: pointer;
+  transition: transform 0.35s var(--dg-spring), border-color 0.2s ease, box-shadow 0.3s ease;
+}
+.st .st-swatch:hover { transform: scale(1.14); }
+.st .st-swatch:active { transform: scale(0.94); }
+.st .st-swatch.is-active {
+  border-color: #fff;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35), 0 6px 14px -6px rgba(20, 25, 110, 0.6);
+  transform: scale(1.1);
+}
+.st .st-swatch.is-multi {
+  background: conic-gradient(#4f7df5, #7c5cf0, #ee4f72, #f08a2c, #1fb57d, #1fa8e0, #4f7df5);
+}
+.st .st-swatch.is-picker {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.14);
+  border-style: dashed;
+}
+.st .st-swatch.is-picker::before {
+  content: "+";
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1;
+  pointer-events: none;
+}
+.st .st-swatch.is-picker input {
+  position: absolute;
+  inset: -6px;
+  width: calc(100% + 12px);
+  height: calc(100% + 12px);
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* ═══════════ One theme for every surface ═══════════
+   Sidebar, top bar, cards, tables and modals all read the same glass +
+   accent variables, so choosing a theme recolours the whole app together. */
+:root {
+  --glass-bg: linear-gradient(145deg,
+      rgb(255 255 255 / var(--ui-fill, 0.1)),
+      rgb(255 255 255 / calc(var(--ui-fill, 0.1) * 0.3)));
+  --glass-blur: blur(var(--ui-blur, 3px));
+  --glass-border: rgba(255, 255, 255, 0.3);
+  --brand-grad: linear-gradient(135deg,
+      var(--ui-accent, #4f7df5),
+      color-mix(in srgb, var(--ui-accent, #4f7df5) 55%, #fff));
+}
+
+html .crm-topbar {
+  background: var(--glass-bg) !important;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 18px 40px -30px rgba(30, 35, 125, 0.45) !important;
+}
+
+/* sidebar: same glass, a little denser so labels stay readable */
+html .crm-nav {
+  background: linear-gradient(170deg,
+      rgb(255 255 255 / calc(var(--ui-fill, 0.1) + 0.06)),
+      rgb(255 255 255 / calc(var(--ui-fill, 0.1) * 0.6))) !important;
+  -webkit-backdrop-filter: blur(calc(var(--ui-blur, 3px) + 8px));
+  backdrop-filter: blur(calc(var(--ui-blur, 3px) + 8px));
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 30px 70px -24px rgba(20, 25, 110, 0.55) !important;
+}
+
+html .crm-nav .nav-item.is-active {
+  background: var(--brand-grad) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 12px 28px -12px var(--ui-accent, #4f7df5) !important;
+}
+
+html .crm-nav .brand-mark {
+  background: var(--brand-grad);
+}
+
+html .glass-chip.is-primary,
+html .btn-primary,
+html .dg .dg-cta {
+  background: var(--brand-grad) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 12px 26px -12px var(--ui-accent, #4f7df5) !important;
+}
+
+html .dg .dg-cta:hover { filter: brightness(1.08); }
+
+/* theme thumbnails */
+.st .st-fill { display: block; width: 100%; height: 100%; background-size: cover; background-position: center; transition: transform 0.8s var(--dg-ease); }
+@media (hover: hover) { .st .st-wall:hover .st-fill { transform: scale(1.06); } }
+.st .st-dot {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+}
+
+/* ═══════════ Sheet colours follow the theme ═══════════
+   Pinned columns (row number + checkbox) must stay opaque so scrolled cells
+   don't show through, so they use a solid shade derived from the accent. */
+:root {
+  --sticky-bg: color-mix(in srgb, var(--ui-accent, #4f7df5) 42%, #141a45);
+  --sticky-head-bg: color-mix(in srgb, var(--ui-accent, #4f7df5) 30%, #101438);
+  --freeze-bg: var(--sticky-head-bg);
+}
+
+html .excel-grid tbody td.row-head,
+html .excel-grid tbody td.freeze-check,
+html .excel-grid tbody tr>td.row-head,
+html .excel-grid tbody tr>td.freeze-check,
+html .excel-grid.master-theme tbody tr>td.row-head,
+html .excel-grid.master-theme tbody tr>td.freeze-check {
+  background-color: var(--sticky-bg) !important;
+  color: #fff;
+}
+
+html .excel-grid thead .row-head,
+html .excel-grid thead .freeze-check,
+html .excel-grid.master-theme thead .row-head,
+html .excel-grid.master-theme thead .freeze-check {
+  background: var(--sticky-head-bg) !important;
+  background-color: var(--sticky-head-bg) !important;
+}
+
+html .excel-grid .row-head-selectable:hover,
+html .excel-grid .col-head-selectable:hover {
+  background-color: color-mix(in srgb, var(--ui-accent, #4f7df5) 35%, transparent) !important;
+}
+
+html .data-table td.cell-selected,
+html .excel-grid td.cell-selected {
+  background-color: color-mix(in srgb, var(--ui-accent, #4f7df5) 28%, transparent) !important;
+  box-shadow: inset 0 0 0 1.5px var(--ui-accent, #4f7df5), 0 0 0 3px color-mix(in srgb, var(--ui-accent, #4f7df5) 25%, transparent);
+}
+
+html .col-resize-handle:hover,
+html .col-resize-handle:active { background: var(--ui-accent, #4f7df5); }
+
+/* extra-specific copy so nothing in the sheet can out-rank the themed pinned columns */
+html body #masterScroll .excel-grid tbody tr > td.row-head,
+html body #masterScroll .excel-grid tbody tr > td.freeze-check,
+html body .excel-grid.master-theme tbody tr > td.row-head,
+html body .excel-grid.master-theme tbody tr > td.freeze-check {
+  background-color: var(--sticky-bg) !important;
+  background-image: none !important;
+}
+
+/* ═══════════ Pinned columns: clear glass, no colour ═══════════
+   Same transparent fill + light blur as every other glass surface. The blur
+   (slightly stronger than the cards) keeps cells scrolling underneath from
+   showing through as readable text. */
+html body #masterScroll .excel-grid tbody tr > td.row-head,
+html body #masterScroll .excel-grid tbody tr > td.freeze-check,
+html body .excel-grid.master-theme tbody tr > td.row-head,
+html body .excel-grid.master-theme tbody tr > td.freeze-check,
+html .excel-grid tbody tr > td.row-head,
+html .excel-grid tbody tr > td.freeze-check,
+html .excel-grid thead .row-head,
+html .excel-grid thead .freeze-check,
+html .excel-grid.master-theme thead .row-head,
+html .excel-grid.master-theme thead .freeze-check {
+  background: rgb(255 255 255 / calc(var(--ui-fill, 0.1) + 0.04)) !important;
+  background-color: rgb(255 255 255 / calc(var(--ui-fill, 0.1) + 0.04)) !important;
+  background-image: none !important;
+  -webkit-backdrop-filter: blur(calc(var(--ui-blur, 3px) + 5px));
+  backdrop-filter: blur(calc(var(--ui-blur, 3px) + 5px));
+  color: #fff;
+}
+
+/* ═══════════ Pinned columns are no longer sticky ═══════════
+   Drag / # / checkbox now scroll with the table like any other column.
+   (Header cells keep their vertical stick so the header row stays on top.) */
+html .excel-grid tbody tr > td.row-head,
+html .excel-grid tbody tr > td.freeze-check,
+html body #masterScroll .excel-grid tbody tr > td.row-head,
+html body #masterScroll .excel-grid tbody tr > td.freeze-check,
+html body .excel-grid.master-theme tbody tr > td.row-head,
+html body .excel-grid.master-theme tbody tr > td.freeze-check {
+  position: relative !important;
+  left: auto !important;
+  z-index: 1 !important;
+}
+
+html .excel-grid thead .row-head,
+html .excel-grid thead .freeze-check {
+  left: auto !important;
+}
+
+/* no overlap any more, so the extra blur boost isn't needed */
+html body #masterScroll .excel-grid tbody tr > td.row-head,
+html body #masterScroll .excel-grid tbody tr > td.freeze-check,
+html body .excel-grid.master-theme tbody tr > td.row-head,
+html body .excel-grid.master-theme tbody tr > td.freeze-check,
+html .excel-grid tbody tr > td.row-head,
+html .excel-grid tbody tr > td.freeze-check,
+html .excel-grid thead .row-head,
+html .excel-grid thead .freeze-check,
+html .excel-grid.master-theme thead .row-head,
+html .excel-grid.master-theme thead .freeze-check {
+  -webkit-backdrop-filter: blur(var(--ui-blur, 3px));
+  backdrop-filter: blur(var(--ui-blur, 3px));
+}

@@ -2,7 +2,8 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import Image from "next/image";
+import { Loader2, ShieldCheck } from "lucide-react";
 import { clearAuthCache } from "@/lib/auth-cache";
 import { clearCrmCache } from "@/lib/crm-cache";
 
@@ -222,13 +223,35 @@ export default function LoginPage() {
             : "3 · Create password";
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <div className="w-full max-w-md rounded-[20px] border border-border bg-card p-8 shadow-sm">
-        <div className="mb-6 text-center">
-          <div className="text-xs font-black uppercase tracking-wider text-primary">
+    <div className="login-stage flex min-h-screen items-center justify-center bg-background p-4">
+      <div
+        aria-hidden
+        className="login-orb -left-24 -top-24 h-[420px] w-[420px] bg-[radial-gradient(circle,rgba(27,184,180,0.5),transparent_65%)] [animation:orb-float_14s_ease-in-out_infinite_alternate]"
+      />
+      <div
+        aria-hidden
+        className="login-orb -bottom-32 -right-24 h-[520px] w-[520px] bg-[radial-gradient(circle,rgba(100,120,240,0.38),transparent_65%)] [animation:orb-float_18s_ease-in-out_infinite_alternate-reverse]"
+      />
+      <div
+        aria-hidden
+        className="login-orb bottom-10 left-[18%] h-[260px] w-[260px] bg-[radial-gradient(circle,rgba(255,176,128,0.32),transparent_65%)] [animation:orb-float_16s_ease-in-out_infinite_alternate]"
+      />
+      <div className="login-card relative w-full max-w-md rounded-[28px] border border-border bg-card p-9 shadow-sm">
+        <div className="mb-7 text-center">
+          <div className="brand-mark mx-auto mb-4 flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl">
+            <Image
+              src="/logo.png"
+              alt="CareerUS Solutions"
+              width={56}
+              height={56}
+              className="h-full w-full object-contain p-1.5"
+              priority
+            />
+          </div>
+          <div className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary">
             CareerUS Solutions
           </div>
-          <h1 className="mt-2 text-2xl font-black text-foreground">
+          <h1 className="mt-2 text-[28px] font-bold tracking-tight text-(--ink)">
             Compliance CRM
           </h1>
           <p className="mt-2 text-sm text-muted">
@@ -238,14 +261,17 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <div className="mb-5 flex items-center justify-between rounded-full border border-border bg-secondary px-3 py-1.5 text-xs font-bold text-primary">
-          <span>{stepLabel}</span>
-          <span className="font-medium text-muted">
+        <div className="login-stepper mb-6 flex items-center justify-between gap-3 rounded-full border border-border bg-secondary px-3.5 py-2 text-xs font-bold text-primary">
+          <span className="inline-flex items-center gap-1.5">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            {stepLabel}
+          </span>
+          <span className="min-w-0 truncate font-medium text-muted">
             {email || "No email yet"}
           </span>
         </div>
 
-        <form onSubmit={onSubmit} className="space-y-4">
+        <form key={step} onSubmit={onSubmit} className="login-step space-y-4">
           {step === "email" && (
             <label className="block text-xs font-semibold text-muted">
               Work email
@@ -256,7 +282,7 @@ export default function LoginPage() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1.5 w-full rounded-[var(--radius)] border border-border bg-input px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary"
+                className="login-field mt-1.5 w-full rounded-[var(--radius)] border border-border bg-input px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary"
                 placeholder="you@company.com"
               />
             </label>
@@ -277,7 +303,7 @@ export default function LoginPage() {
                   onChange={(e) =>
                     setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
                   }
-                  className="mt-1.5 w-full rounded-[var(--radius)] border border-border bg-input px-3 py-2.5 text-center text-lg font-bold tracking-[0.4em] text-foreground outline-none focus:border-primary"
+                  className="login-field mt-1.5 w-full rounded-[var(--radius)] border border-border bg-input px-3 py-2.5 text-center text-lg font-bold tracking-[0.4em] text-foreground outline-none focus:border-primary"
                   placeholder="••••••"
                 />
               </label>
@@ -303,7 +329,7 @@ export default function LoginPage() {
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="mt-1.5 w-full rounded-[var(--radius)] border border-border bg-input px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary"
+                  className="login-field mt-1.5 w-full rounded-[var(--radius)] border border-border bg-input px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary"
                   placeholder="Enter your password"
                 />
               </label>
@@ -330,7 +356,7 @@ export default function LoginPage() {
                   minLength={8}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="mt-1.5 w-full rounded-[var(--radius)] border border-border bg-input px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary"
+                  className="login-field mt-1.5 w-full rounded-[var(--radius)] border border-border bg-input px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary"
                   placeholder="At least 8 characters"
                 />
               </label>
@@ -343,7 +369,7 @@ export default function LoginPage() {
                   minLength={8}
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
-                  className="mt-1.5 w-full rounded-[var(--radius)] border border-border bg-input px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary"
+                  className="login-field mt-1.5 w-full rounded-[var(--radius)] border border-border bg-input px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary"
                   placeholder="Repeat password"
                 />
               </label>
@@ -351,12 +377,12 @@ export default function LoginPage() {
           )}
 
           {error && (
-            <div className="rounded-[var(--radius)] border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">
+            <div className="login-alert rounded-[var(--radius)] border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">
               {error}
             </div>
           )}
           {info && !error && (
-            <div className="rounded-[var(--radius)] border border-success/30 bg-success/5 px-3 py-2 text-sm text-success">
+            <div className="login-alert rounded-[var(--radius)] border border-success/30 bg-success/5 px-3 py-2 text-sm text-success">
               {info}
             </div>
           )}
@@ -364,7 +390,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-[var(--radius)] bg-primary px-4 py-3 text-sm font-bold text-primary-foreground hover:opacity-90 disabled:opacity-60"
+            className="login-submit flex w-full items-center justify-center gap-2 rounded-[var(--radius)] bg-primary px-4 py-3.5 text-sm font-bold text-primary-foreground hover:opacity-90 disabled:opacity-60"
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
             {step === "email" &&

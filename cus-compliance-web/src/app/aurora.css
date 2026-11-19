@@ -1,0 +1,2612 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   AURORA GLASS — visual design layer
+   Presentation only. Nothing here changes behaviour: it restyles existing
+   markup (plus a few purely decorative class names / wrappers).
+   Loaded after globals.css and unlayered, so it wins over Tailwind utilities
+   and the older rules where they overlap.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Canvas: a drifting aurora behind every screen ── */
+html {
+  background-color: var(--background);
+  background-image: var(--aurora);
+  background-attachment: fixed;
+}
+
+body {
+  background: transparent;
+  color: var(--foreground);
+  font-feature-settings: "tnum" 1, "cv11" 1, "ss01" 1;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* slow-moving light blobs; transform-only so they stay on the compositor */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  pointer-events: none;
+  width: 70vmax;
+  height: 70vmax;
+  border-radius: 50%;
+  will-change: transform;
+}
+
+body::before {
+  top: -28vmax;
+  left: -18vmax;
+  background: radial-gradient(circle at 50% 50%, rgba(96, 165, 250, 0.26), transparent 62%);
+  animation: aurora-drift-a 46s ease-in-out infinite alternate;
+}
+
+body::after {
+  right: -24vmax;
+  bottom: -30vmax;
+  background: radial-gradient(circle at 50% 50%, rgba(168, 120, 240, 0.2), transparent 62%);
+  animation: aurora-drift-b 58s ease-in-out infinite alternate;
+}
+
+@keyframes aurora-drift-a {
+  to { transform: translate3d(14vmax, 10vmax, 0) scale(1.15); }
+}
+
+@keyframes aurora-drift-b {
+  to { transform: translate3d(-16vmax, -8vmax, 0) scale(1.1); }
+}
+
+/* app shells paint nothing of their own, so the canvas shows through */
+.bg-background {
+  background-color: transparent !important;
+}
+
+.fixed.bg-background {
+  background-color: var(--background) !important;
+  background-image: var(--aurora) !important;
+}
+
+::selection {
+  background: rgba(88, 104, 238, 0.24);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid rgba(88, 104, 238, 0.7);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(15, 62, 76, 0.22);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 62, 76, 0.4);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+
+/* ── Glass surfaces ──
+   Every card-like block. Tables/containers that hold sticky columns are
+   excluded from backdrop-filter on purpose (it would re-parent `fixed`
+   descendants such as the fullscreen exit button). */
+[class*="bg-card"]:not(.data-table-container):not(.master-theme-card):not([class*="bg-card/"]),
+.stat-card,
+.chart-card,
+.filters-bar:not(.filters-bar-embedded),
+.month-selector,
+.date-range-bar,
+.backup-panel,
+.workflow-rule-card {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
+  transition:
+    transform 0.45s var(--ease-out),
+    box-shadow 0.45s var(--ease-out),
+    border-color 0.3s ease;
+}
+
+[class*="bg-card"][class~="border-border"],
+.stat-card,
+.chart-card,
+.filters-bar:not(.filters-bar-embedded),
+.month-selector,
+.date-range-bar,
+.backup-panel,
+.workflow-rule-card {
+  border-color: var(--glass-border);
+}
+
+/* cursor-follow spotlight (position set by GlassFX, purely decorative) */
+@media (hover: hover) {
+
+  [class*="bg-card"]:not(.data-table-container):not(.master-theme-card):not([class*="bg-card/"]):hover,
+  .stat-card:hover,
+  .chart-card:hover,
+  .workflow-rule-card:hover,
+  .backup-panel:hover {
+    background:
+      radial-gradient(380px circle at var(--mx, 50%) var(--my, 0%), rgba(255, 255, 255, 0.85), transparent 62%),
+      var(--glass-bg);
+  }
+
+  .cursor-pointer[class*="bg-card"]:hover,
+  .stat-card:hover,
+  .workflow-rule-card:hover,
+  button[class*="bg-card"]:hover {
+    transform: translateY(-3px);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      0 2px 4px rgba(30, 40, 110, 0.06),
+      0 26px 46px -20px rgba(50, 100, 190, 0.38);
+  }
+}
+
+[class*="bg-card"].cursor-pointer:active,
+button[class*="bg-card"]:active,
+.stat-card:active {
+  transform: translateY(-1px) scale(0.99);
+  transition-duration: 0.12s;
+}
+
+/* Dashboard accent hairline → glowing top edge */
+[class*="bg-card"] > .absolute.inset-x-0.top-0[class*="bg-"] {
+  height: 3px;
+  border-radius: 0 0 6px 6px;
+  filter: saturate(1.15);
+  opacity: 0.95;
+}
+
+.stat-card {
+  border-radius: var(--radius);
+  padding: 20px;
+}
+
+.stat-card::after {
+  right: -26px;
+  top: -26px;
+  width: 110px;
+  height: 110px;
+  filter: blur(6px);
+  transition: transform 0.7s var(--ease-out);
+}
+
+.stat-card:hover::after {
+  transform: scale(1.35);
+}
+
+.stat-label,
+.table-subtitle,
+.filter-label {
+  letter-spacing: 0.06em;
+}
+
+.stat-value {
+  font-weight: 700;
+  font-size: 24px;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Entrance choreography ── */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.crm-view-transition {
+  animation: none;
+}
+
+.crm-view-transition>*,
+.crm-view-transition .stat-grid>*,
+.crm-view-transition .grid>* {
+  animation: rise-in 0.7s var(--ease-out) backwards;
+}
+
+.crm-view-transition>*:nth-child(1) { animation-delay: 0ms; }
+.crm-view-transition>*:nth-child(2) { animation-delay: 70ms; }
+.crm-view-transition>*:nth-child(3) { animation-delay: 140ms; }
+.crm-view-transition>*:nth-child(4) { animation-delay: 210ms; }
+.crm-view-transition>*:nth-child(n + 5) { animation-delay: 280ms; }
+
+.crm-view-transition .grid>*:nth-child(1),
+.crm-view-transition .stat-grid>*:nth-child(1) { animation-delay: 120ms; }
+.crm-view-transition .grid>*:nth-child(2),
+.crm-view-transition .stat-grid>*:nth-child(2) { animation-delay: 170ms; }
+.crm-view-transition .grid>*:nth-child(3),
+.crm-view-transition .stat-grid>*:nth-child(3) { animation-delay: 220ms; }
+.crm-view-transition .grid>*:nth-child(4),
+.crm-view-transition .stat-grid>*:nth-child(4) { animation-delay: 270ms; }
+.crm-view-transition .grid>*:nth-child(5),
+.crm-view-transition .stat-grid>*:nth-child(5) { animation-delay: 320ms; }
+.crm-view-transition .grid>*:nth-child(6),
+.crm-view-transition .stat-grid>*:nth-child(6) { animation-delay: 360ms; }
+.crm-view-transition .grid>*:nth-child(7),
+.crm-view-transition .stat-grid>*:nth-child(7) { animation-delay: 400ms; }
+.crm-view-transition .grid>*:nth-child(8),
+.crm-view-transition .stat-grid>*:nth-child(8) { animation-delay: 440ms; }
+.crm-view-transition .grid>*:nth-child(n + 9),
+.crm-view-transition .stat-grid>*:nth-child(n + 9) { animation-delay: 480ms; }
+
+/* Table rows glide in once when data arrives (first screenful only, opacity
+   only so sticky columns never jump). */
+.data-table tbody tr:nth-child(-n + 18),
+.excel-grid tbody tr:nth-child(-n + 18) {
+  animation: fade-in 0.5s ease backwards;
+}
+
+.data-table tbody tr:nth-child(2), .excel-grid tbody tr:nth-child(2) { animation-delay: 30ms; }
+.data-table tbody tr:nth-child(3), .excel-grid tbody tr:nth-child(3) { animation-delay: 60ms; }
+.data-table tbody tr:nth-child(4), .excel-grid tbody tr:nth-child(4) { animation-delay: 90ms; }
+.data-table tbody tr:nth-child(5), .excel-grid tbody tr:nth-child(5) { animation-delay: 120ms; }
+.data-table tbody tr:nth-child(6), .excel-grid tbody tr:nth-child(6) { animation-delay: 150ms; }
+.data-table tbody tr:nth-child(7), .excel-grid tbody tr:nth-child(7) { animation-delay: 180ms; }
+.data-table tbody tr:nth-child(8), .excel-grid tbody tr:nth-child(8) { animation-delay: 210ms; }
+.data-table tbody tr:nth-child(n + 9):nth-child(-n + 18),
+.excel-grid tbody tr:nth-child(n + 9):nth-child(-n + 18) { animation-delay: 240ms; }
+
+/* progress bars fill from the left on load */
+@keyframes bar-grow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.grow-bar {
+  transform-origin: left center;
+  animation: bar-grow 1.1s var(--ease-out) 0.25s backwards;
+  box-shadow: 0 0 16px rgba(23, 153, 106, 0.55);
+}
+
+/* ── Buttons ── */
+.btn {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.6));
+  color: var(--ink-2);
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 1px 2px rgba(30, 40, 110, 0.08),
+    0 6px 14px -8px rgba(30, 45, 120, 0.25);
+  transition:
+    transform 0.25s var(--ease-out),
+    box-shadow 0.25s var(--ease-out),
+    background 0.25s ease,
+    filter 0.25s ease;
+}
+
+.btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.55) 50%, transparent 70%);
+  transform: translateX(-120%);
+  transition: transform 0.7s var(--ease-out);
+}
+
+.btn:hover:not(:disabled) {
+  filter: none;
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 2px 4px rgba(30, 40, 110, 0.08),
+    0 12px 22px -10px rgba(30, 45, 120, 0.35);
+}
+
+.btn:hover:not(:disabled)::after {
+  transform: translateX(120%);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.96);
+  transition-duration: 0.08s;
+}
+
+.btn-primary {
+  background: var(--brand-grad);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #fff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 1px 2px rgba(30, 70, 150, 0.3),
+    0 10px 22px -8px rgba(88, 104, 238, 0.7);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #ee6b78, #e04a5a);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #fff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 10px 22px -10px rgba(224, 74, 90, 0.7);
+}
+
+.btn-secondary {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.6));
+}
+
+/* Top-bar / generic Tailwind-built buttons share one glass chip language */
+.glass-chip {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid var(--glass-border) !important;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.6)) !important;
+  color: var(--ink-2) !important;
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 1px 2px rgba(30, 40, 110, 0.08),
+    0 6px 14px -8px rgba(30, 45, 120, 0.22);
+  transition:
+    transform 0.25s var(--ease-out),
+    box-shadow 0.25s var(--ease-out),
+    color 0.2s ease,
+    background 0.25s ease;
+}
+
+.glass-chip::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.6) 50%, transparent 70%);
+  transform: translateX(-120%);
+  transition: transform 0.7s var(--ease-out);
+}
+
+.glass-chip:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 2px 4px rgba(30, 40, 110, 0.08),
+    0 12px 22px -10px rgba(30, 45, 120, 0.34);
+}
+
+.glass-chip:hover:not(:disabled)::after {
+  transform: translateX(120%);
+}
+
+.glass-chip:active:not(:disabled) {
+  transform: scale(0.95);
+  transition-duration: 0.08s;
+}
+
+.glass-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.glass-chip.is-primary {
+  background: var(--brand-grad) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  color: #fff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    0 1px 2px rgba(30, 70, 150, 0.3),
+    0 10px 22px -8px rgba(88, 104, 238, 0.75);
+}
+
+.glass-chip.is-warn {
+  background: linear-gradient(180deg, rgba(255, 246, 226, 0.95), rgba(255, 236, 196, 0.7)) !important;
+  border-color: rgba(211, 138, 31, 0.4) !important;
+  color: #7a4d08 !important;
+}
+
+.glass-chip.is-danger {
+  background: linear-gradient(180deg, rgba(255, 240, 242, 0.95), rgba(255, 224, 228, 0.65)) !important;
+  border-color: rgba(224, 74, 90, 0.35) !important;
+  color: var(--danger) !important;
+}
+
+/* ── Form controls ── */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+select,
+textarea {
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.25s ease,
+    background-color 0.2s ease;
+}
+
+.filters-bar select,
+.filter-group select,
+.date-range-bar select,
+.date-range-bar input[type="date"],
+.target-input {
+  border-color: rgba(15, 62, 76, 0.14);
+  background-color: rgba(255, 255, 255, 0.72);
+  border-radius: 11px;
+  box-shadow: inset 0 1px 2px rgba(30, 40, 110, 0.05);
+}
+
+.filters-bar select:focus,
+.filter-group select:focus,
+.date-range-bar select:focus,
+.date-range-bar input[type="date"]:focus,
+.target-input:focus {
+  border-color: var(--primary);
+  background-color: #fff;
+  box-shadow: 0 0 0 4px rgba(88, 104, 238, 0.16), inset 0 1px 2px rgba(30, 40, 110, 0.04);
+}
+
+.filters-bar select:hover,
+.filter-group select:hover {
+  border-color: rgba(88, 104, 238, 0.5);
+}
+
+.filter-icon {
+  border-radius: 10px;
+  background: rgba(88, 104, 238, 0.09);
+}
+
+.badge,
+.pill {
+  border: 1px solid transparent;
+  letter-spacing: 0.04em;
+}
+
+.pill {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: var(--glass-border);
+  box-shadow: inset 0 1px 0 #fff;
+  font-weight: 600;
+}
+
+.badge {
+  border-radius: 999px;
+  padding: 3px 11px;
+  border-color: color-mix(in srgb, currentColor 22%, transparent);
+}
+
+.month-display {
+  background: none;
+  color: var(--ink);
+}
+
+/* ── Table / sheet frames ── */
+.data-table-container,
+.master-theme-card {
+  --sheet-navy: #11303c;
+  border-radius: 22px;
+  border: 1px solid var(--glass-border);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.62));
+  box-shadow: var(--glass-shadow);
+  overflow: hidden;
+}
+
+.data-table-container>.table-header {
+  background: transparent;
+  padding: 22px 24px 10px;
+}
+
+.data-table-container>.table-header .table-title,
+.master-title {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  background: none;
+  color: var(--ink);
+}
+
+.data-table-container>.table-header .table-subtitle,
+.master-subtitle {
+  color: var(--muted);
+}
+
+.data-table-container .table-toolbar {
+  background: transparent;
+}
+
+.master-kpi-value {
+  color: var(--ink);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.master-kpi-label {
+  color: var(--muted);
+}
+
+.table-scroll {
+  margin: 0 12px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 62, 76, 0.09);
+  background: #fff;
+}
+
+.data-table-container .data-table th,
+.excel-grid.master-theme thead th,
+.excel-grid.master-theme thead .row-head,
+.excel-grid.master-theme thead .freeze-check {
+  background: linear-gradient(180deg, #17394a, #0f2b38) !important;
+  background-color: #12303d !important;
+  letter-spacing: 0.01em;
+  font-weight: 600;
+  border-right-color: rgba(255, 255, 255, 0.08);
+}
+
+.excel-grid.master-theme thead th.col-head-selectable:hover,
+.excel-grid.master-theme thead th.row-head-selectable:hover {
+  background: linear-gradient(180deg, #21495d, #173a4a) !important;
+  background-color: #1a4152 !important;
+}
+
+.data-table-container .data-table tbody td,
+.excel-grid.master-theme tbody td {
+  border-bottom-color: rgba(15, 62, 76, 0.08);
+  border-right-color: rgba(15, 62, 76, 0.07);
+}
+
+.data-table-container .data-table tbody td {
+  transition: background-color 0.18s ease;
+}
+
+.data-table-container .data-table tbody tr:hover>td {
+  background-color: #f1f9f9;
+}
+
+.excel-grid tbody tr:hover>td:not(.cell-selected):not(.row-head):not(.freeze-check) {
+  background-color: #f1f9f9;
+}
+
+.data-table td.cell-selected,
+.excel-grid td.cell-selected {
+  background-color: rgba(88, 104, 238, 0.13) !important;
+  box-shadow: inset 0 0 0 1.5px var(--primary), 0 0 0 3px rgba(88, 104, 238, 0.12);
+}
+
+.data-table-container .data-table select,
+.excel-grid.master-theme select.sheet-cell {
+  background-color: rgba(88, 104, 238, 0.09);
+  transition: background-color 0.2s ease, box-shadow 0.25s ease;
+}
+
+.data-table-container .data-table select:hover,
+.excel-grid.master-theme select.sheet-cell:hover {
+  background-color: rgba(88, 104, 238, 0.17);
+}
+
+.data-table-container .data-table select:focus,
+.excel-grid.master-theme select.sheet-cell:focus {
+  box-shadow: 0 0 0 3px rgba(88, 104, 238, 0.3);
+}
+
+.data-table .empty-row {
+  padding: 48px 16px;
+}
+
+/* ── Toggle (Workflows) ── */
+.workflow-toggle-track {
+  background: rgba(15, 62, 76, 0.18);
+  transition: background 0.35s var(--ease-out), box-shadow 0.35s ease;
+  box-shadow: inset 0 1px 3px rgba(30, 40, 110, 0.2);
+}
+
+.workflow-toggle input:checked+.workflow-toggle-track {
+  background: linear-gradient(135deg, #2ccf92, #17996a);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.12), 0 0 14px rgba(23, 153, 106, 0.45);
+}
+
+.workflow-toggle-thumb {
+  transition: transform 0.4s var(--ease-spring);
+  box-shadow: 0 2px 6px rgba(30, 40, 110, 0.3);
+}
+
+.workflow-rule-card {
+  border-radius: 20px;
+}
+
+.installment-card {
+  background: rgba(255, 255, 255, 0.55);
+  border-color: var(--glass-border);
+  border-radius: 16px;
+}
+
+/* ── Top bar ── */
+.crm-topbar {
+  position: relative;
+  z-index: 20;
+  margin: 10px 12px 0;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 20px;
+  background: var(--glass-bg) !important;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
+  animation: drop-in 0.8s var(--ease-out) backwards;
+}
+
+@keyframes drop-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -18px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.crm-search input {
+  border-radius: 14px !important;
+  border: 1px solid rgba(15, 62, 76, 0.12) !important;
+  background: rgba(255, 255, 255, 0.78) !important;
+  box-shadow: inset 0 1px 2px rgba(30, 40, 110, 0.06);
+  transition: box-shadow 0.3s var(--ease-out), border-color 0.2s ease, background 0.2s ease;
+}
+
+.crm-search input:focus {
+  background: #fff !important;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 4px rgba(88, 104, 238, 0.16), 0 10px 26px -12px rgba(88, 104, 238, 0.5);
+}
+
+/* ── Sidebar ── */
+.crm-nav {
+  margin: 10px 0 10px 10px;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 24px;
+  background: linear-gradient(170deg, rgba(255, 255, 255, 0.88), rgba(240, 242, 255, 0.62)) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(1.8);
+  backdrop-filter: blur(28px) saturate(1.8);
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 30px 80px -20px rgba(20, 30, 100, 0.45);
+  transition:
+    transform 0.55s var(--ease-out),
+    opacity 0.35s ease !important;
+}
+
+.crm-nav.is-closed {
+  opacity: 0;
+}
+
+.crm-nav-scrim {
+  background: radial-gradient(1200px 800px at 0% 0%, rgba(10, 50, 64, 0.4), rgba(10, 30, 44, 0.5)) !important;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  animation: fade-in 0.35s ease;
+}
+
+.nav-item {
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px !important;
+  transition:
+    background 0.3s ease,
+    color 0.2s ease,
+    transform 0.35s var(--ease-out),
+    box-shadow 0.3s ease !important;
+}
+
+.crm-nav:not(.is-closed) .nav-item {
+  animation: nav-in 0.6s var(--ease-out) backwards;
+  animation-delay: calc(var(--i, 0) * 38ms + 120ms);
+}
+
+@keyframes nav-in {
+  from {
+    opacity: 0;
+    transform: translate3d(-18px, 0, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.nav-item:hover {
+  transform: translateX(3px);
+  background: rgba(88, 104, 238, 0.09) !important;
+}
+
+.nav-item:active {
+  transform: translateX(3px) scale(0.98);
+}
+
+.nav-item.is-active {
+  background: linear-gradient(100deg, rgba(88, 104, 238, 0.2), rgba(88, 104, 238, 0.05)) !important;
+  color: var(--ink) !important;
+  box-shadow: inset 0 0 0 1px rgba(88, 104, 238, 0.22), 0 8px 18px -12px rgba(88, 104, 238, 0.7);
+}
+
+.nav-item.is-active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 22%;
+  bottom: 22%;
+  width: 3px;
+  border-radius: 0 4px 4px 0;
+  background: var(--brand-grad);
+  box-shadow: 0 0 12px rgba(88, 104, 238, 0.8);
+  animation: bar-pop 0.5s var(--ease-spring);
+}
+
+@keyframes bar-pop {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+.nav-icon {
+  transition: transform 0.4s var(--ease-spring), background 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.nav-item:hover .nav-icon {
+  transform: scale(1.12) rotate(-4deg);
+}
+
+.nav-item.is-active .nav-icon {
+  background: var(--brand-grad) !important;
+  color: #fff;
+  box-shadow: 0 8px 16px -6px rgba(88, 104, 238, 0.8);
+}
+
+.brand-mark {
+  background: var(--brand-grad);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 10px 22px -8px rgba(88, 104, 238, 0.8);
+}
+
+/* ── Floating layers: modals, popovers, toasts ── */
+[data-modal-overlay] {
+  background: radial-gradient(1000px 700px at 50% 30%, rgba(14, 60, 74, 0.38), rgba(7, 24, 34, 0.62)) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(1.3);
+  backdrop-filter: blur(10px) saturate(1.3);
+  animation: fade-in 0.3s ease;
+}
+
+[data-modal-overlay]>div {
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 28px !important;
+  background: var(--glass-bg-strong) !important;
+  -webkit-backdrop-filter: blur(34px) saturate(1.8);
+  backdrop-filter: blur(34px) saturate(1.8);
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 2px 6px rgba(20, 30, 100, 0.12),
+    0 50px 110px -30px rgba(6, 30, 42, 0.6) !important;
+  animation: modal-in 0.55s var(--ease-out);
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 28px, 0) scale(0.94);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0.6;
+    transform: translate3d(0, 60px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 767px) {
+  [data-modal-overlay]>div {
+    border-radius: 26px 26px 0 0 !important;
+    animation-name: sheet-in;
+  }
+}
+
+.col-popover,
+.absolute[class*="bg-card"][class*="shadow-xl"] {
+  background: var(--glass-bg-strong) !important;
+  border-color: var(--glass-border) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(1.8);
+  backdrop-filter: blur(28px) saturate(1.8);
+  box-shadow: inset 0 1px 0 #fff, 0 30px 60px -20px rgba(20, 30, 100, 0.5) !important;
+  border-radius: 18px;
+}
+
+.col-menu-btn {
+  border-radius: 11px;
+  border-color: var(--glass-border);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.6));
+  box-shadow: inset 0 1px 0 #fff, 0 6px 14px -8px rgba(30, 45, 120, 0.25);
+}
+
+.crm-toast {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 18px !important;
+  background: var(--glass-bg-strong) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+  backdrop-filter: blur(24px) saturate(1.8);
+  box-shadow: inset 0 1px 0 #fff, 0 24px 50px -18px rgba(20, 30, 100, 0.5);
+  animation: toast-in 0.65s var(--ease-spring);
+}
+
+.crm-toast::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--toast-accent, var(--primary));
+  box-shadow: 0 0 14px var(--toast-accent, var(--primary));
+}
+
+.crm-toast-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  border-radius: 9px;
+  color: #fff;
+  background: var(--toast-accent, var(--primary));
+  box-shadow: 0 6px 14px -4px var(--toast-accent, var(--primary));
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate3d(40px, -8px, 0) scale(0.92);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* save pill */
+.crm-save-pill {
+  border: 1px solid var(--glass-border) !important;
+  background: var(--glass-bg-strong) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(1.7);
+  backdrop-filter: blur(20px) saturate(1.7);
+  box-shadow: inset 0 1px 0 #fff, 0 16px 32px -14px rgba(20, 30, 100, 0.4) !important;
+}
+
+/* ── Loading: shimmer skeletons + soft spinner ── */
+.animate-pulse {
+  animation: none !important;
+  position: relative;
+  overflow: hidden;
+  background: rgba(15, 62, 76, 0.07) !important;
+}
+
+.animate-pulse::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.75) 50%, transparent 80%);
+  transform: translateX(-100%);
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  to { transform: translateX(100%); }
+}
+
+.animate-spin.border-primary {
+  border-color: rgba(88, 104, 238, 0.2);
+  border-top-color: var(--primary);
+  box-shadow: 0 0 14px rgba(88, 104, 238, 0.35);
+}
+
+/* ── Login ── */
+.login-stage {
+  position: relative;
+  overflow: hidden;
+}
+
+.login-orb {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.login-card {
+  position: relative;
+  border: 1px solid var(--glass-border) !important;
+  background: var(--glass-bg-strong) !important;
+  -webkit-backdrop-filter: blur(34px) saturate(1.8);
+  backdrop-filter: blur(34px) saturate(1.8);
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 2px 6px rgba(20, 30, 100, 0.08),
+    0 60px 120px -40px rgba(8, 60, 72, 0.55) !important;
+  animation: modal-in 1s var(--ease-out);
+}
+
+/* conic hairline that glints around the card edge */
+.login-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(from var(--spin, 0deg), transparent 0 70%, rgba(255, 255, 255, 0.95) 85%, transparent 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  animation: spin-edge 7s linear infinite;
+}
+
+@property --spin {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes spin-edge {
+  to { --spin: 360deg; }
+}
+
+.login-step {
+  animation: step-in 0.55s var(--ease-out);
+}
+
+@keyframes step-in {
+  from {
+    opacity: 0;
+    transform: translate3d(14px, 0, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.login-field {
+  border-radius: 14px !important;
+  border: 1px solid rgba(15, 62, 76, 0.14) !important;
+  background: rgba(255, 255, 255, 0.75) !important;
+  box-shadow: inset 0 1px 2px rgba(30, 40, 110, 0.06);
+  transition: box-shadow 0.3s var(--ease-out), border-color 0.2s ease, background 0.2s ease, transform 0.3s var(--ease-out);
+}
+
+.login-field:focus {
+  background: #fff !important;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 4px rgba(88, 104, 238, 0.16), 0 12px 28px -14px rgba(88, 104, 238, 0.6);
+  transform: translateY(-1px);
+}
+
+.login-submit {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 14px !important;
+  background: var(--brand-grad) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 14px 28px -10px rgba(88, 104, 238, 0.8);
+  transition: transform 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out), opacity 0.2s ease;
+}
+
+.login-submit::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.5) 50%, transparent 70%);
+  transform: translateX(-120%);
+  transition: transform 0.8s var(--ease-out);
+}
+
+.login-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 20px 34px -12px rgba(88, 104, 238, 0.9);
+  opacity: 1 !important;
+}
+
+.login-submit:hover:not(:disabled)::after {
+  transform: translateX(120%);
+}
+
+.login-submit:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.login-alert {
+  animation: step-in 0.4s var(--ease-out);
+}
+
+.login-stepper {
+  background: rgba(255, 255, 255, 0.6) !important;
+  border-color: var(--glass-border) !important;
+}
+
+/* ── Misc polish ── */
+.phone-copy-btn {
+  transition: background 0.2s ease, color 0.2s ease, transform 0.25s var(--ease-spring);
+}
+
+.phone-copy-btn:active:not(:disabled) {
+  transform: scale(0.8);
+}
+
+@media (max-width: 767px) {
+  .crm-topbar {
+    margin: 8px 8px 0;
+    border-radius: 18px;
+  }
+
+  .table-scroll {
+    margin: 0 6px 8px;
+    border-radius: 12px;
+  }
+
+  .crm-nav {
+    margin: 8px 0 8px 8px;
+  }
+
+  .data-table-container>.table-header .table-title,
+  .master-title {
+    font-size: 21px;
+  }
+}
+
+/* Reduced motion: keep the look, drop the movement */
+@media (prefers-reduced-motion: reduce) {
+
+  body::before,
+  body::after,
+  .login-card::before {
+    animation: none;
+  }
+
+  .crm-view-transition>*,
+  .crm-view-transition .stat-grid>*,
+  .crm-view-transition .grid>*,
+  .data-table tbody tr,
+  .excel-grid tbody tr,
+  .nav-item,
+  .crm-toast,
+  .crm-topbar,
+  .grow-bar,
+  [data-modal-overlay],
+  [data-modal-overlay]>div {
+    animation: none !important;
+  }
+
+  .animate-pulse::after {
+    animation: none;
+  }
+}
+
+/* ── Final overrides ── */
+[data-modal-overlay]>div {
+  -webkit-backdrop-filter: blur(34px) saturate(1.8) !important;
+  backdrop-filter: blur(34px) saturate(1.8) !important;
+}
+
+/* app-switcher dock icons are now line icons: size them to the tile */
+.crm-switcher-icon svg {
+  width: 52%;
+  height: 52%;
+}
+
+.crm-switcher-dock {
+  background: linear-gradient(160deg, rgba(14, 50, 64, 0.62), rgba(8, 30, 42, 0.5)) !important;
+}
+
+@keyframes orb-float {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(60px, 40px, 0) scale(1.18); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-orb { animation: none !important; }
+}
+
+/* ═══════════ Scroll feel + global transitions ═══════════ */
+
+/* Every interactive element eases between states */
+a,
+button,
+summary,
+label,
+[role="button"],
+input[type="checkbox"],
+input[type="radio"] {
+  transition-property: color, background-color, border-color, box-shadow, opacity, transform, filter;
+  transition-duration: 0.22s;
+  transition-timing-function: var(--ease-out);
+}
+
+button:not(:disabled):active,
+[role="button"]:active {
+  transition-duration: 0.08s;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--primary);
+}
+
+input[type="checkbox"]:active:not(:disabled) {
+  transform: scale(0.85);
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):hover:not(:focus):not(:disabled),
+textarea:hover:not(:focus):not(:disabled) {
+  border-color: rgba(88, 104, 238, 0.38);
+}
+
+.data-table tbody tr,
+.excel-grid tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+.badge {
+  transition: transform 0.25s var(--ease-spring), box-shadow 0.25s ease;
+}
+
+.badge:hover {
+  transform: translateY(-1px) scale(1.04);
+}
+
+.pill {
+  transition: transform 0.25s var(--ease-out), box-shadow 0.25s ease;
+}
+
+.pill:hover {
+  transform: translateY(-1px);
+}
+
+/* smooth height/opacity for anything that appears (details, popovers) */
+details>summary {
+  cursor: pointer;
+}
+
+details[open]>*:not(summary) {
+  animation: rise-in 0.45s var(--ease-out);
+}
+
+/* page title blocks + section headings settle in */
+.table-title,
+.table-subtitle {
+  transition: letter-spacing 0.5s var(--ease-out);
+}
+
+.data-table-container:hover>.table-header .table-title {
+  letter-spacing: -0.02em;
+}
+
+
+/* Fullscreen sheets (position: fixed, z-3000) must never carry the page
+   entrance animation: animating the layer itself turned it into a stacking
+   context that let the sidebar scrim and other overlays paint over the table
+   and dim it. Only its *children* animate (below). */
+.crm-view-transition>.fixed {
+  animation: none !important;
+  transform: none;
+}
+
+/* ── Entering fullscreen: the sheet expands out of its frame ── */
+@keyframes fs-enter {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0) scale(0.955);
+    clip-path: inset(7% 9% 7% 9% round 30px);
+  }
+
+  60% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 1;
+    transform: none;
+    clip-path: inset(0 0 0 0 round 20px);
+  }
+}
+
+/* ── Leaving fullscreen: the sheet settles back into the page ── */
+@keyframes fs-exit {
+  0% {
+    transform: scale(1.022);
+    opacity: 0.55;
+  }
+
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+/* sheet bars drop in after the frame lands */
+@keyframes fs-chrome {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -10px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.fixed.bg-background>.master-theme-card,
+.fixed.bg-background>.data-table-container {
+  border-radius: 20px;
+  animation: fs-enter 0.6s var(--ease-out) backwards;
+}
+
+.fixed.bg-background>.master-theme-card .table-scroll,
+.fixed.bg-background>.data-table-container .table-scroll {
+  animation: fade-in 0.5s ease 0.18s backwards;
+}
+
+.fixed.bg-background>.master-theme-card thead th,
+.fixed.bg-background>.data-table-container thead th {
+  animation: fs-chrome 0.55s var(--ease-out) 0.2s backwards;
+}
+
+.crm-view-transition>div:not(.fixed)>.master-theme-card,
+.crm-view-transition>div:not(.fixed)>.data-table-container {
+  animation: fs-exit 0.5s var(--ease-out);
+}
+
+.crm-view-transition>div:not(.fixed)>.master-theme-card .master-title-block,
+.crm-view-transition>div:not(.fixed)>.master-theme-card .master-kpi,
+.crm-view-transition>div:not(.fixed)>.data-table-container>.table-header {
+  animation: rise-in 0.6s var(--ease-out) 0.08s backwards;
+}
+
+.crm-view-transition>div:not(.fixed)>.master-theme-card .master-kpi:nth-child(2) { animation-delay: 0.14s; }
+.crm-view-transition>div:not(.fixed)>.master-theme-card .master-kpi:nth-child(3) { animation-delay: 0.2s; }
+.crm-view-transition>div:not(.fixed)>.master-theme-card .master-kpi:nth-child(4) { animation-delay: 0.26s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fixed.bg-background>*,
+  .fixed.bg-background>* *,
+  .crm-view-transition>div:not(.fixed)>.master-theme-card,
+  .crm-view-transition>div:not(.fixed)>.data-table-container {
+    animation: none !important;
+  }
+}
+
+/* ═══════════ Page switcher dock (hold Ctrl) — light frosted glass ═══════════ */
+.crm-switcher-dock {
+  position: relative;
+  border-radius: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.72), rgba(236, 248, 248, 0.46)) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(1.9);
+  backdrop-filter: blur(30px) saturate(1.9);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.3),
+    0 2px 6px rgba(8, 50, 62, 0.1),
+    0 34px 70px -22px rgba(8, 50, 62, 0.5) !important;
+  animation: dock-in 0.55s var(--ease-out);
+  color: var(--ink-2);
+}
+
+@keyframes dock-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 22px, 0) scale(0.92);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes dock-out {
+  to {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0) scale(0.96);
+  }
+}
+
+.crm-switcher-dock.crm-switcher-closing {
+  animation: dock-out 0.17s ease-in forwards;
+}
+
+.crm-switcher-item {
+  animation: dock-item-in 0.5s var(--ease-out) backwards;
+  animation-delay: calc(var(--i, 0) * 22ms + 60ms);
+}
+
+@keyframes dock-item-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0) scale(0.85);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.crm-switcher-icon {
+  color: var(--ink-2);
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: inset 0 1px 0 #fff, 0 6px 14px -8px rgba(8, 50, 62, 0.35);
+  transform-origin: 50% 100%;
+  transition:
+    transform 0.4s var(--ease-spring),
+    background 0.3s ease,
+    color 0.25s ease,
+    box-shadow 0.35s var(--ease-out),
+    border-color 0.3s ease;
+}
+
+/* dock-style magnification that falls off with distance from the selection */
+.crm-switcher-item[data-dist="1"] .crm-switcher-icon {
+  transform: translateY(-3px) scale(1.07);
+}
+
+.crm-switcher-item[data-dist="2"] .crm-switcher-icon {
+  transform: translateY(-1px) scale(1.02);
+}
+
+.crm-switcher-item[data-selected] .crm-switcher-icon {
+  transform: translateY(-9px) scale(1.22);
+  color: #fff;
+  background: var(--brand-grad);
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 16px 26px -10px rgba(88, 104, 238, 0.85),
+    0 0 0 4px rgba(88, 104, 238, 0.12);
+}
+
+.crm-switcher-label {
+  margin-bottom: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+  color: #fff;
+  background: linear-gradient(180deg, rgba(18, 48, 61, 0.92), rgba(11, 37, 48, 0.92));
+  box-shadow: 0 8px 18px -8px rgba(8, 30, 42, 0.6);
+  opacity: 0;
+  transform: translateY(6px) scale(0.92);
+  transition: opacity 0.2s ease, transform 0.35s var(--ease-spring);
+}
+
+.crm-switcher-item[data-selected] .crm-switcher-label {
+  opacity: 1;
+  transform: none;
+}
+
+.crm-switcher-dot {
+  margin-top: 5px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--primary);
+  opacity: 0;
+  transform: scale(0);
+  transition: opacity 0.25s ease, transform 0.35s var(--ease-spring);
+}
+
+.crm-switcher-dot.is-current {
+  opacity: 0.9;
+  transform: scale(1);
+  box-shadow: 0 0 8px rgba(88, 104, 238, 0.8);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crm-switcher-dock,
+  .crm-switcher-item {
+    animation: none !important;
+  }
+}
+
+/* ── Dock refinement: clearer glass + label always above the icons ── */
+.crm-switcher-dock {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.12)),
+    rgba(232, 246, 247, 0.18) !important;
+  -webkit-backdrop-filter: blur(26px) saturate(2) brightness(1.04);
+  backdrop-filter: blur(26px) saturate(2) brightness(1.04);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 0 22px rgba(255, 255, 255, 0.12),
+    0 2px 6px rgba(8, 50, 62, 0.12),
+    0 30px 60px -20px rgba(8, 50, 62, 0.5) !important;
+  padding-top: 8px;
+}
+
+.crm-switcher-icon {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.32));
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  color: var(--ink);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.crm-switcher-item {
+  position: relative;
+}
+
+.crm-switcher-label {
+  position: relative;
+  z-index: 5;
+  margin-bottom: 18px;
+}
+
+.crm-switcher-item[data-selected] .crm-switcher-icon {
+  position: relative;
+  z-index: 2;
+}
+
+/* Hidden columns collapse to 0 width. Their content must not wrap (the table
+   allows per-character word breaks), otherwise the invisible cell grows tall
+   and stretches every row. Also stop it from setting the row height. */
+table[data-col-scope] [data-col-hidden],
+table[data-col-scope] [data-col-hidden] * {
+  white-space: nowrap !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+}
+
+table[data-col-scope] td[data-col-hidden] {
+  height: 0;
+  line-height: 0;
+}
+
+table[data-col-scope] td[data-col-hidden] > * {
+  max-height: 0;
+  overflow: hidden;
+}
+
+/* ── Glass bubbles (decorative, behind everything) ── */
+html::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 30% 28%, rgba(255,255,255,0.55) 0 3%, transparent 3.2%) 0 0 / 100% 100% no-repeat,
+    radial-gradient(circle 22vmin at 74% 8%, rgba(255,255,255,0.22), rgba(255,255,255,0.04) 62%, rgba(255,255,255,0.35) 64%, transparent 66%),
+    radial-gradient(circle 30vmin at 6% 100%, rgba(255,255,255,0.2), rgba(255,255,255,0.03) 62%, rgba(255,255,255,0.32) 64%, transparent 66%),
+    radial-gradient(circle 16vmin at 96% 92%, rgba(255,255,255,0.22), rgba(255,255,255,0.03) 62%, rgba(255,255,255,0.3) 64%, transparent 66%),
+    radial-gradient(circle 9vmin at 44% 100%, rgba(255,255,255,0.2), rgba(255,255,255,0.03) 62%, rgba(255,255,255,0.28) 64%, transparent 66%);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CRYSTAL GLASS v2 — truly translucent panels over a vivid canvas with
+   floating bubbles. Colour/opacity only; no markup or behaviour changes.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --background: #6f8ff0;
+  --card: rgba(255, 255, 255, 0.2);
+  --input: rgba(255, 255, 255, 0.34);
+  --sidebar: rgba(255, 255, 255, 0.2);
+  --topbar: rgba(255, 255, 255, 0.2);
+  --border: rgba(255, 255, 255, 0.38);
+  --muted: #3d4a8a;
+  --foreground: #0f1744;
+  --ink: #0b1238;
+  --ink-2: #1c2764;
+  --row-active: rgba(255, 255, 255, 0.28);
+  --row-paid: rgba(120, 190, 255, 0.28);
+  --row-cancelled: rgba(255, 130, 160, 0.26);
+  --row-runaway: rgba(255, 200, 120, 0.28);
+  --row-lost: rgba(255, 160, 130, 0.26);
+  /* sticky/frozen cells must stay solid enough to hide what scrolls under */
+  --freeze-bg: rgba(206, 216, 250, 0.96);
+
+  --glass-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.12));
+  --glass-bg-strong: linear-gradient(145deg, rgba(255, 255, 255, 0.55), rgba(236, 240, 255, 0.34));
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --glass-blur: blur(26px) saturate(1.9);
+  --glass-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.12),
+    0 20px 44px -18px rgba(40, 50, 150, 0.45);
+
+  --aurora:
+    radial-gradient(1000px 700px at 4% -8%, #5fc0ff 0%, transparent 62%),
+    radial-gradient(900px 700px at 100% 4%, #9a7cff 0%, transparent 62%),
+    radial-gradient(1000px 760px at 86% 110%, #f08ad8 0%, transparent 62%),
+    radial-gradient(800px 600px at -6% 104%, #b58bff 0%, transparent 62%),
+    linear-gradient(160deg, #5b86f0 0%, #6f78ee 48%, #8f7cf0 100%);
+}
+
+/* the canvas itself */
+html {
+  background-color: #6f8ff0;
+}
+
+/* ── bubbles: real glass spheres drifting behind the UI ── */
+html::before {
+  background:
+    /* bubble = soft fill + bright rim + specular highlight */
+    radial-gradient(circle at 32% 26%, rgba(255,255,255,0.75) 0 2.2%, transparent 2.6%) 76vw 4vh / 34vmin 34vmin no-repeat,
+    radial-gradient(circle at 50% 50%, rgba(255,255,255,0.02) 0 55%, rgba(255,255,255,0.1) 66%, rgba(255,255,255,0.55) 69%, transparent 71%) 70vw -6vh / 34vmin 34vmin no-repeat,
+
+    radial-gradient(circle at 32% 26%, rgba(255,255,255,0.75) 0 2.2%, transparent 2.6%) -4vw 62vh / 52vmin 52vmin no-repeat,
+    radial-gradient(circle at 50% 50%, rgba(255,255,255,0.02) 0 55%, rgba(255,255,255,0.1) 66%, rgba(255,255,255,0.5) 69%, transparent 71%) -10vw 58vh / 52vmin 52vmin no-repeat,
+
+    radial-gradient(circle at 32% 26%, rgba(255,255,255,0.75) 0 2.2%, transparent 2.6%) 88vw 72vh / 24vmin 24vmin no-repeat,
+    radial-gradient(circle at 50% 50%, rgba(255,255,255,0.02) 0 55%, rgba(255,255,255,0.1) 66%, rgba(255,255,255,0.5) 69%, transparent 71%) 84vw 68vh / 24vmin 24vmin no-repeat,
+
+    radial-gradient(circle at 50% 50%, rgba(255,255,255,0.02) 0 55%, rgba(255,255,255,0.1) 66%, rgba(255,255,255,0.45) 69%, transparent 71%) 40vw 84vh / 18vmin 18vmin no-repeat,
+    radial-gradient(circle at 50% 50%, rgba(255,255,255,0.02) 0 55%, rgba(255,255,255,0.1) 66%, rgba(255,255,255,0.4) 69%, transparent 71%) 18vw 6vh / 13vmin 13vmin no-repeat;
+  animation: bubbles-float 24s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@keyframes bubbles-float {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(1.2vw, -2.4vh, 0); }
+}
+
+body::before {
+  background: radial-gradient(circle at 50% 50%, rgba(120, 200, 255, 0.5), transparent 62%);
+}
+
+body::after {
+  background: radial-gradient(circle at 50% 50%, rgba(220, 130, 240, 0.45), transparent 62%);
+}
+
+/* ── frames: sheets & tables are glass too ── */
+.data-table-container,
+.master-theme-card {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+
+.data-table-container .data-table th,
+.excel-grid.master-theme thead th,
+.excel-grid.master-theme thead .row-head,
+.excel-grid.master-theme thead .freeze-check {
+  background: linear-gradient(180deg, rgba(60, 70, 190, 0.78), rgba(80, 70, 190, 0.7)) !important;
+  background-color: rgba(70, 76, 196, 0.8) !important;
+}
+
+.data-table-container .data-table tbody tr:hover>td,
+.excel-grid tbody tr:hover>td:not(.cell-selected):not(.row-head):not(.freeze-check) {
+  background-color: rgba(255, 255, 255, 0.32);
+}
+
+.data-table-container .data-table tbody td,
+.excel-grid.master-theme tbody td {
+  border-bottom-color: rgba(255, 255, 255, 0.3);
+  border-right-color: rgba(255, 255, 255, 0.22);
+}
+
+.data-table-container .data-table {
+  background: transparent;
+}
+
+/* ── controls ── */
+.crm-search input,
+.badge,
+.pill,
+.filters-bar select,
+.filter-group select,
+.date-range-bar select,
+.date-range-bar input[type="date"],
+.target-input {
+  background: rgba(255, 255, 255, 0.34) !important;
+  border-color: rgba(255, 255, 255, 0.55) !important;
+}
+
+.crm-search input:focus,
+.filters-bar select:focus,
+.filter-group select:focus,
+.target-input:focus {
+  background: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* ── sidebar: floating frosted card, brighter scrim ── */
+.crm-nav {
+  background: linear-gradient(170deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.16)) !important;
+  -webkit-backdrop-filter: blur(30px) saturate(1.9);
+  backdrop-filter: blur(30px) saturate(1.9);
+}
+
+.crm-nav-scrim {
+  background: rgba(40, 50, 140, 0.28) !important;
+}
+
+[data-modal-overlay] {
+  background: rgba(30, 40, 120, 0.35) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CRYSTAL GLASS v3 — soft pastel canvas + no solid-white sheet bodies.
+   (globals.css hard-codes #fff on table cells / master card; beat it here.)
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --background: #c3d3f8;
+  --foreground: #1b2559;
+  --ink: #161e4f;
+  --ink-2: #2a3578;
+  --muted: #56629a;
+  --card: rgba(255, 255, 255, 0.32);
+  --border: rgba(255, 255, 255, 0.55);
+  --freeze-bg: rgba(226, 232, 252, 0.94);
+  --glass-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.22));
+  --glass-border: rgba(255, 255, 255, 0.65);
+  --glass-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 18px 40px -20px rgba(70, 80, 170, 0.28);
+  --aurora:
+    radial-gradient(1000px 700px at 4% -8%, rgba(150, 215, 255, 0.85) 0%, transparent 62%),
+    radial-gradient(900px 700px at 100% 4%, rgba(190, 175, 255, 0.8) 0%, transparent 62%),
+    radial-gradient(1000px 760px at 86% 110%, rgba(255, 190, 235, 0.8) 0%, transparent 62%),
+    radial-gradient(800px 600px at -6% 104%, rgba(205, 180, 255, 0.75) 0%, transparent 62%),
+    linear-gradient(160deg, #b4cdf8 0%, #bfc6f6 50%, #d3c4f6 100%);
+}
+
+html { background-color: #c3d3f8; }
+
+body::before { background: radial-gradient(circle at 50% 50%, rgba(150, 215, 255, 0.45), transparent 62%); }
+body::after { background: radial-gradient(circle at 50% 50%, rgba(240, 175, 235, 0.4), transparent 62%); }
+
+/* ── sheet / table bodies: translucent instead of solid white ── */
+.master-theme-card,
+.data-table-container {
+  background: var(--glass-bg) !important;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+
+.excel-grid,
+.data-table,
+#masterScroll,
+.excel-grid.master-theme {
+  background: transparent !important;
+}
+
+.excel-grid tbody td,
+.data-table-container .data-table tbody td,
+.data-table-container .data-table tbody tr[class*="row-"]>td,
+.excel-grid.master-theme tbody td {
+  background-color: rgba(255, 255, 255, 0.26);
+  border-bottom-color: rgba(255, 255, 255, 0.55);
+  border-right-color: rgba(255, 255, 255, 0.4);
+}
+
+/* status-tinted rows keep their tint, just glassy */
+.excel-grid tbody tr.row-fully-paid>td { background-color: rgba(150, 205, 255, 0.34); }
+.excel-grid tbody tr.row-cancelled>td { background-color: rgba(255, 150, 175, 0.3) !important; }
+.excel-grid tbody tr.row-run-away>td { background-color: rgba(255, 210, 140, 0.32); }
+.excel-grid tbody tr.row-job-lost>td { background-color: rgba(255, 175, 145, 0.3); }
+
+/* sticky columns stay opaque enough to hide scrolled cells beneath */
+.excel-grid tbody td.row-head,
+.excel-grid tbody td.freeze-check {
+  background-color: rgba(226, 232, 252, 0.95) !important;
+}
+
+.data-table-container .data-table tbody tr:hover>td,
+.excel-grid tbody tr:hover>td:not(.cell-selected):not(.row-head):not(.freeze-check) {
+  background-color: rgba(255, 255, 255, 0.5);
+}
+
+/* header: soft indigo glass, not dark navy */
+.data-table-container .data-table th,
+.excel-grid.master-theme thead th,
+.excel-grid.master-theme thead .row-head,
+.excel-grid.master-theme thead .freeze-check {
+  background: linear-gradient(180deg, rgba(105, 118, 235, 0.82), rgba(135, 120, 236, 0.78)) !important;
+  background-color: rgba(115, 120, 236, 0.82) !important;
+}
+
+/* floating layers softer too */
+.crm-nav { background: linear-gradient(170deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.3)) !important; }
+.crm-nav-scrim { background: rgba(120, 130, 200, 0.22) !important; }
+[data-modal-overlay] { background: rgba(110, 120, 190, 0.28) !important; }
+.crm-search input, .badge, .pill, .filters-bar select, .filter-group select,
+.date-range-bar select, .date-range-bar input[type="date"], .target-input {
+  background: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CRYSTAL GLASS v4 — logo palette (sky blue + navy) in soft ice-cream pastels.
+   Also removes the cursor-follow white spotlight on hover.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --background: #d9ebfb;
+  --foreground: #223070;
+  --ink: #1d2a66;
+  --ink-2: #2f3f86;
+  --muted: #62729f;
+  --primary: #3f8fe0;
+  --accent: #3f8fe0;
+  --accent-hover: #2f78c8;
+  --secondary: rgba(63, 143, 224, 0.1);
+  --info: #3f8fe0;
+  --success: #2f9d82;
+  --brand-grad: linear-gradient(135deg, #7ccdf5 0%, #4aa3e8 50%, #4a62c4 100%);
+  --freeze-bg: rgba(232, 240, 253, 0.95);
+  --glass-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.28));
+  --glass-bg-strong: linear-gradient(145deg, rgba(255, 255, 255, 0.78), rgba(244, 248, 255, 0.52));
+  --glass-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 16px 36px -22px rgba(60, 90, 170, 0.28);
+  --aurora:
+    radial-gradient(1000px 700px at 4% -8%, rgba(160, 220, 255, 0.9) 0%, transparent 62%),
+    radial-gradient(900px 700px at 100% 2%, rgba(205, 200, 255, 0.85) 0%, transparent 62%),
+    radial-gradient(1000px 760px at 88% 112%, rgba(255, 205, 232, 0.85) 0%, transparent 62%),
+    radial-gradient(800px 600px at -6% 104%, rgba(190, 240, 228, 0.8) 0%, transparent 62%),
+    linear-gradient(160deg, #d3e8fb 0%, #dcdffb 52%, #ecdcf8 100%);
+}
+
+html { background-color: #d9ebfb; }
+body::before { background: radial-gradient(circle at 50% 50%, rgba(160, 220, 255, 0.5), transparent 62%); }
+body::after { background: radial-gradient(circle at 50% 50%, rgba(255, 195, 230, 0.45), transparent 62%); }
+
+/* hover: keep the glass as-is — no white spotlight blob */
+@media (hover: hover) {
+  [class*="bg-card"]:not(.data-table-container):not(.master-theme-card):not([class*="bg-card/"]):hover,
+  .stat-card:hover,
+  .chart-card:hover,
+  .workflow-rule-card:hover,
+  .backup-panel:hover {
+    background: var(--glass-bg) !important;
+  }
+}
+
+/* soft sky/periwinkle table headers */
+.data-table-container .data-table th,
+.excel-grid.master-theme thead th,
+.excel-grid.master-theme thead .row-head,
+.excel-grid.master-theme thead .freeze-check {
+  background: linear-gradient(180deg, rgba(92, 168, 232, 0.88), rgba(110, 140, 232, 0.84)) !important;
+  background-color: rgba(100, 155, 232, 0.88) !important;
+}
+
+.excel-grid tbody td.row-head,
+.excel-grid tbody td.freeze-check {
+  background-color: rgba(232, 240, 253, 0.96) !important;
+}
+
+.excel-grid tbody tr.row-fully-paid>td { background-color: rgba(160, 215, 255, 0.36); }
+
+.crm-nav { background: linear-gradient(170deg, rgba(255, 255, 255, 0.72), rgba(236, 244, 255, 0.4)) !important; }
+.crm-nav-scrim { background: rgba(150, 170, 220, 0.2) !important; }
+[data-modal-overlay] { background: rgba(140, 160, 215, 0.26) !important; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CRYSTAL GLASS v5 — sweep: no solid white left (except where a surface must
+   stay readable/opaque: native dropdown lists and sticky columns).
+   Glass strength varies: big canvases/cards lighter, floating layers stronger.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* table frame bars, toolbars, headers inside frames: transparent */
+.data-table-container>.table-header,
+.data-table-container .table-toolbar,
+.excel-grid.master-theme thead th .col-resize-handle:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+}
+
+.data-table th {
+  background: transparent;
+}
+
+/* focus states: frosted, not solid */
+.crm-search input:focus,
+.login-field:focus,
+.filters-bar select:focus,
+.filter-group select:focus,
+.date-range-bar select:focus,
+.date-range-bar input[type="date"]:focus,
+.target-input:focus {
+  background: rgba(255, 255, 255, 0.62) !important;
+  background-color: rgba(255, 255, 255, 0.62) !important;
+}
+
+/* cards: lighter glass (more of the background shows through) */
+.stat-card,
+.chart-card,
+.backup-panel,
+.workflow-rule-card,
+.filters-bar:not(.filters-bar-embedded),
+.month-selector,
+.date-range-bar {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.16)) !important;
+}
+
+/* floating layers: stronger frost so text stays crisp */
+[data-modal-overlay]>div,
+.col-popover {
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.66), rgba(240, 246, 255, 0.44)) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(1.8);
+  backdrop-filter: blur(32px) saturate(1.8);
+  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+}
+
+.col-hide-btn,
+.col-menu-btn:hover,
+.col-chip:hover,
+.workflow-toggle-thumb {
+  background: rgba(255, 255, 255, 0.55);
+}
+
+/* native dropdown lists need legibility: lightly frosted, near-opaque */
+.excel-grid.master-theme option,
+.excel-grid.master-theme select.sheet-cell::picker(select),
+.data-table-container .data-table select::picker(select) {
+  background: rgba(244, 248, 255, 0.96);
+}
+
+/* the exact-white rules scattered through globals.css, caught generically */
+.excel-grid thead .freeze-check {
+  background-color: rgba(120, 165, 232, 0.9) !important;
+}
+.excel-grid tbody tr.row-neutral>td.freeze-check,
+.excel-grid.master-theme tbody tr.row-cancelled>td.freeze-check {
+  background-color: rgba(236, 242, 254, 0.97) !important;
+}
+
+/* ── v6: the table scroll wrapper was a solid #fff on every page ── */
+.table-scroll {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.55) !important;
+}
+
+.excel-grid tbody td,
+.data-table-container .data-table tbody td,
+.data-table-container .data-table tbody tr[class*="row-"]>td,
+.excel-grid.master-theme tbody td {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* in-cell dropdowns (Assigned etc.) → frosted pill */
+.data-table-container .data-table select,
+.excel-grid select {
+  background-color: rgba(255, 255, 255, 0.45) !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v7 — controls are almost transparent glass (buttons, chips, selects,
+   inputs). Only a thin bright rim + blur keeps them visible.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.glass-chip:not(.is-primary):not(.is-warn):not(.is-danger),
+.btn-secondary,
+.crm-search input,
+.badge,
+.pill,
+.filters-bar select,
+.filter-group select,
+.date-range-bar select,
+.date-range-bar input[type="date"],
+.target-input,
+.col-hide-btn,
+.data-table-container .data-table select,
+.excel-grid select,
+.excel-grid input:not([type="checkbox"]),
+.filter-icon {
+  background: rgba(255, 255, 255, 0.1) !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(1.5);
+  backdrop-filter: blur(14px) saturate(1.5);
+}
+
+.glass-chip:not(.is-primary):not(.is-warn):not(.is-danger):hover:not(:disabled),
+.btn-secondary:hover:not(:disabled),
+.filters-bar select:hover,
+.filter-group select:hover {
+  background: rgba(255, 255, 255, 0.24) !important;
+  background-color: rgba(255, 255, 255, 0.24) !important;
+}
+
+.crm-search input:focus,
+.filters-bar select:focus,
+.filter-group select:focus,
+.date-range-bar select:focus,
+.date-range-bar input[type="date"]:focus,
+.target-input:focus,
+.login-field:focus {
+  background: rgba(255, 255, 255, 0.26) !important;
+  background-color: rgba(255, 255, 255, 0.26) !important;
+}
+
+/* colored chips (warn / danger) go see-through too, keeping their hue */
+.glass-chip.is-warn { background: rgba(255, 190, 90, 0.22) !important; }
+.glass-chip.is-danger { background: rgba(255, 90, 110, 0.2) !important; }
+
+/* panels a notch clearer as well */
+.stat-card,
+.chart-card,
+.backup-panel,
+.workflow-rule-card,
+.filters-bar:not(.filters-bar-embedded),
+.month-selector,
+.date-range-bar,
+.crm-topbar {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.1)) !important;
+}
+
+.excel-grid tbody td,
+.data-table-container .data-table tbody td,
+.data-table-container .data-table tbody tr[class*="row-"]>td,
+.excel-grid.master-theme tbody td {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* native <option> popup: let the browser's own list stay readable but tint it */
+select option {
+  background: rgba(238, 244, 255, 0.97);
+  color: #1d2a66;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v8 — dropdown popups (customizable <select>) + every remaining field are
+   glass. Chromium 135+ renders ::picker(select); older browsers keep native.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@supports (appearance: base-select) {
+  .excel-grid.master-theme select.sheet-cell::picker(select),
+  .data-table-container .data-table select::picker(select) {
+    background: linear-gradient(150deg, rgba(255, 255, 255, 0.5), rgba(235, 243, 255, 0.28)) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(1.8);
+    backdrop-filter: blur(24px) saturate(1.8);
+    border: 1px solid rgba(255, 255, 255, 0.75) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 18px 40px -16px rgba(60, 90, 170, 0.4) !important;
+  }
+
+  .excel-grid.master-theme select.sheet-cell option,
+  .data-table-container .data-table select option {
+    background: rgba(255, 255, 255, 0.14) !important;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    color: var(--ink-2);
+  }
+
+  .excel-grid.master-theme select.sheet-cell option:hover,
+  .excel-grid.master-theme select.sheet-cell option:focus,
+  .data-table-container .data-table select option:hover,
+  .data-table-container .data-table select option:focus {
+    background: rgba(255, 255, 255, 0.4) !important;
+  }
+
+  .excel-grid.master-theme select.sheet-cell option:checked,
+  .data-table-container .data-table select option:checked {
+    background: rgba(110, 170, 240, 0.4) !important;
+    border-color: rgba(255, 255, 255, 0.8);
+  }
+}
+
+/* sheet chips & in-cell fields */
+.excel-grid.master-theme select.sheet-cell,
+.excel-grid.master-theme select.sheet-cell:hover,
+.excel-grid .sheet-cell,
+.excel-grid .inst-text,
+.excel-grid .inst-row input[type="text"],
+.excel-grid .remarks-editor,
+.excel-grid textarea,
+.excel-grid input[type="date"],
+.excel-grid input[type="text"],
+.excel-grid input[type="number"],
+.data-table input,
+.data-table textarea,
+.data-table-container input:not([type="checkbox"]):not([type="radio"]),
+.data-table-container textarea {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.55) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.excel-grid.master-theme select.sheet-cell:hover,
+.excel-grid .sheet-cell:hover,
+.data-table-container input:not([type="checkbox"]):hover {
+  background-color: rgba(255, 255, 255, 0.24) !important;
+}
+
+/* inputs inside modals / forms / login */
+[data-modal-overlay] input:not([type="checkbox"]):not([type="radio"]),
+[data-modal-overlay] select,
+[data-modal-overlay] textarea,
+.login-field {
+  background: rgba(255, 255, 255, 0.14) !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v9 — joyful filled bubbles: soft ice-cream spheres (sky, pink, mint,
+   lemon, lavender, peach) with translucent fill, bright rim + specular glint.
+   Each bubble = 2 layers: glint, then fill/rim, sharing position and size.
+   ═══════════════════════════════════════════════════════════════════════════ */
+html::before {
+  background:
+    /* sky — top right, large */
+    radial-gradient(ellipse 22% 14% at 30% 24%, rgba(255,255,255,0.85), transparent) 76vw 2vh / 34vmin 34vmin no-repeat,
+    radial-gradient(circle closest-side at 40% 38%, rgba(190,228,255,0.7), rgba(140,205,255,0.42) 78%, rgba(255,255,255,0.8) 96%, transparent 100%) 76vw 2vh / 34vmin 34vmin no-repeat,
+    /* pink — bottom left, huge */
+    radial-gradient(ellipse 22% 14% at 30% 24%, rgba(255,255,255,0.85), transparent) -8vw 58vh / 54vmin 54vmin no-repeat,
+    radial-gradient(circle closest-side at 40% 38%, rgba(255,215,238,0.72), rgba(255,170,215,0.4) 78%, rgba(255,255,255,0.8) 96%, transparent 100%) -8vw 58vh / 54vmin 54vmin no-repeat,
+    /* mint — bottom right */
+    radial-gradient(ellipse 22% 14% at 30% 24%, rgba(255,255,255,0.85), transparent) 84vw 64vh / 28vmin 28vmin no-repeat,
+    radial-gradient(circle closest-side at 40% 38%, rgba(205,250,232,0.75), rgba(150,232,205,0.42) 78%, rgba(255,255,255,0.8) 96%, transparent 100%) 84vw 64vh / 28vmin 28vmin no-repeat,
+    /* lemon — bottom middle */
+    radial-gradient(ellipse 22% 14% at 30% 24%, rgba(255,255,255,0.85), transparent) 38vw 80vh / 21vmin 21vmin no-repeat,
+    radial-gradient(circle closest-side at 40% 38%, rgba(255,246,195,0.78), rgba(255,226,140,0.42) 78%, rgba(255,255,255,0.8) 96%, transparent 100%) 38vw 80vh / 21vmin 21vmin no-repeat,
+    /* lavender — top left */
+    radial-gradient(ellipse 22% 14% at 30% 24%, rgba(255,255,255,0.85), transparent) 14vw 3vh / 16vmin 16vmin no-repeat,
+    radial-gradient(circle closest-side at 40% 38%, rgba(222,210,255,0.78), rgba(184,160,250,0.42) 78%, rgba(255,255,255,0.8) 96%, transparent 100%) 14vw 3vh / 16vmin 16vmin no-repeat,
+    /* peach — middle right, small */
+    radial-gradient(ellipse 22% 14% at 30% 24%, rgba(255,255,255,0.85), transparent) 92vw 36vh / 11vmin 11vmin no-repeat,
+    radial-gradient(circle closest-side at 40% 38%, rgba(255,225,200,0.78), rgba(255,190,150,0.42) 78%, rgba(255,255,255,0.8) 96%, transparent 100%) 92vw 36vh / 11vmin 11vmin no-repeat,
+    /* sky — left middle, small */
+    radial-gradient(ellipse 22% 14% at 30% 24%, rgba(255,255,255,0.85), transparent) 3vw 36vh / 9vmin 9vmin no-repeat,
+    radial-gradient(circle closest-side at 40% 38%, rgba(200,235,255,0.78), rgba(150,210,255,0.42) 78%, rgba(255,255,255,0.8) 96%, transparent 100%) 3vw 36vh / 9vmin 9vmin no-repeat,
+    /* pink — top middle, small */
+    radial-gradient(ellipse 22% 14% at 30% 24%, rgba(255,255,255,0.85), transparent) 52vw 6vh / 8vmin 8vmin no-repeat,
+    radial-gradient(circle closest-side at 40% 38%, rgba(255,215,238,0.78), rgba(255,175,218,0.42) 78%, rgba(255,255,255,0.8) 96%, transparent 100%) 52vw 6vh / 8vmin 8vmin no-repeat,
+    /* mint — lower left, small */
+    radial-gradient(ellipse 22% 14% at 30% 24%, rgba(255,255,255,0.85), transparent) 24vw 62vh / 10vmin 10vmin no-repeat,
+    radial-gradient(circle closest-side at 40% 38%, rgba(205,250,232,0.78), rgba(150,232,205,0.42) 78%, rgba(255,255,255,0.8) 96%, transparent 100%) 24vw 62vh / 10vmin 10vmin no-repeat;
+  animation: bubbles-float 20s ease-in-out infinite alternate;
+}
+
+@keyframes bubbles-float {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(1.6vw, -3vh, 0); }
+}
+
+/* a touch more color in the glow blobs so the canvas feels playful */
+body::before { background: radial-gradient(circle at 50% 50%, rgba(150, 215, 255, 0.55), transparent 62%); }
+body::after { background: radial-gradient(circle at 50% 50%, rgba(255, 185, 225, 0.5), transparent 62%); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v10 — DEEP GLASS (matches the reference design)
+   Vivid periwinkle→violet canvas, big glossy glass bubbles, bluish-tinted
+   transparent panels (no white wash), white text, light blur.
+   Colour / opacity / blur only — no markup, layout or logic changes.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --background: #7488e4;
+  --foreground: #ffffff;
+  --ink: #ffffff;
+  --ink-2: rgba(255, 255, 255, 0.94);
+  --muted: rgba(234, 239, 255, 0.74);
+  --primary: #8fb0ff;
+  --primary-foreground: #ffffff;
+  --accent: #8fb0ff;
+  --accent-hover: #a9c2ff;
+  --secondary: rgba(255, 255, 255, 0.1);
+  --secondary-foreground: #ffffff;
+  --card: rgba(120, 140, 255, 0.16);
+  --card-foreground: #ffffff;
+  --input: rgba(255, 255, 255, 0.1);
+  --border: rgba(255, 255, 255, 0.22);
+  --success: #6ee7b7;
+  --danger: #ff8fa6;
+  --warning: #ffc47e;
+  --info: #8cc4ff;
+  --sidebar: rgba(110, 130, 240, 0.4);
+  --topbar: rgba(120, 140, 255, 0.16);
+  --freeze-bg: rgba(120, 134, 230, 0.97);
+  --row-active: rgba(255, 255, 255, 0.05);
+  --row-paid: rgba(120, 200, 255, 0.16);
+  --row-cancelled: rgba(255, 130, 160, 0.18);
+  --row-runaway: rgba(255, 200, 120, 0.16);
+  --row-lost: rgba(255, 160, 130, 0.16);
+  --brand-grad: linear-gradient(135deg, #5aa4ff 0%, #6a72f2 52%, #8f66f0 100%);
+
+  --glass-bg: linear-gradient(145deg, rgba(140, 160, 255, 0.2), rgba(150, 130, 240, 0.08));
+  --glass-bg-strong: linear-gradient(145deg, rgba(120, 140, 240, 0.62), rgba(130, 120, 230, 0.5));
+  --glass-border: rgba(255, 255, 255, 0.26);
+  --glass-blur: blur(14px) saturate(1.4);
+  --glass-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 18px 40px -22px rgba(30, 30, 130, 0.55);
+
+  --aurora:
+    radial-gradient(900px 620px at 10% -6%, rgba(120, 205, 255, 0.75) 0%, transparent 62%),
+    radial-gradient(800px 640px at 72% 0%, rgba(150, 140, 245, 0.55) 0%, transparent 62%),
+    radial-gradient(1000px 760px at 96% 108%, rgba(215, 150, 235, 0.75) 0%, transparent 62%),
+    radial-gradient(800px 640px at -4% 104%, rgba(195, 150, 245, 0.7) 0%, transparent 62%),
+    linear-gradient(165deg, #6b8be6 0%, #7886e6 50%, #9a86e6 100%);
+}
+
+html { background-color: #7488e4; }
+body { color: #fff; }
+body::before { background: radial-gradient(circle at 50% 50%, rgba(120, 210, 255, 0.4), transparent 62%); }
+body::after { background: radial-gradient(circle at 50% 50%, rgba(230, 150, 235, 0.4), transparent 62%); }
+::selection { background: rgba(255, 255, 255, 0.3); color: #fff; }
+:focus-visible { outline-color: rgba(255, 255, 255, 0.75); }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.3); border: 2px solid transparent; background-clip: padding-box; }
+::placeholder { color: rgba(234, 239, 255, 0.55) !important; }
+
+/* ── big glossy glass bubbles ── */
+html::before {
+  background:
+    radial-gradient(ellipse 26% 13% at 30% 20%, rgba(255,255,255,0.4), transparent) 52vw -14vh / 46vmin 46vmin no-repeat,
+    radial-gradient(circle closest-side, rgba(255,255,255,0.03) 0%, rgba(150,215,255,0.1) 68%, rgba(190,228,255,0.3) 90%, rgba(255,255,255,0.6) 97%, transparent 100%) 52vw -14vh / 46vmin 46vmin no-repeat,
+
+    radial-gradient(ellipse 26% 13% at 30% 20%, rgba(255,255,255,0.36), transparent) -14vw 54vh / 64vmin 64vmin no-repeat,
+    radial-gradient(circle closest-side, rgba(255,255,255,0.03) 0%, rgba(190,170,255,0.12) 68%, rgba(210,195,255,0.3) 90%, rgba(255,255,255,0.55) 97%, transparent 100%) -14vw 54vh / 64vmin 64vmin no-repeat,
+
+    radial-gradient(ellipse 26% 13% at 30% 20%, rgba(255,255,255,0.34), transparent) 76vw 60vh / 42vmin 42vmin no-repeat,
+    radial-gradient(circle closest-side, rgba(255,255,255,0.03) 0%, rgba(235,170,240,0.14) 68%, rgba(245,200,250,0.3) 90%, rgba(255,255,255,0.55) 97%, transparent 100%) 76vw 60vh / 42vmin 42vmin no-repeat,
+
+    radial-gradient(ellipse 26% 13% at 30% 20%, rgba(255,255,255,0.34), transparent) 34vw 76vh / 30vmin 30vmin no-repeat,
+    radial-gradient(circle closest-side, rgba(255,255,255,0.03) 0%, rgba(150,215,255,0.12) 68%, rgba(190,228,255,0.3) 90%, rgba(255,255,255,0.55) 97%, transparent 100%) 34vw 76vh / 30vmin 30vmin no-repeat,
+
+    radial-gradient(ellipse 26% 13% at 30% 20%, rgba(255,255,255,0.34), transparent) 88vw -8vh / 24vmin 24vmin no-repeat,
+    radial-gradient(circle closest-side, rgba(255,255,255,0.03) 0%, rgba(170,200,255,0.12) 68%, rgba(200,220,255,0.3) 90%, rgba(255,255,255,0.55) 97%, transparent 100%) 88vw -8vh / 24vmin 24vmin no-repeat,
+
+    radial-gradient(ellipse 26% 13% at 30% 20%, rgba(255,255,255,0.34), transparent) 16vw -4vh / 15vmin 15vmin no-repeat,
+    radial-gradient(circle closest-side, rgba(255,255,255,0.03) 0%, rgba(150,215,255,0.12) 68%, rgba(190,228,255,0.3) 90%, rgba(255,255,255,0.55) 97%, transparent 100%) 16vw -4vh / 15vmin 15vmin no-repeat;
+}
+
+/* ── panels: bluish transparent glass, light blur, thin bright rim ── */
+[class*="bg-card"]:not(.data-table-container):not(.master-theme-card):not([class*="bg-card/"]),
+.stat-card,
+.chart-card,
+.backup-panel,
+.workflow-rule-card,
+.filters-bar:not(.filters-bar-embedded),
+.month-selector,
+.date-range-bar,
+.crm-topbar,
+.data-table-container,
+.master-theme-card {
+  background: var(--glass-bg) !important;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: var(--glass-shadow) !important;
+}
+
+@media (hover: hover) {
+  [class*="bg-card"]:not(.data-table-container):not(.master-theme-card):not([class*="bg-card/"]):hover,
+  .stat-card:hover,
+  .chart-card:hover,
+  .workflow-rule-card:hover,
+  .backup-panel:hover {
+    background: linear-gradient(145deg, rgba(150, 170, 255, 0.28), rgba(160, 140, 245, 0.14)) !important;
+  }
+}
+
+/* dashboard accent hairlines: keep as a faint glow */
+[class*="bg-card"] > .absolute.inset-x-0.top-0[class*="bg-"] {
+  height: 2px;
+  opacity: 0.6;
+}
+
+.stat-card .stat-value,
+.stat-card.success .stat-value,
+.stat-card.info .stat-value,
+.stat-card.warning .stat-value,
+.stat-card.danger .stat-value { color: #fff; }
+.stat-label, .table-subtitle, .filter-label { color: var(--muted); }
+
+/* ── sidebar, modals, popovers: slightly stronger so text stays crisp ── */
+.crm-nav {
+  background: linear-gradient(170deg, rgba(130, 150, 250, 0.5), rgba(140, 125, 240, 0.4)) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  backdrop-filter: blur(20px) saturate(1.5);
+  border: 1px solid var(--glass-border) !important;
+}
+.crm-nav-scrim { background: rgba(50, 50, 140, 0.25) !important; }
+[data-modal-overlay] { background: rgba(50, 50, 140, 0.35) !important; }
+[data-modal-overlay]>div,
+.col-popover {
+  background: linear-gradient(150deg, rgba(125, 145, 245, 0.72), rgba(135, 120, 232, 0.62)) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(1.5);
+  backdrop-filter: blur(22px) saturate(1.5);
+  border: 1px solid var(--glass-border) !important;
+  color: #fff;
+}
+
+.nav-item.is-active {
+  background: linear-gradient(100deg, rgba(110, 150, 255, 0.55), rgba(140, 110, 245, 0.4)) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28), 0 8px 20px -12px rgba(60, 60, 200, 0.8);
+}
+.nav-item:hover { background: rgba(255, 255, 255, 0.1) !important; }
+.nav-item .nav-icon { background: rgba(255, 255, 255, 0.1) !important; }
+.nav-item.is-active .nav-icon { background: var(--brand-grad) !important; }
+
+/* ── controls: transparent glass, white text ── */
+.glass-chip:not(.is-primary):not(.is-warn):not(.is-danger),
+.btn-secondary,
+.crm-search input,
+.badge,
+.pill,
+.filters-bar select,
+.filter-group select,
+.date-range-bar select,
+.date-range-bar input[type="date"],
+.target-input,
+.col-hide-btn,
+.filter-icon,
+.period-field select,
+.period-field input {
+  background: rgba(255, 255, 255, 0.1) !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  color: #fff !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
+}
+
+.glass-chip:not(.is-primary):not(.is-warn):not(.is-danger):hover:not(:disabled),
+.btn-secondary:hover:not(:disabled) { background: rgba(255, 255, 255, 0.2) !important; }
+
+.crm-search input:focus,
+.filters-bar select:focus,
+.filter-group select:focus,
+.date-range-bar select:focus,
+.date-range-bar input[type="date"]:focus,
+.target-input:focus,
+.login-field:focus {
+  background: rgba(255, 255, 255, 0.18) !important;
+  background-color: rgba(255, 255, 255, 0.18) !important;
+  border-color: rgba(255, 255, 255, 0.55) !important;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.16) !important;
+}
+
+.glass-chip.is-warn { background: rgba(255, 190, 100, 0.3) !important; color: #fff !important; }
+.glass-chip.is-danger { background: rgba(255, 100, 130, 0.34) !important; color: #fff !important; }
+.glass-chip.is-primary, .btn-primary { background: var(--brand-grad) !important; color: #fff !important; }
+
+/* ── tables ── */
+.data-table-container .data-table th,
+.excel-grid.master-theme thead th,
+.excel-grid.master-theme thead .row-head,
+.excel-grid.master-theme thead .freeze-check,
+.excel-grid thead .freeze-check {
+  background: rgba(255, 255, 255, 0.14) !important;
+  background-color: rgba(255, 255, 255, 0.14) !important;
+  color: #fff !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
+
+.table-scroll { background: transparent !important; border-color: rgba(255, 255, 255, 0.2) !important; }
+
+.excel-grid tbody td,
+.data-table-container .data-table tbody td,
+.data-table-container .data-table tbody tr[class*="row-"]>td,
+.excel-grid.master-theme tbody td {
+  background-color: transparent;
+  color: #fff;
+  border-bottom-color: rgba(255, 255, 255, 0.14);
+  border-right-color: rgba(255, 255, 255, 0.1);
+}
+
+.data-table-container .data-table tbody tr:hover>td,
+.excel-grid tbody tr:hover>td:not(.cell-selected):not(.row-head):not(.freeze-check) {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.excel-grid tbody td.row-head,
+.excel-grid tbody td.freeze-check,
+.excel-grid tbody tr.row-neutral>td.freeze-check,
+.excel-grid.master-theme tbody tr.row-cancelled>td.freeze-check {
+  background-color: rgba(120, 134, 230, 0.97) !important;
+}
+.excel-grid tbody tr.row-fully-paid>td { background-color: rgba(120, 200, 255, 0.16); }
+.excel-grid tbody tr.row-cancelled>td { background-color: rgba(255, 130, 160, 0.18) !important; }
+.excel-grid tbody tr.row-run-away>td { background-color: rgba(255, 200, 120, 0.16); }
+.excel-grid tbody tr.row-job-lost>td { background-color: rgba(255, 160, 130, 0.16); }
+
+/* in-cell fields & dropdown popups */
+.excel-grid.master-theme select.sheet-cell,
+.excel-grid .sheet-cell,
+.excel-grid input,
+.excel-grid textarea,
+.data-table-container input:not([type="checkbox"]):not([type="radio"]),
+.data-table-container select,
+.data-table-container textarea {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.26) !important;
+  color: #fff !important;
+}
+
+@supports (appearance: base-select) {
+  .excel-grid.master-theme select.sheet-cell::picker(select),
+  .data-table-container .data-table select::picker(select) {
+    background: linear-gradient(150deg, rgba(125, 145, 245, 0.7), rgba(135, 120, 232, 0.6)) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  }
+  .excel-grid.master-theme select.sheet-cell option,
+  .data-table-container .data-table select option {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: #fff;
+  }
+  .excel-grid.master-theme select.sheet-cell option:hover,
+  .data-table-container .data-table select option:hover { background: rgba(255, 255, 255, 0.24) !important; }
+  .excel-grid.master-theme select.sheet-cell option:checked,
+  .data-table-container .data-table select option:checked { background: rgba(120, 160, 255, 0.5) !important; }
+}
+
+select option { background: #6f7fe0; color: #fff; }
+
+/* modal / login fields */
+[data-modal-overlay] input:not([type="checkbox"]):not([type="radio"]),
+[data-modal-overlay] select,
+[data-modal-overlay] textarea,
+.login-field {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  color: #fff !important;
+}
+
+/* progress track on dashboard */
+.bg-border { background-color: rgba(255, 255, 255, 0.2) !important; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v11 — match the reference more exactly (dusty periwinkle canvas, glossy
+   bubbles, neutral transparent glass with a soft sheen, legible chips).
+   CSS only.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --background: #7f93dc;
+  --card: rgba(255, 255, 255, 0.08);
+  --primary: #ffffff;
+  --glass-bg:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.05) 48%, rgba(100, 95, 205, 0.1) 100%);
+  --glass-border: rgba(255, 255, 255, 0.3);
+  --glass-blur: blur(16px) saturate(1.25);
+  --glass-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+    0 20px 44px -24px rgba(35, 40, 120, 0.45);
+  --aurora:
+    radial-gradient(900px 600px at 8% -4%, rgba(140, 205, 245, 0.55) 0%, transparent 62%),
+    radial-gradient(800px 600px at 78% 4%, rgba(165, 145, 230, 0.4) 0%, transparent 62%),
+    radial-gradient(1000px 720px at 96% 106%, rgba(228, 165, 226, 0.62) 0%, transparent 62%),
+    radial-gradient(900px 700px at -2% 106%, rgba(208, 152, 232, 0.55) 0%, transparent 62%),
+    linear-gradient(165deg, #6f98dc 0%, #7f93dc 38%, #9690dc 68%, #b497dc 100%);
+}
+
+html { background-color: #7f93dc; }
+body::before { background: radial-gradient(circle at 50% 50%, rgba(150, 215, 255, 0.3), transparent 62%); }
+body::after { background: radial-gradient(circle at 50% 50%, rgba(235, 165, 230, 0.3), transparent 62%); }
+
+/* ── glossy bubbles: luminous fill, bright rim, sheen ── */
+html::before {
+  background:
+    /* huge — top centre/right */
+    radial-gradient(ellipse 24% 12% at 32% 20%, rgba(255,255,255,0.45), transparent) 50vw -32vh / 66vmin 66vmin no-repeat,
+    radial-gradient(circle closest-side at 36% 30%, rgba(255,255,255,0.18) 0%, rgba(150,215,255,0.16) 50%, rgba(165,205,255,0.26) 86%, rgba(255,255,255,0.7) 97%, transparent 100%) 50vw -32vh / 66vmin 66vmin no-repeat,
+    /* huge — bottom left */
+    radial-gradient(ellipse 24% 12% at 32% 20%, rgba(255,255,255,0.4), transparent) -13vw 52vh / 72vmin 72vmin no-repeat,
+    radial-gradient(circle closest-side at 36% 30%, rgba(255,255,255,0.14) 0%, rgba(190,175,255,0.16) 50%, rgba(205,190,255,0.26) 86%, rgba(255,255,255,0.65) 97%, transparent 100%) -13vw 52vh / 72vmin 72vmin no-repeat,
+    /* large — bottom centre */
+    radial-gradient(ellipse 24% 12% at 32% 20%, rgba(255,255,255,0.4), transparent) 42vw 76vh / 44vmin 44vmin no-repeat,
+    radial-gradient(circle closest-side at 36% 30%, rgba(255,255,255,0.14) 0%, rgba(165,215,255,0.16) 50%, rgba(185,210,255,0.26) 86%, rgba(255,255,255,0.65) 97%, transparent 100%) 42vw 76vh / 44vmin 44vmin no-repeat,
+    /* large — bottom right */
+    radial-gradient(ellipse 24% 12% at 32% 20%, rgba(255,255,255,0.4), transparent) 88vw 66vh / 36vmin 36vmin no-repeat,
+    radial-gradient(circle closest-side at 36% 30%, rgba(255,255,255,0.14) 0%, rgba(235,175,240,0.18) 50%, rgba(245,200,250,0.26) 86%, rgba(255,255,255,0.6) 97%, transparent 100%) 88vw 66vh / 36vmin 36vmin no-repeat,
+    /* medium — left middle */
+    radial-gradient(ellipse 24% 12% at 32% 20%, rgba(255,255,255,0.4), transparent) 14vw 30vh / 24vmin 24vmin no-repeat,
+    radial-gradient(circle closest-side at 36% 30%, rgba(255,255,255,0.14) 0%, rgba(165,215,255,0.16) 50%, rgba(190,215,255,0.26) 86%, rgba(255,255,255,0.6) 97%, transparent 100%) 14vw 30vh / 24vmin 24vmin no-repeat,
+    /* small — top right */
+    radial-gradient(ellipse 24% 12% at 32% 20%, rgba(255,255,255,0.4), transparent) 90vw -6vh / 22vmin 22vmin no-repeat,
+    radial-gradient(circle closest-side at 36% 30%, rgba(255,255,255,0.14) 0%, rgba(170,205,255,0.16) 50%, rgba(200,220,255,0.26) 86%, rgba(255,255,255,0.6) 97%, transparent 100%) 90vw -6vh / 22vmin 22vmin no-repeat;
+}
+
+/* ── panels: neutral glass, no tint wash; hide decorative hairlines/blobs ── */
+.stat-card::after { display: none !important; }
+[class*="bg-card"] > .absolute.inset-x-0.top-0[class*="bg-"] { display: none; }
+
+@media (hover: hover) {
+  [class*="bg-card"]:not(.data-table-container):not(.master-theme-card):not([class*="bg-card/"]):hover,
+  .stat-card:hover,
+  .chart-card:hover,
+  .workflow-rule-card:hover,
+  .backup-panel:hover {
+    background:
+      linear-gradient(145deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.08) 48%, rgba(100, 95, 205, 0.12) 100%) !important;
+  }
+}
+
+/* ── legible text on glass ── */
+.text-primary { color: #ffffff !important; }
+.text-success { color: #c2f6df !important; }
+.text-danger { color: #ffc0cd !important; }
+.text-info { color: #cfe6ff !important; }
+
+/* pills/chips on the dashboard (Thursday…, Showing…) */
+.rounded-full.bg-secondary,
+.rounded-md.bg-secondary {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  color: #fff !important;
+}
+
+/* ── Period bar (wrapper lost its class, so target by structure) ── */
+div:has(> .period-field) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 16px;
+  padding: 16px 20px;
+  border-radius: 20px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
+}
+
+.period-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 150px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.period-field select,
+.period-field input {
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+  outline: none;
+  color-scheme: dark;
+}
+
+select, input[type="date"], input[type="month"] { color-scheme: dark; }
+
+/* Column header hover: no colour change, just a touch more glass blur. */
+.excel-grid.master-theme thead th.col-head-selectable:hover,
+.excel-grid.master-theme thead th.row-head-selectable:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+  background-color: rgba(255, 255, 255, 0.14) !important;
+  color: #fff !important;
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+/* Columns button: same transparent glass as Clear Filters and the selects. */
+.col-menu-btn,
+.col-menu-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  color: #fff !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.col-menu-btn:hover { background: rgba(255, 255, 255, 0.2) !important; }
+
+/* Popups always get at least 10px of backdrop blur. */
+.col-popover,
+[data-modal-overlay]>div {
+  -webkit-backdrop-filter: blur(22px) saturate(1.5);
+  backdrop-filter: blur(22px) saturate(1.5);
+}
+
+/* Columns popup: neutral clear glass, no colour tint. */
+.col-popover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.28) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 18px 40px rgba(0, 0, 0, 0.18) !important;
+}
+
+/* Filter dropdown lists: clear glass, no colour tint, >=10px blur.
+   Needs customizable <select> (Chromium 135+); older browsers keep native. */
+@supports (appearance: base-select) {
+  .filters-bar select,
+  .filter-group select,
+  .filters-bar select::picker(select),
+  .filter-group select::picker(select) {
+    appearance: base-select;
+  }
+
+  .filters-bar select::picker-icon,
+  .filter-group select::picker-icon {
+    display: none;
+  }
+
+  .filters-bar select::picker(select),
+  .filter-group select::picker(select) {
+    box-sizing: border-box;
+    min-width: anchor-size(width);
+    margin-top: 6px;
+    padding: 6px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.28) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 18px 40px rgba(0, 0, 0, 0.18);
+    -webkit-backdrop-filter: blur(22px) saturate(1.5);
+    backdrop-filter: blur(22px) saturate(1.5);
+  }
+
+  .filters-bar select option,
+  .filter-group select option {
+    display: block;
+    padding: 8px 14px;
+    margin: 2px 0;
+    border-radius: 10px;
+    background: transparent !important;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .filters-bar select option::checkmark,
+  .filter-group select option::checkmark {
+    display: none;
+  }
+
+  .filters-bar select option:hover,
+  .filters-bar select option:focus,
+  .filter-group select option:hover,
+  .filter-group select option:focus {
+    background: rgba(255, 255, 255, 0.16) !important;
+  }
+
+  .filters-bar select option:checked,
+  .filter-group select option:checked {
+    background: rgba(255, 255, 255, 0.24) !important;
+    font-weight: 700;
+  }
+}

@@ -303,7 +303,7 @@ export function useFullscreen() {
   }, [fullscreen]);
 
   const shellCls = fullscreen
-    ? "fixed inset-0 z-[3000] flex flex-col overflow-hidden bg-background"
+    ? "fixed inset-0 z-[3000] flex flex-col overflow-hidden bg-background px-0 py-4"
     : "";
   return { fullscreen, toggleFullscreen, shellCls };
 }

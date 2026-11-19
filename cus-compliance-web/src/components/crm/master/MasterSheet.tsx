@@ -1273,7 +1273,7 @@ export function MasterSheet() {
   };
 
   const shellCls = fullscreen
-    ? "fixed inset-0 z-[3000] flex flex-col bg-background p-4"
+    ? "fixed inset-0 z-[3000] flex flex-col bg-background px-0 py-4"
     : "";
 
   return (

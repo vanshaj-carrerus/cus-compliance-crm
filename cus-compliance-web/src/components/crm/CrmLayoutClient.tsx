@@ -22,6 +22,7 @@ const ALLOWED: CrmView[] = [
   "workflows",
   "backup",
   "admin",
+  "settings",
 ];
 
 function viewFromPath(pathname: string): CrmView {

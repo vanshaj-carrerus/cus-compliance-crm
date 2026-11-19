@@ -105,7 +105,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const features = user?.features ?? EMPTY_FEATURES;
 
   const canView = useCallback(
-    (view: string) => canAccessFeature(features, view),
+    // Appearance settings are per-browser, so every signed-in user gets them.
+    (view: string) => view === "settings" || canAccessFeature(features, view),
     [features]
   );
 

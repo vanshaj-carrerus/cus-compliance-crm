@@ -42,7 +42,7 @@ export function SaveIndicator() {
     <div
       role={clickable ? "button" : "status"}
       onClick={clickable ? () => void flushSave() : undefined}
-      className={`fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-1000 flex max-w-[92vw] -translate-x-1/2 items-center gap-2 rounded-full border border-border bg-card/95 px-3 py-1.5 text-[11px] shadow-sm backdrop-blur sm:left-auto sm:right-5 sm:translate-x-0 sm:rounded-(--radius) sm:px-4 sm:py-2 sm:text-xs ${color} ${clickable ? "cursor-pointer" : "pointer-events-none"}`}
+      className={`crm-save-pill fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-1000 flex max-w-[92vw] -translate-x-1/2 items-center gap-2 rounded-full border border-border bg-card/95 px-3.5 py-1.5 text-[11px] font-semibold shadow-sm backdrop-blur sm:left-auto sm:right-5 sm:translate-x-0 sm:rounded-full sm:px-4 sm:py-2 sm:text-xs ${color} ${clickable ? "cursor-pointer" : "pointer-events-none"}`}
     >
       <span>{icon}</span>
       <span>{label}</span>

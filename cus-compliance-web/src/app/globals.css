@@ -1,33 +1,56 @@
 @import "tailwindcss";
 
 :root {
-  --background: #eaf5f5;
-  --foreground: #203a40;
-  --primary: #15999a;
+  /* ── Aurora Glass design tokens (visual only) ── */
+  --background: #c9d6f7;
+  --foreground: #1a2352;
+  --primary: #5a6cf0;
   --primary-foreground: #ffffff;
-  --secondary: #f1f7f7;
-  --secondary-foreground: #203a40;
-  --accent: #15999a;
-  --accent-hover: #117e7f;
-  --muted: #70868b;
-  --border: #dcebea;
+  --secondary: rgba(88, 104, 238, 0.08);
+  --secondary-foreground: #1a2352;
+  --accent: #5a6cf0;
+  --accent-hover: #4656d6;
+  --muted: #5f6b9a;
+  --border: rgba(50, 60, 140, 0.14);
   --card: #ffffff;
-  --card-foreground: #203a40;
-  --input: #f1f7f7;
-  --danger: #e95761;
-  --warning: #d68a25;
-  --success: #1c9a68;
-  --info: #2f83dc;
-  --shadow: 0 14px 34px rgba(63, 103, 108, 0.09);
-  --radius: 12px;
-  --sidebar: #ffffff;
+  --card-foreground: #1a2352;
+  --input: rgba(255, 255, 255, 0.72);
+  --danger: #e04a5a;
+  --warning: #d38a1f;
+  --success: #17996a;
+  --info: #3a7fe0;
+  --shadow: 0 1px 2px rgba(30, 40, 110, 0.05), 0 14px 34px -14px rgba(30, 45, 120, 0.22);
+  --radius: 16px;
+
+  /* glass */
+  --glass-bg: linear-gradient(150deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.52));
+  --glass-bg-strong: linear-gradient(150deg, rgba(255, 255, 255, 0.92), rgba(244, 246, 255, 0.8));
+  --glass-border: rgba(255, 255, 255, 0.72);
+  --glass-blur: blur(20px) saturate(1.7);
+  --glass-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.28),
+    0 1px 2px rgba(30, 40, 110, 0.05),
+    0 18px 40px -18px rgba(30, 45, 120, 0.28);
+  --ink: #141b45;
+  --ink-2: #243066;
+  --brand-grad: linear-gradient(135deg, #4aa3f7 0%, #5a6cf0 50%, #8b63f0 100%);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --aurora:
+    radial-gradient(900px 640px at 6% -10%, rgba(120, 190, 255, 0.55), transparent 60%),
+    radial-gradient(800px 640px at 100% 0%, rgba(150, 140, 250, 0.5), transparent 60%),
+    radial-gradient(900px 700px at 80% 112%, rgba(240, 150, 220, 0.5), transparent 60%),
+    radial-gradient(700px 560px at -6% 100%, rgba(190, 140, 245, 0.5), transparent 60%),
+    linear-gradient(180deg, #b9cdf6, #aebcf2);
+  --sidebar: rgba(255, 255, 255, 0.6);
   --topbar: #ffffff;
-  --row-active: #e8f5f5;
+  --row-active: #e9edff;
   --row-paid: #eef8ff;
   --row-cancelled: #fff4f5;
   --row-runaway: #fff8ea;
   --row-lost: #fff4ee;
-  --freeze-bg: #edf4f7;
+  --freeze-bg: #eceffc;
 }
 
 @theme inline {
@@ -255,11 +278,11 @@ body {
 
 .excel-grid .row-head-selectable:hover,
 .excel-grid .col-head-selectable:hover {
-  background-color: rgba(21, 153, 154, 0.14) !important;
+  background-color: rgba(63, 143, 224, 0.14) !important;
 }
 
 .excel-grid td.cell-selected {
-  background-color: rgba(21, 153, 154, 0.14) !important;
+  background-color: rgba(63, 143, 224, 0.14) !important;
   box-shadow: inset 0 0 0 1.5px var(--primary);
 }
 
@@ -284,7 +307,7 @@ body {
 }
 
 .excel-grid .inst-text:hover {
-  background: rgba(21, 153, 154, 0.08);
+  background: rgba(63, 143, 224, 0.08);
 }
 
 .excel-grid .calc-cell {
@@ -692,7 +715,7 @@ body {
   width: 76px;
   height: 76px;
   border-radius: 50%;
-  background: rgba(21, 153, 154, 0.1);
+  background: rgba(63, 143, 224, 0.1);
   pointer-events: none;
 }
 
@@ -782,7 +805,7 @@ body {
   flex-wrap: wrap;
   padding: 16px 20px;
   border-bottom: 1px solid var(--border);
-  background: linear-gradient(180deg, rgba(21, 153, 154, 0.04), transparent);
+  background: linear-gradient(180deg, rgba(63, 143, 224, 0.04), transparent);
   min-height: 68px;
 }
 
@@ -866,7 +889,7 @@ body {
 }
 
 .data-table td.cell-selected {
-  background-color: rgba(21, 153, 154, 0.14) !important;
+  background-color: rgba(63, 143, 224, 0.14) !important;
   box-shadow: inset 0 0 0 1.5px var(--primary);
 }
 
@@ -908,7 +931,7 @@ body {
 }
 
 .data-table tbody tr:hover {
-  background: rgba(21, 153, 154, 0.05);
+  background: rgba(63, 143, 224, 0.05);
 }
 
 .data-table .empty-row {
@@ -938,7 +961,7 @@ body {
 
 .target-input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 2px rgba(21, 153, 154, 0.15);
+  box-shadow: 0 0 0 2px rgba(63, 143, 224, 0.15);
 }
 
 .target-input.date {
@@ -1400,7 +1423,7 @@ body {
 }
 
 .excel-grid.master-theme tbody tr.row-cancelled>td.cell-selected {
-  background-color: rgba(21, 153, 154, 0.14) !important;
+  background-color: rgba(63, 143, 224, 0.14) !important;
 }
 
 /* Master sheet dropdowns: grey pill chip, centered value, small black
@@ -1427,7 +1450,7 @@ body {
 
 .excel-grid.master-theme select.sheet-cell:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(21, 153, 154, 0.35);
+  box-shadow: 0 0 0 2px rgba(63, 143, 224, 0.35);
 }
 
 /* Master sheet dropdown LIST: pill-style options. Uses the customizable
@@ -1632,7 +1655,7 @@ body {
 }
 
 .data-table-container .data-table tbody td.cell-selected {
-  background-color: rgba(21, 153, 154, 0.14) !important;
+  background-color: rgba(63, 143, 224, 0.14) !important;
 }
 
 .data-table-container .data-table .sheet-cell,
@@ -1678,7 +1701,7 @@ body {
 
 .data-table-container .data-table select:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(21, 153, 154, 0.35);
+  box-shadow: 0 0 0 2px rgba(63, 143, 224, 0.35);
 }
 
 @supports (appearance: base-select) {
@@ -1976,7 +1999,7 @@ label {
 }
 
 .phone-copy-btn:hover:not(:disabled) {
-  background: rgba(21, 153, 154, 0.12);
+  background: rgba(63, 143, 224, 0.12);
   color: var(--primary);
 }
 
@@ -2340,6 +2363,7 @@ table[data-col-ready] [data-col-hidden] {
     animation: none !important;
   }
 }
+
 /* ───────── Active-filter highlight ─────────
    Styling only: a filter whose dropdown is set to anything other than its
    "All"/empty option gets a teal tint, a stronger border, a small dot on its
@@ -2349,25 +2373,28 @@ table[data-col-ready] [data-col-hidden] {
 .filters-bar select,
 .filter-group select,
 .filter-icon,
-.filters-bar > button.btn-secondary {
+.filters-bar>button.btn-secondary {
   transition:
     background-color 0.25s ease,
     border-color 0.25s ease,
     color 0.25s ease,
     box-shadow 0.25s ease;
 }
+
 .filter-group select:has(option:checked:not([value=""])) {
-  background-color: rgba(21, 153, 154, 0.12);
+  background-color: rgba(63, 143, 224, 0.12);
   border-color: var(--primary);
   color: var(--primary);
   font-weight: 700;
-  box-shadow: 0 0 0 3px rgba(21, 153, 154, 0.14);
+  box-shadow: 0 0 0 3px rgba(63, 143, 224, 0.14);
 }
+
 .filter-group:has(select option:checked:not([value=""])) .filter-icon {
   position: relative;
-  background: rgba(21, 153, 154, 0.16);
+  background: rgba(63, 143, 224, 0.16);
   color: var(--primary);
 }
+
 .filter-group:has(select option:checked:not([value=""])) .filter-icon::after {
   content: "";
   position: absolute;
@@ -2380,7 +2407,8 @@ table[data-col-ready] [data-col-hidden] {
   border: 2px solid var(--card);
   animation: col-pop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.filters-bar:has(.filter-group select option:checked:not([value=""])) > button.btn-secondary {
+
+.filters-bar:has(.filter-group select option:checked:not([value=""]))>button.btn-secondary {
   background: var(--primary);
   border-color: var(--primary);
   color: #fff;
@@ -2401,6 +2429,7 @@ table[data-col-ready] [data-col-hidden] {
   box-sizing: border-box;
   text-overflow: ellipsis;
 }
+
 .data-table-resizable td select {
   max-width: 100%;
   min-width: 0;

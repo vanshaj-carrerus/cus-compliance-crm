@@ -23,6 +23,7 @@ import { Reports } from "./views/Reports";
 import { Workflows } from "./views/Workflows";
 import { Backup } from "./views/Backup";
 import { AdminUsers } from "./views/AdminUsers";
+import { SettingsPage } from "./views/Settings";
 import { ViewDataSkeleton } from "./Skeleton";
 import { downloadBlob } from "@/lib/crm/csv";
 import { markBackupDownloaded } from "@/lib/crm/backup-meta";
@@ -240,6 +241,7 @@ function CrmShellInner() {
         workflows: <Workflows />,
         backup: <Backup />,
         admin: isAdmin ? <AdminUsers /> : null,
+        settings: <SettingsPage />,
       }[currentView]
     : null;
 
@@ -298,35 +300,28 @@ function CrmShellInner() {
       {switcher && (
         <div className="pointer-events-none fixed inset-x-0 bottom-6 z-6000 flex justify-center px-3">
           <div
-            className={`crm-switcher-dock crm-switcher-track flex max-w-[95vw] items-end -gap-20 overflow-x-auto rounded-[22px] border border-white/25 bg-white/10 px-1.5 py-1.5 shadow-2xl backdrop-blur-2xl backdrop-saturate-150 ${
+            className={`crm-switcher-dock crm-switcher-track flex max-w-[95vw] items-end gap-1 overflow-x-auto px-2.5 pb-2 pt-3 ${
               switcher.status === "closing" ? "crm-switcher-closing" : ""
             }`}
           >
             {navItems.map((item, i) => {
               const selected = i === switcher.index;
               const isCurrent = item.view === currentView;
+              const dist = Math.min(Math.abs(i - switcher.index), 3);
               return (
-                <div key={item.view} className="flex shrink-0 flex-col items-center px-0.5">
-                  <span
-                    className={`mb-1 whitespace-nowrap rounded-md bg-black/30 px-1.5 py-0.5 text-[9px] font-medium leading-tight text-white transition-opacity duration-150 ${
-                      selected ? "opacity-100" : "opacity-0"
-                    }`}
-                  >
-                    {item.label}
-                  </span>
-                  <div
-                    className={`crm-switcher-icon flex items-center justify-center rounded-xl transition-all duration-200 ease-out ${
-                      selected
-                        ? "-translate-y-2 scale-[1.18] bg-white/20 shadow-lg"
-                        : "bg-white/6"
-                    }`}
-                  >
+                <div
+                  key={item.view}
+                  data-dist={dist}
+                  data-selected={selected ? "true" : undefined}
+                  style={{ "--i": i } as React.CSSProperties}
+                  className="crm-switcher-item flex shrink-0 flex-col items-center px-0.5"
+                >
+                  <span className="crm-switcher-label">{item.label}</span>
+                  <div className="crm-switcher-icon flex items-center justify-center rounded-[14px]">
                     {item.icon}
                   </div>
                   <span
-                    className={`mt-1 h-0.75 w-0.75 rounded-full bg-white transition-opacity duration-150 ${
-                      isCurrent ? "opacity-80" : "opacity-0"
-                    }`}
+                    className={`crm-switcher-dot ${isCurrent ? "is-current" : ""}`}
                   />
                 </div>
               );
