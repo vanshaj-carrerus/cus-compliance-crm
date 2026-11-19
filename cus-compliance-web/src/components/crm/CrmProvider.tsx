@@ -92,6 +92,8 @@ interface CrmContextValue {
   setSmartFilter: (f: { type: string; amount?: number } | null) => void;
   toast: (msg: string, type?: ToastType) => void;
   filtered: (list?: Candidate[]) => Candidate[];
+  /** Non-empty for Compliance Users: the only assignee they can see/own. */
+  scopedTo: string;
   snapshot: () => void;
   undo: () => void;
   redo: () => void;
@@ -195,7 +197,13 @@ export function CrmProvider({
   const [currentView, setCurrentView] = useState<CrmView>(initialView);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<ActiveFilters>({});
-  const { user } = useAuth();
+  const { user, role: authRole } = useAuth();
+  // Compliance Users only ever see/own their own candidates (the server
+  // enforces this; here it just fills in "Assigned To" for new rows).
+  const scopedTo =
+    authRole && authRole !== "compliance_admin" && user
+      ? (user.name || user.email.split("@")[0]).trim()
+      : "";
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({
     phase: "idle",
     pending: 0,
@@ -551,7 +559,9 @@ export function CrmProvider({
         const res = await fetch("/api/crm/assignees");
         if (!res.ok) return;
         const data = await res.json();
-        if (!cancelled) setAssignableUsers(data.assignees || []);
+        if (!cancelled) setAssignableUsers(
+          scopedTo ? [scopedTo] : data.assignees || []
+        );
       } catch (e) {
         console.error(e);
       }
@@ -559,7 +569,7 @@ export function CrmProvider({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [scopedTo]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -686,6 +696,7 @@ export function CrmProvider({
       id: editingId || newId(),
       ...old,
       ...data,
+      ...(scopedTo ? { assignedTo: scopedTo } : {}),
       name,
       installments: data.installments ?? old?.installments,
       createdAt: old ? old.createdAt : undefined,
@@ -758,7 +769,7 @@ export function CrmProvider({
   const addBlankRow = (position: "top" | "bottom" = "bottom") => {
     const { candidates } = stateRef.current;
     snapshot();
-    const blank = normalizeCandidate({ id: newId() });
+    const blank = normalizeCandidate({ id: newId(), assignedTo: scopedTo });
     setCandidates(position === "top" ? [blank, ...candidates] : [...candidates, blank]);
     queueSave();
     toast(`Blank row added to ${position === "top" ? "top" : "bottom"}`, "success");
@@ -1386,6 +1397,7 @@ export function CrmProvider({
     setSmartFilter,
     toast,
     filtered,
+    scopedTo,
     snapshot,
     undo,
     redo,

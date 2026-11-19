@@ -5,6 +5,7 @@ import { PaymentHistoryModel } from "@/lib/models/PaymentHistory";
 import { SettingsModel } from "@/lib/models/Settings";
 import { normalizeCandidate, mergeSettings } from "@/lib/crm";
 import { corsPreflightResponse, jsonWithCors } from "@/lib/cors";
+import { getCandidateScope, foreignCandidateIds, ownIdSet, mergeScopedSettings } from "@/lib/crm-scope";
 
 export const dynamic = "force-dynamic";
 
@@ -85,8 +86,8 @@ export async function POST(req: NextRequest) {
     const rawCandidates = Array.isArray(body.candidates) ? body.candidates : [];
     const rawHistory = Array.isArray(body.history) ? body.history : [];
     const rawPatches = Array.isArray(body.patches) ? body.patches : [];
-    const delCandidates = finiteIds(body.deletedCandidateIds);
-    const delHistory = finiteIds(body.deletedHistoryIds);
+    let delCandidates = finiteIds(body.deletedCandidateIds);
+    let delHistory = finiteIds(body.deletedHistoryIds);
 
     if (
       rawCandidates.length + rawPatches.length + rawHistory.length + delCandidates.length + delHistory.length >
@@ -97,10 +98,63 @@ export async function POST(req: NextRequest) {
 
     await connectDB();
 
-    const candidates = rawCandidates
+    const scope = await getCandidateScope(req);
+    if (!scope) return jsonWithCors(req, { error: "Unauthorized" }, { status: 401 });
+
+    let candidates = rawCandidates
       .filter((c) => Number.isFinite(Number(c?.id)))
       .map((c) => normalizeCandidate(c));
-    const history = rawHistory.filter((h) => Number.isFinite(Number(h?.id)));
+    let history = rawHistory.filter((h) => Number.isFinite(Number(h?.id)));
+    let scopedPatches = rawPatches;
+
+    if (scope.restricted) {
+      // Scoped (Compliance User) saves may only touch their OWN candidates:
+      // anything aimed at someone else's record is silently dropped, and a
+      // record can't be handed to another user.
+      const foreign = await foreignCandidateIds(scope, [
+        ...candidates.map((c) => c.id),
+        ...rawPatches.map((p) => Number(p?.id)).filter(Number.isFinite),
+        ...delCandidates,
+      ]);
+      candidates = candidates
+        .filter((c) => !foreign.has(c.id))
+        .map((c) => (scope.owns(c.assignedTo) ? c : { ...c, assignedTo: scope.primary }));
+      scopedPatches = rawPatches
+        .filter((p) => !foreign.has(Number(p?.id)))
+        .map((p) => {
+          const set = { ...((p.set as Record<string, unknown>) || {}) };
+          delete set.assignedTo;
+          const unset = Array.isArray(p.unset) ? p.unset.filter((k) => k !== "assignedTo") : p.unset;
+          return { ...p, set, unset };
+        });
+      delCandidates = delCandidates.filter((id) => !foreign.has(id));
+
+      const own = new Set(candidates.map((c) => c.id));
+      const refIds = [
+        ...history.map((h) => Number(h.candidateId)),
+        ...(delHistory.length
+          ? (
+              (await PaymentHistoryModel.find({ id: { $in: delHistory } }, { candidateId: 1, id: 1, _id: 0 }).lean()) as {
+                candidateId: number;
+              }[]
+            ).map((h) => h.candidateId)
+          : []),
+      ].filter(Number.isFinite);
+      if (refIds.length) {
+        (
+          (await CandidateModel.find({ id: { $in: refIds }, ...scope.filter }, { id: 1, _id: 0 }).lean()) as { id: number }[]
+        ).forEach((d) => own.add(d.id));
+      }
+      history = history.filter((h) => own.has(Number(h.candidateId)));
+      if (delHistory.length) {
+        const rows = (await PaymentHistoryModel.find({ id: { $in: delHistory } }, { candidateId: 1, id: 1, _id: 0 }).lean()) as {
+          id: number;
+          candidateId: number;
+        }[];
+        const okIds = new Set(rows.filter((r) => own.has(r.candidateId)).map((r) => r.id));
+        delHistory = delHistory.filter((id) => okIds.has(id));
+      }
+    }
 
     if (candidates.length) {
       const res = await CandidateModel.bulkWrite(
@@ -123,7 +177,7 @@ export async function POST(req: NextRequest) {
     // field). A patch for a document that no longer exists is reported back
     // as "missing"; the client then sends that candidate whole.
     const missing: number[] = [];
-    const patches = rawPatches
+    const patches = scopedPatches
       .map(cleanPatch)
       .filter((p): p is NonNullable<ReturnType<typeof cleanPatch>> => p !== null);
     if (patches.length) {
@@ -176,9 +230,15 @@ export async function POST(req: NextRequest) {
     }
 
     if (body.settings && typeof body.settings === "object") {
+      let nextSettings = mergeSettings(body.settings);
+      if (scope.restricted) {
+        const doc = await SettingsModel.findOne({ key: "settings" }).lean();
+        const existing = mergeSettings((doc?.value as Record<string, unknown>) || null);
+        nextSettings = mergeScopedSettings(existing, nextSettings, await ownIdSet(scope));
+      }
       await SettingsModel.findOneAndUpdate(
         { key: "settings" },
-        { key: "settings", value: mergeSettings(body.settings) },
+        { key: "settings", value: nextSettings },
         { upsert: true }
       );
     }

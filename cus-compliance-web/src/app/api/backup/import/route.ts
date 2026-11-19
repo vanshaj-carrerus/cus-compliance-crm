@@ -4,12 +4,18 @@ import { CandidateModel } from "@/lib/models/Candidate";
 import { PaymentHistoryModel } from "@/lib/models/PaymentHistory";
 import { SettingsModel } from "@/lib/models/Settings";
 import { normalizeCandidate, mergeSettings } from "@/lib/crm";
+import { getCandidateScope } from "@/lib/crm-scope";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
+    const scope = await getCandidateScope(req);
+    if (!scope) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // A restore wipes and replaces EVERYTHING - Compliance Admin only.
+    if (scope.restricted)
+      return NextResponse.json({ error: "Only a Compliance Admin can restore a backup" }, { status: 403 });
     const data = await req.json();
     if (!Array.isArray(data.candidates)) {
       return NextResponse.json(

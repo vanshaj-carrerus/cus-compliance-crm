@@ -245,6 +245,10 @@ export function MasterSheet() {
     bulkSelected,
     setBulkSelected,
     smartFilter,
+    scopedTo,
+    searchQuery,
+    activeFilters,
+    syncStatus,
     setSmartFilter,
     assignableUsers,
     getRemaining: _gr,
@@ -322,22 +326,23 @@ export function MasterSheet() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [fullscreen]);
 
-  let list = filtered();
+  const [srvError, setSrvError] = useState(false);
+  let fullList = smartFilter || srvError ? filtered() : [];
 
   if (smartFilter) {
     const t = todayIso();
     if (smartFilter.type === "overdue") {
-      list = list.filter((c) => {
+      fullList = fullList.filter((c) => {
         const n = getNextDueDate(c);
         return n && n < t && getRemaining(c) > 0;
       });
     } else if (smartFilter.type === "missingPhone") {
-      list = list.filter((c) => !phoneOf(c) && c.status === "Active");
+      fullList = fullList.filter((c) => !phoneOf(c) && c.status === "Active");
     } else if (smartFilter.type === "highBalance") {
       const amt = smartFilter.amount || 5000;
-      list = list.filter((c) => getRemaining(c) >= amt);
+      fullList = fullList.filter((c) => getRemaining(c) >= amt);
     } else if (smartFilter.type === "focus") {
-      list = list
+      fullList = fullList
         .filter((c) => getRemaining(c) > 0 && c.status === "Active")
         .sort((a, b) => {
           const da = getNextDueDate(a) || "9999";
@@ -346,13 +351,13 @@ export function MasterSheet() {
         });
     } else if (smartFilter.type === "duplicates") {
       const names = new Map<string, number>();
-      list.forEach((c) => {
+      fullList.forEach((c) => {
         const k = c.name.toLowerCase().trim();
         names.set(k, (names.get(k) || 0) + 1);
       });
-      list = list.filter((c) => (names.get(c.name.toLowerCase().trim()) || 0) > 1);
+      fullList = fullList.filter((c) => (names.get(c.name.toLowerCase().trim()) || 0) > 1);
     } else if (smartFilter.type === "missingData") {
-      list = list.filter(
+      fullList = fullList.filter(
         (c) => !phoneOf(c) || !getNextDueDate(c) || !c.totalServiceFee
       );
     }
@@ -361,16 +366,120 @@ export function MasterSheet() {
   if (followupFilter) {
     const t = todayIso();
     if (followupFilter === "overdue")
-      list = list.filter((c) => c.nextFollowUpDate && c.nextFollowUpDate < t);
+      fullList = fullList.filter((c) => c.nextFollowUpDate && c.nextFollowUpDate < t);
     if (followupFilter === "today")
-      list = list.filter((c) => c.nextFollowUpDate === t);
+      fullList = fullList.filter((c) => c.nextFollowUpDate === t);
     if (followupFilter === "future")
-      list = list.filter((c) => c.nextFollowUpDate && c.nextFollowUpDate > t);
+      fullList = fullList.filter((c) => c.nextFollowUpDate && c.nextFollowUpDate > t);
     if (followupFilter === "never")
-      list = list.filter((c) => !c.nextFollowUpDate);
+      fullList = fullList.filter((c) => !c.nextFollowUpDate);
   }
   if (methodFilter)
-    list = list.filter((c) => c.contactMethod === methodFilter);
+    fullList = fullList.filter((c) => c.contactMethod === methodFilter);
+
+  // --- Pagination (server-side) ---------------------------------------------
+  // The API (/api/candidates/page) runs search + filters over ALL candidates
+  // in MongoDB and returns only the rows of the requested page. Smart filters
+  // (computed values like overdue / balance) and a failed fetch fall back to
+  // the in-memory path below. pageSize 0 = all.
+  const [pageSize, setPageSize] = useState<number>(() => {
+    try {
+      if (typeof window === "undefined") return 50;
+      const v = localStorage.getItem("masterSheetPageSize");
+      return v != null && [0, 50, 100, 500].includes(Number(v)) ? Number(v) : 50;
+    } catch {
+      return 50;
+    }
+  });
+  const [page, setPage] = useState(0);
+  const [srv, setSrv] = useState<{
+    rows: Candidate[];
+    total: number;
+    totalPages: number;
+    totals: { committed: number; paid: number; remaining: number };
+  } | null>(null);
+  const clientMode = !!smartFilter || srvError;
+  const savedTick = syncStatus.lastSavedAt;
+
+  // Any change to search/filters sends you back to page 1.
+  const filterKey = JSON.stringify([searchQuery, activeFilters, followupFilter, methodFilter, smartFilter?.type ?? ""]);
+  const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
+  if (prevFilterKey !== filterKey) {
+    setPrevFilterKey(filterKey);
+    setPage(0);
+  }
+
+  useEffect(() => {
+    if (clientMode) return;
+    const ac = new AbortController();
+    const t = setTimeout(
+      async () => {
+        try {
+          const p = new URLSearchParams({
+            page: String(page),
+            size: String(pageSize),
+            today: todayIso(),
+          });
+          if (searchQuery.trim()) p.set("q", searchQuery.trim());
+          for (const [k, v] of Object.entries(activeFilters)) if (v) p.set(k, String(v));
+          if (followupFilter) p.set("followup", followupFilter);
+          if (methodFilter) p.set("method", methodFilter);
+          const res = await fetch(`/api/candidates/page?${p}`, {
+            cache: "no-store",
+            signal: ac.signal,
+          });
+          if (!res.ok) throw new Error("page fetch failed");
+          const data = await res.json();
+          setSrv({
+            rows: (data.candidates || []).map((x: Candidate) => normalizeCandidate(x)),
+            total: data.total,
+            totalPages: data.totalPages,
+            totals: data.totals,
+          });
+          if (data.page !== page) setPage(data.page);
+        } catch (e) {
+          if ((e as Error)?.name !== "AbortError") setSrvError(true);
+        }
+      },
+      searchQuery ? 250 : 0
+    );
+    return () => {
+      clearTimeout(t);
+      ac.abort();
+    };
+  }, [clientMode, page, pageSize, searchQuery, activeFilters, followupFilter, methodFilter, savedTick]);
+
+  const byId = useMemo(() => new Map(candidates.map((c) => [c.id, c])), [candidates]);
+  const matchCount = clientMode ? fullList.length : (srv?.total ?? 0);
+  const totalPages = clientMode
+    ? pageSize === 0 ? 1 : Math.max(1, Math.ceil(fullList.length / pageSize))
+    : Math.max(1, srv?.totalPages ?? 1);
+  const curPage = Math.min(page, totalPages - 1);
+  const pageStart = pageSize === 0 ? 0 : curPage * pageSize;
+  // Rows come from the server, but are shown as the live in-memory copy so
+  // edits/deletes made locally appear instantly (and unsaved edits survive).
+  const list: Candidate[] = clientMode
+    ? pageSize === 0
+      ? fullList
+      : fullList.slice(pageStart, pageStart + pageSize)
+    : (srv?.rows ?? []).flatMap((r) =>
+        candidates.length ? (byId.get(r.id) ?? []) : [r]
+      );
+  const loadingPage = !clientMode && srv == null;
+  const kpi = clientMode
+    ? {
+        committed: fullList.reduce((s, c) => s + (Number(c.totalServiceFee) || 0), 0),
+        paid: fullList.reduce((s, c) => s + getTotalPaid(c), 0),
+        remaining: fullList.reduce((s, c) => s + getRemaining(c), 0),
+      }
+    : (srv?.totals ?? { committed: 0, paid: 0, remaining: 0 });
+  const changePageSize = (n: number) => {
+    setPageSize(n);
+    setPage(0);
+    try {
+      localStorage.setItem("masterSheetPageSize", String(n));
+    } catch {}
+  };
 
   // --- Row drag-to-reorder -------------------------------------------------
   // `list` can be a filtered subset of `candidates`, so a drag only ever
@@ -694,7 +803,7 @@ export function MasterSheet() {
           ci = next.findIndex((c) => c.id === id);
           if (ci < 0) continue;
         } else {
-          next.push(normalizeCandidate({ id: newId() }));
+          next.push(normalizeCandidate({ id: newId(), assignedTo: scopedTo }));
           ci = next.length - 1;
           created += 1;
           if (showProgress) {
@@ -723,7 +832,7 @@ export function MasterSheet() {
         "success"
       );
     },
-    [candidates, applyRowFields, setCandidates, queueSave, toast]
+    [candidates, scopedTo, applyRowFields, setCandidates, queueSave, toast]
   );
 
   const lastPasteRef = useRef({ text: "", at: 0 });
@@ -1283,7 +1392,7 @@ export function MasterSheet() {
           {smartFilter && (
             <div className="mb-3 flex items-center justify-between rounded-(--radius) border border-primary/30 bg-primary/5 px-4 py-2 text-sm">
               <span>
-                ✨ Smart filter active · {list.length} matching candidates
+                ✨ Smart filter active · {matchCount} matching candidates
               </span>
               <button
                 type="button"
@@ -1311,24 +1420,24 @@ export function MasterSheet() {
               <div className="master-kpis">
                 <div className="master-kpi">
                   <div className="master-kpi-label">Total Candidates</div>
-                  <div className="master-kpi-value">{list.length}</div>
+                  <div className="master-kpi-value">{matchCount}</div>
                 </div>
                 <div className="master-kpi">
                   <div className="master-kpi-label">Total Committed</div>
                   <div className="master-kpi-value">
-                    {money(list.reduce((s, c) => s + (Number(c.totalServiceFee) || 0), 0))}
+                    {money(kpi.committed)}
                   </div>
                 </div>
                 <div className="master-kpi">
                   <div className="master-kpi-label">Total Realized</div>
                   <div className="master-kpi-value">
-                    {money(list.reduce((s, c) => s + getTotalPaid(c), 0))}
+                    {money(kpi.paid)}
                   </div>
                 </div>
                 <div className="master-kpi">
                   <div className="master-kpi-label">Outstanding</div>
                   <div className="master-kpi-value">
-                    {money(list.reduce((s, c) => s + getRemaining(c), 0))}
+                    {money(kpi.remaining)}
                   </div>
                 </div>
               </div>
@@ -1588,8 +1697,53 @@ export function MasterSheet() {
               ))}
             </tbody>
           </table>
-          {!list.length && <EmptyDataNotice message="No candidates found." />}
+          {!list.length && !loadingPage && <EmptyDataNotice message="No candidates found." />}
         </div>
+        {matchCount > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-card px-3 py-2 text-xs text-muted">
+            <span>
+              Showing {pageStart + 1}–{pageStart + list.length} of {matchCount}
+            </span>
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-1">
+                Rows per page
+                <select
+                  value={pageSize}
+                  onChange={(e) => changePageSize(Number(e.target.value))}
+                  className="rounded border border-border bg-card px-1.5 py-1 text-card-foreground"
+                >
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                  <option value={500}>500</option>
+                  <option value={0}>All</option>
+                </select>
+              </label>
+              {pageSize !== 0 && (
+                <>
+                  <button
+                    type="button"
+                    disabled={curPage === 0}
+                    onClick={() => setPage(curPage - 1)}
+                    className="rounded border border-border px-2 py-1 disabled:opacity-40"
+                  >
+                    ‹ Prev
+                  </button>
+                  <span>
+                    Page {curPage + 1} / {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={curPage >= totalPages - 1}
+                    onClick={() => setPage(curPage + 1)}
+                    className="rounded border border-border px-2 py-1 disabled:opacity-40"
+                  >
+                    Next ›
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {bulkSelected.size > 0 && (
