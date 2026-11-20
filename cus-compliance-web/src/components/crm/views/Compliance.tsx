@@ -3,6 +3,12 @@
 import { useCrm } from "../CrmProvider";
 import { FiltersBar } from "../FiltersBar";
 import {
+  BulkActionBar,
+  BulkHeaderCheck,
+  BulkRowCheck,
+  useBulkSelection,
+} from "../BulkSelect";
+import {
   Badge,
   ColumnResizeHandle,
   CrmTable,
@@ -76,12 +82,19 @@ export function Compliance() {
     snapshot,
     toast,
     assignableUsers,
+    bulkSelected,
+    setBulkSelected,
   } = useCrm();
   // Every candidate from Master shows here (including Cancelled / Fully Paid,
   // no balance condition) so users can see who each one is assigned to.
   const list = filtered();
   const { fullscreen, toggleFullscreen, shellCls } = useFullscreen();
   const rows = list;
+  const bulk = useBulkSelection(
+    bulkSelected,
+    setBulkSelected,
+    rows.map((r) => r.id)
+  );
 
   // Last Pay / Next Due are derived from the installment schedule, so an edit
   // is written onto the installment they come from (see setLastPaymentDate /
@@ -444,6 +457,11 @@ export function Compliance() {
         <CrmTable resizable selectable>
           <thead>
             <tr>
+              <BulkHeaderCheck
+                allChecked={bulk.allChecked}
+                someChecked={bulk.someChecked}
+                onToggle={bulk.toggleAll}
+              />
               {orderedColumns.map((col) => {
                 const hp = headerProps(col.key);
                 return (
@@ -471,7 +489,11 @@ export function Compliance() {
           <tbody>
             {rows.length ? (
               rows.map((x, rowIdx) => (
-                <tr key={x.id}>
+                <tr key={x.id} className={bulk.isSelected(x.id) ? "bulk-selected" : ""}>
+                  <BulkRowCheck
+                    checked={bulk.isSelected(x.id)}
+                    onToggle={(v) => bulk.toggleOne(x.id, v)}
+                  />
                   {orderedColumns.map((col, colIdx) => (
                     <td
                       key={col.key}
@@ -487,11 +509,15 @@ export function Compliance() {
                 </tr>
               ))
             ) : (
-              <EmptyTableRow colSpan={11} message="No candidates." />
+              <EmptyTableRow colSpan={12} message="No candidates." />
             )}
           </tbody>
         </CrmTable>
       </DataTableContainer>
+      <BulkActionBar
+        selectedIds={bulk.selectedIds}
+        clear={() => setBulkSelected(new Set())}
+      />
       <SheetCaptureField {...captureProps} />
       <PasteProgressOverlay pasteProgress={pasteProgress} />
     </div>

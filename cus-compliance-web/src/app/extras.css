@@ -204,6 +204,11 @@
   .tm-viewport { overflow-x: auto; scrollbar-width: none; }
 }
 
+/* Row ticked in a sheet's checkbox column (bulk actions) */
+.data-table tbody tr.bulk-selected > td {
+  box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--primary, #3f676c) 10%, transparent);
+}
+
 /* ── Task box (modal) ──────────────────────────────────────────────────── */
 .tk-overlay {
   position: fixed;

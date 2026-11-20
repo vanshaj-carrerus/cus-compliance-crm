@@ -3,6 +3,12 @@
 import { useCrm } from "../CrmProvider";
 import { FiltersBar } from "../FiltersBar";
 import {
+  BulkActionBar,
+  BulkHeaderCheck,
+  BulkRowCheck,
+  useBulkSelection,
+} from "../BulkSelect";
+import {
   Badge,
   ColumnResizeHandle,
   CrmTable,
@@ -63,8 +69,10 @@ export function PaymentTarget() {
     toast,
     showAddModal,
     assignableUsers,
+    bulkSelected,
+    setBulkSelected,
   } = useCrm();
-  const d = new Date(settings.targetMonth);
+  const d =new Date(settings.targetMonth);
   // Re-evaluated from every candidate on each render:
   //  - Fully Paid: never shown.
   //  - Active: always shown.
@@ -83,6 +91,11 @@ export function PaymentTarget() {
   };
   const { fullscreen, toggleFullscreen, shellCls } = useFullscreen();
   const rows = list;
+  const bulk = useBulkSelection(
+    bulkSelected,
+    setBulkSelected,
+    rows.map((r) => r.id)
+  );
 
   type Row = { x: Candidate; due: number; pri: string };
   const columns: {
@@ -511,6 +524,11 @@ export function PaymentTarget() {
         <CrmTable minWidth="1200px" resizable selectable>
           <thead>
             <tr>
+              <BulkHeaderCheck
+                allChecked={bulk.allChecked}
+                someChecked={bulk.someChecked}
+                onToggle={bulk.toggleAll}
+              />
               {orderedColumns.map((col) => {
                 const hp = headerProps(col.key);
                 return (
@@ -540,7 +558,11 @@ export function PaymentTarget() {
               rows.map((x, rowIdx) => {
                 const row: Row = { x, due: getDueForMonth(x, d), pri: priority(x, d) };
                 return (
-                  <tr key={x.id}>
+                  <tr key={x.id} className={bulk.isSelected(x.id) ? "bulk-selected" : ""}>
+                    <BulkRowCheck
+                      checked={bulk.isSelected(x.id)}
+                      onToggle={(v) => bulk.toggleOne(x.id, v)}
+                    />
                     {orderedColumns.map((col, colIdx) => {
                       const cls =
                         typeof col.className === "function"
@@ -564,13 +586,17 @@ export function PaymentTarget() {
               })
             ) : (
               <EmptyTableRow
-                colSpan={15}
+                colSpan={16}
                 message="No candidates in Payment Target."
               />
             )}
           </tbody>
         </CrmTable>
       </DataTableContainer>
+      <BulkActionBar
+        selectedIds={bulk.selectedIds}
+        clear={() => setBulkSelected(new Set())}
+      />
       <SheetCaptureField {...captureProps} />
       <PasteProgressOverlay pasteProgress={pasteProgress} />
     </div>

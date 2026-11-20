@@ -3,6 +3,12 @@
 import { useCrm } from "../CrmProvider";
 import { EmptyDataNotice } from "../DataStates";
 import {
+  BulkActionBar,
+  BulkHeaderCheck,
+  BulkRowCheck,
+  useBulkSelection,
+} from "../BulkSelect";
+import {
   Badge,
   ColumnResizeHandle,
   FullscreenButton,
@@ -101,22 +107,11 @@ export function DailyFollowUp({
     ...new Set(candidates.map((c) => c.status).filter(Boolean)),
   ];
 
-  const toggleAll = (checked: boolean) => {
-    const next = new Set(dailySelected);
-    rows.forEach((r) => {
-      const id = String(r.candidate.id);
-      if (checked) next.add(id);
-      else next.delete(id);
-    });
-    setDailySelected(next);
-  };
-
-  const toggleOne = (id: string, checked: boolean) => {
-    const next = new Set(dailySelected);
-    if (checked) next.add(id);
-    else next.delete(id);
-    setDailySelected(next);
-  };
+  const bulk = useBulkSelection(
+    dailySelected,
+    setDailySelected,
+    rows.map((r) => r.candidate.id)
+  );
 
   const { fullscreen, toggleFullscreen, shellCls } = useFullscreen();
 
@@ -527,16 +522,16 @@ export function DailyFollowUp({
         </button>
         <button
           type="button"
-          disabled={dailySelected.size === 0}
+          disabled={bulk.count === 0}
           className="w-full rounded bg-success px-3 py-2 text-xs font-medium text-white disabled:opacity-50 sm:w-auto"
           onClick={() => {
             onWhatsApp(
-              [...dailySelected].map(Number),
+              [...bulk.selectedIds].map(Number),
               "Payment Reminder"
             );
           }}
         >
-          💬 Bulk Reminder ({dailySelected.size})
+          💬 Bulk Reminder ({bulk.count})
         </button>
       </div>
       </>
@@ -573,12 +568,11 @@ export function DailyFollowUp({
         <table className="data-table data-table-resizable sheet-selectable w-full min-w-275 text-sm">
           <thead>
             <tr>
-              <th style={FIXED_COL(44)}>
-                <input
-                  type="checkbox"
-                  onChange={(e) => toggleAll(e.target.checked)}
-                />
-              </th>
+              <BulkHeaderCheck
+                allChecked={bulk.allChecked}
+                someChecked={bulk.someChecked}
+                onToggle={bulk.toggleAll}
+              />
               {orderedColumns.map((col) => {
                 const hp = headerProps(col.key);
                 return (
@@ -609,14 +603,14 @@ export function DailyFollowUp({
               const c = r.candidate;
               const id = String(c.id);
               return (
-                <tr key={id} className={rowColorClass(c)}>
-                  <td>
-                    <input
-                      type="checkbox"
-                      checked={dailySelected.has(id)}
-                      onChange={(e) => toggleOne(id, e.target.checked)}
-                    />
-                  </td>
+                <tr
+                  key={id}
+                  className={`${rowColorClass(c)} ${bulk.isSelected(id) ? "bulk-selected" : ""}`}
+                >
+                  <BulkRowCheck
+                    checked={bulk.isSelected(id)}
+                    onToggle={(v) => bulk.toggleOne(id, v)}
+                  />
                   {orderedColumns.map((col, colIdx) => {
                     const cls =
                       typeof col.className === "function"
@@ -682,6 +676,10 @@ export function DailyFollowUp({
           <EmptyDataNotice message="No candidates with a payment left to collect." />
         )}
       </TableShell>
+      <BulkActionBar
+        selectedIds={bulk.selectedIds}
+        clear={() => setDailySelected(new Set())}
+      />
       <SheetCaptureField {...captureProps} />
       <PasteProgressOverlay pasteProgress={pasteProgress} />
     </div>
