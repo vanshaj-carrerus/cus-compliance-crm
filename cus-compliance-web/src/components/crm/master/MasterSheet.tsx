@@ -1678,6 +1678,19 @@ export function MasterSheet() {
             </div>
           </div>
         )}
+        {matchCount > 0 && (
+          <PageBar
+            position="top"
+            pageStart={pageStart}
+            shown={list.length}
+            matchCount={matchCount}
+            pageSize={pageSize}
+            changePageSize={changePageSize}
+            curPage={curPage}
+            totalPages={totalPages}
+            setPage={setPage}
+          />
+        )}
         {/* Phone-only card layout (<768px). Hidden from md up, where the
             full sheet below is shown instead. */}
         <div
@@ -1819,49 +1832,17 @@ export function MasterSheet() {
           {!list.length && loadingPage && <InlineLoading label="Loading candidates…" lines={8} />}
         </div>
         {matchCount > 0 && (
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-card px-3 py-2 text-xs text-muted">
-            <span>
-              Showing {pageStart + 1}–{pageStart + list.length} of {matchCount}
-            </span>
-            <div className="flex items-center gap-2">
-              <label className="flex items-center gap-1">
-                Rows per page
-                <select
-                  value={pageSize}
-                  onChange={(e) => changePageSize(Number(e.target.value))}
-                  className="rounded border border-border bg-card px-1.5 py-1 text-card-foreground"
-                >
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                  <option value={500}>500</option>
-                  <option value={0}>All</option>
-                </select>
-              </label>
-              {pageSize !== 0 && (
-                <>
-                  <button
-                    type="button"
-                    disabled={curPage === 0}
-                    onClick={() => setPage(curPage - 1)}
-                    className="rounded border border-border px-2 py-1 disabled:opacity-40"
-                  >
-                    ‹ Prev
-                  </button>
-                  <span>
-                    Page {curPage + 1} / {totalPages}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={curPage >= totalPages - 1}
-                    onClick={() => setPage(curPage + 1)}
-                    className="rounded border border-border px-2 py-1 disabled:opacity-40"
-                  >
-                    Next ›
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
+          <PageBar
+            position="bottom"
+            pageStart={pageStart}
+            shown={list.length}
+            matchCount={matchCount}
+            pageSize={pageSize}
+            changePageSize={changePageSize}
+            curPage={curPage}
+            totalPages={totalPages}
+            setPage={setPage}
+          />
         )}
       </div>
 
@@ -1895,6 +1876,80 @@ export function MasterSheet() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Rows-per-page + Prev/Next bar. Shown above and below the sheet so you never
+// have to scroll to the bottom just to change page.
+function PageBar({
+  position,
+  pageStart,
+  shown,
+  matchCount,
+  pageSize,
+  changePageSize,
+  curPage,
+  totalPages,
+  setPage,
+}: {
+  position: "top" | "bottom";
+  pageStart: number;
+  shown: number;
+  matchCount: number;
+  pageSize: number;
+  changePageSize: (n: number) => void;
+  curPage: number;
+  totalPages: number;
+  setPage: (n: number) => void;
+}) {
+  return (
+    <div
+      className={`flex flex-wrap items-center justify-between gap-2 border-border bg-card px-3 py-2 text-xs text-muted ${
+        position === "top" ? "border-b" : "border-t"
+      }`}
+    >
+      <span>
+        Showing {pageStart + 1}–{pageStart + shown} of {matchCount}
+      </span>
+      <div className="flex items-center gap-2">
+        <label className="flex items-center gap-1">
+          Rows per page
+          <select
+            value={pageSize}
+            onChange={(e) => changePageSize(Number(e.target.value))}
+            className="rounded border border-border bg-card px-1.5 py-1 text-card-foreground"
+          >
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+            <option value={500}>500</option>
+            <option value={0}>All</option>
+          </select>
+        </label>
+        {pageSize !== 0 && (
+          <>
+            <button
+              type="button"
+              disabled={curPage === 0}
+              onClick={() => setPage(curPage - 1)}
+              className="rounded border border-border px-2 py-1 disabled:opacity-40"
+            >
+              ‹ Prev
+            </button>
+            <span>
+              Page {curPage + 1} / {totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={curPage >= totalPages - 1}
+              onClick={() => setPage(curPage + 1)}
+              className="rounded border border-border px-2 py-1 disabled:opacity-40"
+            >
+              Next ›
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }

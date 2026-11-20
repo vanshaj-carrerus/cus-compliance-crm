@@ -705,3 +705,103 @@ html .excel-grid tbody tr[class] > td.freeze-check {
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Master P.O Sheet: no border around the in-cell fields.
+   Only the border / rim is removed - fill, size, editing, selection and the
+   other pages' tables are unchanged. A focused field still gets an outline so
+   you can see where you are typing.
+   ═══════════════════════════════════════════════════════════════════════════ */
+html body #masterScroll .excel-grid tbody td input:not([type="checkbox"]):not([type="radio"]),
+html body #masterScroll .excel-grid tbody td select,
+html body #masterScroll .excel-grid tbody td textarea,
+html body #masterScroll .excel-grid tbody td .sheet-cell,
+html body #masterScroll .excel-grid tbody td .inst-text,
+html body #masterScroll .excel-grid tbody td .remarks-editor {
+  border: 0 !important;
+  box-shadow: none !important;
+}
+html body #masterScroll .excel-grid tbody td input:not([type="checkbox"]):not([type="radio"]):focus,
+html body #masterScroll .excel-grid tbody td select:focus,
+html body #masterScroll .excel-grid tbody td textarea:focus,
+html body #masterScroll .excel-grid tbody td .sheet-cell:focus,
+html body #masterScroll .excel-grid tbody td .inst-text:focus,
+html body #masterScroll .excel-grid tbody td .remarks-editor:focus {
+  outline: 2px solid color-mix(in srgb, var(--primary, #3f676c) 80%, transparent);
+  outline-offset: -2px;
+}
+
+/* Master P.O Sheet: in-cell fields have no background fill (transparent, also
+   on hover). Blur, text colour and everything else are left as they were. */
+html body #masterScroll .excel-grid tbody td input:not([type="checkbox"]):not([type="radio"]),
+html body #masterScroll .excel-grid tbody td select,
+html body #masterScroll .excel-grid tbody td textarea,
+html body #masterScroll .excel-grid tbody td .sheet-cell,
+html body #masterScroll .excel-grid tbody td .inst-text,
+html body #masterScroll .excel-grid tbody td .remarks-editor,
+html body #masterScroll .excel-grid tbody td select.sheet-cell:hover,
+html body #masterScroll .excel-grid tbody td .sheet-cell:hover {
+  background-color: transparent !important;
+}
+
+/* Master P.O Sheet: solid column headings. The frosted (translucent) heading
+   let the rows scrolling underneath show through and collapse into it - a
+   solid fill keeps the labels clear. Same light tone and navy text as before,
+   just opaque. Body cells are not touched. */
+html body #masterScroll .excel-grid.master-theme thead th,
+html body #masterScroll .excel-grid.master-theme thead th.row-head,
+html body #masterScroll .excel-grid.master-theme thead th.freeze-check {
+  background: #9fa2b0 !important;
+  background-color: #9fa2b0 !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+html body #masterScroll .excel-grid.master-theme thead th.col-head-selectable:hover,
+html body #masterScroll .excel-grid.master-theme thead th.row-head-selectable:hover {
+  background: color-mix(in srgb, var(--ui-accent, #4f7df5) 38%, #9fa2b0) !important;
+  background-color: color-mix(in srgb, var(--ui-accent, #4f7df5) 38%, #9fa2b0) !important;
+}
+
+/* Solid column headings on every other table page too (Compliance, Payment
+   Target, Daily Follow-up, ...), same colour as the Master P.O Sheet. */
+html body .excel-grid thead th,
+html body .data-table thead th,
+html body .data-table-container .data-table thead th {
+  background: #9fa2b0 !important;
+  background-color: #9fa2b0 !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+html body .excel-grid thead th.col-head-selectable:hover,
+html body .excel-grid thead th.row-head-selectable:hover {
+  background: color-mix(in srgb, var(--ui-accent, #4f7df5) 38%, #9fa2b0) !important;
+  background-color: color-mix(in srgb, var(--ui-accent, #4f7df5) 38%, #9fa2b0) !important;
+}
+
+/* Same clean in-cell fields on every other table page (Payment Target,
+   Compliance, Daily Follow-up, ...): no border, no background fill. Blur,
+   text colour, sizes and editing are unchanged; a focused field keeps an
+   outline so you can see where you are typing. */
+html body .data-table tbody td input:not([type="checkbox"]):not([type="radio"]),
+html body .data-table tbody td select,
+html body .data-table tbody td textarea,
+html body .data-table tbody td .sheet-cell,
+html body .data-table tbody td .target-input {
+  border: 0 !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+}
+html body .data-table tbody td input:not([type="checkbox"]):not([type="radio"]):hover,
+html body .data-table tbody td select:hover,
+html body .data-table tbody td .sheet-cell:hover,
+html body .data-table tbody td .target-input:hover {
+  background-color: transparent !important;
+}
+html body .data-table tbody td input:not([type="checkbox"]):not([type="radio"]):focus,
+html body .data-table tbody td select:focus,
+html body .data-table tbody td textarea:focus,
+html body .data-table tbody td .sheet-cell:focus,
+html body .data-table tbody td .target-input:focus {
+  outline: 2px solid color-mix(in srgb, var(--primary, #3f676c) 80%, transparent);
+  outline-offset: -2px;
+}
