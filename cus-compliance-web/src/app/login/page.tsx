@@ -248,10 +248,10 @@ export default function LoginPage() {
               priority
             />
           </div>
-          <div className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary">
+          <div className="text-[length:calc(11px*var(--ui-text-scale,1))] font-bold uppercase tracking-[0.28em] text-primary">
             CareerUS Solutions
           </div>
-          <h1 className="mt-2 text-[28px] font-bold tracking-tight text-(--ink)">
+          <h1 className="mt-2 text-[length:calc(28px*var(--ui-text-scale,1))] font-bold tracking-tight text-(--ink)">
             Compliance CRM
           </h1>
           <p className="mt-2 text-sm text-muted">

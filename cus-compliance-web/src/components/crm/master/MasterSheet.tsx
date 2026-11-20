@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useCrm } from "../CrmProvider";
-import { EmptyDataNotice } from "../DataStates";
+import { EmptyDataNotice, InlineLoading, LoadingBar } from "../DataStates";
 import { FiltersBar, FilterGroup, FILTER_ICONS } from "../FiltersBar";
 import {
   ColumnResizeHandle,
@@ -31,6 +31,13 @@ import {
 import { DEFAULT_STATUSES, SALARY_TYPES, type Candidate } from "@/lib/crm/types";
 import { StatementModal } from "../modals/StatementModal";
 import { hiddenDataCols } from "../ColumnVisibility";
+import {
+  clearFocusRequest,
+  FOCUS_MAX_AGE_MS,
+  getFocusRequest,
+  getServerFocusRequest,
+  subscribeFocusRequest,
+} from "@/lib/search-focus";
 
 // True when focus is in a field the user can type into (text input,
 // textarea, select, contenteditable) - checkboxes and buttons don't count.
@@ -62,10 +69,15 @@ function instText(c: Candidate, idx: number): string {
 function MobileCandidateCards({
   list,
   onOpen,
+  flashId,
+  loading,
 }: {
   list: Candidate[];
   onOpen: (id: number) => void;
+  flashId?: number | null;
+  loading?: boolean;
 }) {
+  if (!list.length && loading) return <InlineLoading label="Loading candidates…" />;
   if (!list.length) {
     return (
       <EmptyDataNotice message="No candidates found." />
@@ -80,8 +92,9 @@ function MobileCandidateCards({
           <button
             key={c.id}
             type="button"
+            data-cand-id={c.id}
             onClick={() => onOpen(c.id)}
-            className="flex min-w-0 flex-col gap-1.5 rounded-xl border border-border bg-card p-3 text-left shadow-sm active:bg-secondary"
+            className={`flex min-w-0 flex-col gap-1.5 rounded-xl border border-border bg-card p-3 text-left shadow-sm active:bg-secondary ${flashId === c.id ? "search-hit" : ""}`}
           >
             <div className="flex items-start justify-between gap-1">
               <span className="min-w-0 break-words text-sm font-semibold leading-tight text-card-foreground">
@@ -89,14 +102,14 @@ function MobileCandidateCards({
               </span>
             </div>
             {c.status && (
-              <span className="w-fit max-w-full truncate rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-muted">
+              <span className="w-fit max-w-full truncate rounded-full bg-secondary px-2 py-0.5 text-[length:calc(10px*var(--ui-text-scale,1))] font-semibold text-muted">
                 {c.status}
               </span>
             )}
             <div className="truncate text-xs text-muted">
               {[c.assignedTo, c.poMonth].filter(Boolean).join(" · ") || "-"}
             </div>
-            <div className="mt-auto grid grid-cols-2 gap-x-2 border-t border-border pt-1.5 text-[11px]">
+            <div className="mt-auto grid grid-cols-2 gap-x-2 border-t border-border pt-1.5 text-[length:calc(11px*var(--ui-text-scale,1))]">
               <span className="text-muted">Paid</span>
               <span className="text-right font-semibold text-success">
                 {money(getTotalPaid(c))}
@@ -393,6 +406,7 @@ export function MasterSheet() {
   });
   const [page, setPage] = useState(0);
   const [srv, setSrv] = useState<{
+    key: string;
     rows: Candidate[];
     total: number;
     totalPages: number;
@@ -400,6 +414,10 @@ export function MasterSheet() {
   } | null>(null);
   const clientMode = !!smartFilter || srvError;
   const savedTick = syncStatus.lastSavedAt;
+  // Loading indicator only (no effect on what is fetched): true while a page
+  // for a changed search / filter / page number is on its way.
+  const [fetching, setFetching] = useState(false);
+  const shownQueryRef = useRef("");
 
   // Any change to search/filters sends you back to page 1.
   const filterKey = JSON.stringify([searchQuery, activeFilters, followupFilter, methodFilter, smartFilter?.type ?? ""]);
@@ -412,6 +430,11 @@ export function MasterSheet() {
   useEffect(() => {
     if (clientMode) return;
     const ac = new AbortController();
+    const queryKey = JSON.stringify([page, pageSize, searchQuery, activeFilters, followupFilter, methodFilter]);
+    if (queryKey !== shownQueryRef.current) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setFetching(true);
+    }
     const t = setTimeout(
       async () => {
         try {
@@ -431,14 +454,20 @@ export function MasterSheet() {
           if (!res.ok) throw new Error("page fetch failed");
           const data = await res.json();
           setSrv({
+            key: p.toString(),
             rows: (data.candidates || []).map((x: Candidate) => normalizeCandidate(x)),
             total: data.total,
             totalPages: data.totalPages,
             totals: data.totals,
           });
           if (data.page !== page) setPage(data.page);
+          shownQueryRef.current = queryKey;
+          setFetching(false);
         } catch (e) {
-          if ((e as Error)?.name !== "AbortError") setSrvError(true);
+          if ((e as Error)?.name !== "AbortError") {
+            setSrvError(true);
+            setFetching(false);
+          }
         }
       },
       searchQuery ? 250 : 0
@@ -466,6 +495,7 @@ export function MasterSheet() {
         candidates.length ? (byId.get(r.id) ?? []) : [r]
       );
   const loadingPage = !clientMode && srv == null;
+  const refetching = !clientMode && fetching && srv != null;
   const kpi = clientMode
     ? {
         committed: fullList.reduce((s, c) => s + (Number(c.totalServiceFee) || 0), 0),
@@ -473,6 +503,92 @@ export function MasterSheet() {
         remaining: fullList.reduce((s, c) => s + getRemaining(c), 0),
       }
     : (srv?.totals ?? { committed: 0, paid: 0, remaining: 0 });
+  // --- Jump to a candidate picked in the header search ---------------------
+  // Clears the sheet's own filters, asks the server which page the candidate
+  // is on, then scrolls to the row and highlights it for a few seconds.
+  const focusReq = useSyncExternalStore(
+    subscribeFocusRequest,
+    getFocusRequest,
+    getServerFocusRequest
+  );
+  const [hit, setHit] = useState<{ id: number; key: string } | null>(null);
+  const [flashId, setFlashId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!focusReq) return;
+    const { id, nonce, at } = focusReq;
+    clearFocusRequest(nonce);
+    if (Date.now() - at > FOCUS_MAX_AGE_MS) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setFollowupFilter("");
+    setMethodFilter("");
+    if (srvError) {
+      setHit({ id, key: "" });
+      return;
+    }
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/candidates/locate?id=${id}&size=${pageSize}`,
+          { cache: "no-store" }
+        );
+        if (!res.ok) throw new Error("locate failed");
+        const data = (await res.json()) as { page: number };
+        setPage(data.page);
+        setHit({
+          id,
+          key: new URLSearchParams({
+            page: String(data.page),
+            size: String(pageSize),
+            today: todayIso(),
+          }).toString(),
+        });
+      } catch {
+        toast("Couldn't find that candidate on the sheet yet - try again once it is saved", "info");
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusReq]);
+
+  useEffect(() => {
+    if (!hit) return;
+    const t = setTimeout(() => setHit(null), 8000);
+    return () => clearTimeout(t);
+  }, [hit]);
+
+  useEffect(() => {
+    if (!hit) return;
+    const inList = list.some((c) => c.id === hit.id);
+    // In server mode wait until the rows for the located page have arrived
+    // (not the previous, filtered page that is still on screen).
+    if (inList && (clientMode || srv?.key === hit.key)) {
+      const root = document;
+      const els = [
+        root.querySelector<HTMLElement>(`tr[data-id="${hit.id}"]`),
+        root.querySelector<HTMLElement>(`[data-cand-id="${hit.id}"]`),
+      ];
+      const el = els.find((x) => x && x.offsetParent !== null) ?? null;
+      el?.scrollIntoView({ block: "center", behavior: "smooth" });
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setFlashId(hit.id);
+      setHit(null);
+      return;
+    }
+    if (clientMode && pageSize > 0) {
+      const idx = fullList.findIndex((c) => c.id === hit.id);
+      if (idx >= 0) {
+        const np = Math.floor(idx / pageSize);
+        if (np !== curPage) setPage(np);
+      }
+    }
+  }, [hit, list, srv, clientMode, fullList, pageSize, curPage]);
+
+  useEffect(() => {
+    if (flashId == null) return;
+    const t = setTimeout(() => setFlashId(null), 4500);
+    return () => clearTimeout(t);
+  }, [flashId]);
+
   const changePageSize = (n: number) => {
     setPageSize(n);
     setPage(0);
@@ -1410,9 +1526,10 @@ export function MasterSheet() {
         onExit={() => setFullscreen(false)}
       />
       <div
-        className={`master-theme-card overflow-hidden rounded-(--radius) border border-border bg-card ${fullscreen ? "flex min-h-0 flex-1 flex-col" : ""
+        className={`master-theme-card relative overflow-hidden rounded-(--radius) border border-border bg-card ${fullscreen ? "flex min-h-0 flex-1 flex-col" : ""
           }`}
       >
+        <LoadingBar active={loadingPage || refetching} label="Loading candidates" />
         {!fullscreen && (
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-4">
             <div className="master-title-block w-full">
@@ -1566,12 +1683,12 @@ export function MasterSheet() {
         <div
           className={`md:hidden ${fullscreen ? "min-h-0 flex-1 overflow-auto" : ""}`}
         >
-          <MobileCandidateCards list={list} onOpen={editCandidate} />
+          <MobileCandidateCards list={list} onOpen={editCandidate} flashId={flashId} loading={loadingPage} />
         </div>
         <div
           ref={scrollRef}
           id="masterScroll"
-          className={`table-scroll hidden overflow-auto md:block ${fullscreen ? "flex-1 max-h-none!" : ""}`}
+          className={`table-scroll hidden overflow-auto md:block ${fullscreen ? "flex-1 max-h-none!" : ""} ${refetching ? "ld-dim" : ""}`}
           onPaste={handlePaste}
         >
           <table className="excel-grid master-theme">
@@ -1623,6 +1740,7 @@ export function MasterSheet() {
                 <tr
                   key={c.id}
                   className={`${c.status === "Cancelled" ? "row-cancelled" : ""
+                    } ${flashId === c.id ? "search-hit" : ""
                     } ${bulkSelected.has(String(c.id)) ? "outline outline-primary/40" : ""
                     } ${draggingId === c.id ? "opacity-40" : ""} ${dragOverInfo?.id === c.id && dragOverInfo.pos === "before"
                       ? "border-t-2 border-t-primary"
@@ -1698,6 +1816,7 @@ export function MasterSheet() {
             </tbody>
           </table>
           {!list.length && !loadingPage && <EmptyDataNotice message="No candidates found." />}
+          {!list.length && loadingPage && <InlineLoading label="Loading candidates…" lines={8} />}
         </div>
         {matchCount > 0 && (
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-card px-3 py-2 text-xs text-muted">

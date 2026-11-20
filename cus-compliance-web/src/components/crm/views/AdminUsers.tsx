@@ -231,7 +231,7 @@ export function AdminUsers() {
   return (
     <div className="mx-auto w-full max-w-5xl">
       <section className="mb-5 rounded-[var(--radius)] border border-border bg-card p-4 shadow-sm sm:p-5">
-        <div className="text-[10px] font-black uppercase tracking-wider text-primary sm:text-xs">
+        <div className="text-[length:calc(10px*var(--ui-text-scale,1))] font-black uppercase tracking-wider text-primary sm:text-xs">
           Administration
         </div>
         <h2 className="mt-1 text-xl font-black text-foreground sm:text-2xl">
@@ -390,7 +390,7 @@ export function AdminUsers() {
             </button>
           </div>
         </form>
-        <p className="mt-3 text-[11px] text-muted">
+        <p className="mt-3 text-[length:calc(11px*var(--ui-text-scale,1))] text-muted">
           Invite seeds default page access for that role. Edit the user
           afterward to customize pages (
           {defaultFeaturesForRole("compliance_user").length} pages for
@@ -472,7 +472,7 @@ export function AdminUsers() {
                             <div className="font-semibold text-foreground">
                               {u.name || "—"}
                               {u.id === me?.id && (
-                                <span className="ml-2 text-[10px] font-bold uppercase text-primary">
+                                <span className="ml-2 text-[length:calc(10px*var(--ui-text-scale,1))] font-bold uppercase text-primary">
                                   You
                                 </span>
                               )}
@@ -551,7 +551,7 @@ export function AdminUsers() {
                               (u.features || []).map((f) => (
                                 <span
                                   key={f}
-                                  className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-foreground"
+                                  className="rounded-full bg-secondary px-2 py-0.5 text-[length:calc(10px*var(--ui-text-scale,1))] font-semibold text-foreground"
                                 >
                                   {FEATURE_LABELS[f] || f}
                                 </span>
@@ -562,7 +562,7 @@ export function AdminUsers() {
                       </td>
                       <td className="px-4 py-3 sm:px-5">
                         <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                          className={`inline-flex rounded-full px-2 py-0.5 text-[length:calc(11px*var(--ui-text-scale,1))] font-bold ${
                             u.status === "invited"
                               ? "bg-warning/15 text-warning"
                               : "bg-success/15 text-success"

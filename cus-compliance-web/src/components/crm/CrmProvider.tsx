@@ -5,6 +5,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -1347,12 +1348,18 @@ export function CrmProvider({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [booted, engine]);
 
-  const dbSizeKb = (
-    (JSON.stringify(candidates).length +
-      JSON.stringify(history).length +
-      JSON.stringify(settings).length) /
-    1024
-  ).toFixed(1);
+  // Same number as before; memoised so the three JSON.stringify passes over the
+  // whole database only run when the data changes - not on every re-render.
+  const dbSizeKb = useMemo(
+    () =>
+      (
+        (JSON.stringify(candidates).length +
+          JSON.stringify(history).length +
+          JSON.stringify(settings).length) /
+        1024
+      ).toFixed(1),
+    [candidates, history, settings]
+  );
 
   const navigate = useCallback(
     (view: CrmView) => {

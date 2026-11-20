@@ -199,7 +199,7 @@ button[class*="bg-card"]:active,
 
 .stat-value {
   font-weight: 700;
-  font-size: 24px;
+  font-size: calc(24px * var(--ui-text-scale, 1));
   letter-spacing: -0.035em;
   font-variant-numeric: tabular-nums;
 }
@@ -513,7 +513,7 @@ textarea {
 
 .data-table-container>.table-header .table-title,
 .master-title {
-  font-size: 26px;
+  font-size: calc(26px * var(--ui-text-scale, 1));
   font-weight: 700;
   letter-spacing: -0.03em;
   background: none;
@@ -1088,7 +1088,7 @@ textarea {
 
   .data-table-container>.table-header .table-title,
   .master-title {
-    font-size: 21px;
+    font-size: calc(21px * var(--ui-text-scale, 1));
   }
 }
 
@@ -1410,7 +1410,7 @@ details[open]>*:not(summary) {
   padding: 3px 9px;
   border-radius: 999px;
   white-space: nowrap;
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-text-scale, 1));
   font-weight: 600;
   letter-spacing: 0.02em;
   line-height: 1.3;
@@ -2490,7 +2490,7 @@ div:has(> .period-field) {
   flex-direction: column;
   gap: 6px;
   min-width: 150px;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-text-scale, 1));
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -2501,7 +2501,7 @@ div:has(> .period-field) {
 .period-field input {
   border-radius: 12px;
   padding: 8px 12px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-text-scale, 1));
   font-weight: 600;
   text-transform: none;
   letter-spacing: normal;
@@ -2587,7 +2587,7 @@ select, input[type="date"], input[type="month"] { color-scheme: dark; }
     border-radius: 10px;
     background: transparent !important;
     color: #fff;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-text-scale, 1));
     font-weight: 600;
     cursor: pointer;
   }
@@ -2673,7 +2673,7 @@ select, input[type="date"], input[type="month"] { color-scheme: dark; }
     background: transparent !important;
     background-color: transparent !important;
     color: #fff;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-text-scale, 1));
     font-weight: 600;
     text-align: left;
     cursor: pointer;

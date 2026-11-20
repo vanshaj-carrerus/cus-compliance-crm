@@ -163,7 +163,7 @@ export function SmartAssistModal({
               key={String(label)}
               className="rounded-xl border border-border bg-secondary p-3"
             >
-              <div className="text-[10px] font-black uppercase tracking-wide text-muted">
+              <div className="text-[length:calc(10px*var(--ui-text-scale,1))] font-black uppercase tracking-wide text-muted">
                 {label}
               </div>
               <div className="mt-1 text-lg font-bold">{value}</div>

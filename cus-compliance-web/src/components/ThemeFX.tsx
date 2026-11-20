@@ -7,6 +7,7 @@ import {
   getTheme,
   subscribeTheme,
 } from "@/lib/theme-store";
+import { fontStack } from "@/lib/fonts";
 
 const FALLBACK_ACCENT = "#4f7df5";
 
@@ -33,6 +34,33 @@ export default function ThemeFX() {
     if (t.accent) root.setAttribute("data-accent", "custom");
     else root.removeAttribute("data-accent");
   }, [t.blur, t.fill, t.dim, t.accent]);
+
+  // Typography (sizes, weights, families). Attributes are only set when the user
+  // changed something, so with the defaults the app renders exactly as before.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty("--ui-text-scale", String(t.textScale));
+    root.style.setProperty("--ui-head-scale", String(t.headScale));
+    const flag = (name: string, on: boolean) =>
+      on ? root.setAttribute(name, "") : root.removeAttribute(name);
+    flag("data-ui-scale", t.textScale !== 1 || t.headScale !== 1);
+
+    const body = fontStack(t.bodyFont);
+    const head = fontStack(t.headFont);
+    if (body) root.style.setProperty("--ui-body-font", body);
+    else root.style.removeProperty("--ui-body-font");
+    if (head) root.style.setProperty("--ui-head-font", head);
+    else root.style.removeProperty("--ui-head-font");
+    flag("data-ui-body-font", !!body);
+    flag("data-ui-head-font", !!head);
+
+    if (t.bodyWeight) root.style.setProperty("--ui-body-weight", String(t.bodyWeight));
+    else root.style.removeProperty("--ui-body-weight");
+    if (t.headWeight) root.style.setProperty("--ui-head-weight", String(t.headWeight));
+    else root.style.removeProperty("--ui-head-weight");
+    flag("data-ui-body-weight", !!t.bodyWeight);
+    flag("data-ui-head-weight", !!t.headWeight);
+  }, [t.textScale, t.headScale, t.bodyFont, t.headFont, t.bodyWeight, t.headWeight]);
 
   useEffect(() => {
     const root = document.documentElement;

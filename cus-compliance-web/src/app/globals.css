@@ -113,7 +113,7 @@ body {
   display: inline-block;
   padding: 3px 10px;
   border-radius: 12px;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-text-scale, 1));
   font-weight: 600;
   text-transform: uppercase;
 }
@@ -173,7 +173,7 @@ body {
 .excel-grid thead th {
   background: var(--freeze-bg);
   color: var(--muted);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-text-scale, 1));
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -292,7 +292,7 @@ body {
   color: var(--foreground);
   border-radius: 6px;
   padding: 7px 8px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-text-scale, 1));
   font-weight: 600;
   width: 100%;
   min-width: 92px;
@@ -363,7 +363,7 @@ body {
 }
 
 .excel-grid .inst-status {
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-text-scale, 1));
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: 0.04em;
@@ -452,7 +452,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 13px;
   padding: 9px 16px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-text-scale, 1));
   font-weight: 700;
   letter-spacing: -0.01em;
   cursor: pointer;
@@ -488,7 +488,7 @@ body {
 
 .btn-sm {
   padding: 6px 12px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-text-scale, 1));
   border-radius: 10px;
 }
 
@@ -519,7 +519,7 @@ body {
 
 .muted {
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-text-scale, 1));
 }
 
 .filters-bar {
@@ -549,7 +549,7 @@ body {
   flex-direction: column;
   align-items: stretch;
   gap: 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-text-scale, 1));
   color: var(--muted);
   min-width: 0;
 }
@@ -563,7 +563,7 @@ body {
 }
 
 .filter-label {
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--ui-text-scale, 1));
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -578,7 +578,7 @@ body {
   background: var(--input);
   color: var(--foreground);
   padding: 5px 8px;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--ui-text-scale, 1));
   outline: none;
 }
 
@@ -622,7 +622,7 @@ body {
 .month-display {
   min-width: 180px;
   text-align: center;
-  font-size: 18px;
+  font-size: calc(18px * var(--ui-text-scale, 1));
   font-weight: 800;
   color: var(--primary);
   letter-spacing: -0.02em;
@@ -654,7 +654,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-text-scale, 1));
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -680,7 +680,7 @@ body {
   background: var(--input);
   color: var(--foreground);
   padding: 8px 10px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-text-scale, 1));
   outline: none;
 }
 
@@ -736,7 +736,7 @@ body {
 }
 
 .stat-label {
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-text-scale, 1));
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -745,7 +745,7 @@ body {
 
 .stat-value {
   margin-top: 8px;
-  font-size: 22px;
+  font-size: calc(22px * var(--ui-text-scale, 1));
   font-weight: 800;
   letter-spacing: -0.03em;
   color: var(--foreground);
@@ -769,7 +769,7 @@ body {
 
 .stat-change {
   margin-top: 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-text-scale, 1));
   color: var(--muted);
 }
 
@@ -810,7 +810,7 @@ body {
 }
 
 .table-title {
-  font-size: 16px;
+  font-size: calc(16px * var(--ui-text-scale, 1));
   font-weight: 800;
   letter-spacing: -0.025em;
   color: var(--foreground);
@@ -818,7 +818,7 @@ body {
 
 .table-subtitle {
   margin-top: 4px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-text-scale, 1));
   color: var(--muted);
 }
 
@@ -854,7 +854,7 @@ body {
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--card);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-text-scale, 1));
   color: var(--muted);
 }
 
@@ -869,7 +869,7 @@ body {
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-text-scale, 1));
   color: var(--foreground);
 }
 
@@ -899,7 +899,7 @@ body {
   z-index: 2;
   padding: 11px 14px;
   text-align: left;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-text-scale, 1));
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -942,7 +942,7 @@ body {
 
 .remarks {
   max-width: 240px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-text-scale, 1));
   line-height: 1.45;
   color: var(--muted);
   white-space: pre-wrap;
@@ -955,7 +955,7 @@ body {
   border-radius: 8px;
   background: var(--input);
   padding: 6px 8px;
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-text-scale, 1));
   outline: none;
 }
 
@@ -987,13 +987,13 @@ body {
 }
 
 .backup-panel-title {
-  font-size: 16px;
+  font-size: calc(16px * var(--ui-text-scale, 1));
   font-weight: 800;
   margin-bottom: 8px;
 }
 
 .backup-panel-desc {
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-text-scale, 1));
   color: var(--muted);
   margin-bottom: 16px;
   line-height: 1.5;
@@ -1023,12 +1023,12 @@ body {
 }
 
 .backup-stat-label {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-text-scale, 1));
   color: var(--muted);
 }
 
 .backup-stat-value {
-  font-size: 28px;
+  font-size: calc(28px * var(--ui-text-scale, 1));
   font-weight: 800;
   margin-top: 4px;
 }
@@ -1130,7 +1130,7 @@ body {
 }
 
 .installment-card-title {
-  font-size: 14px;
+  font-size: calc(14px * var(--ui-text-scale, 1));
   font-weight: 700;
   color: var(--primary);
 }
@@ -1151,7 +1151,7 @@ body {
   }
 
   .table-title {
-    font-size: 15px;
+    font-size: calc(15px * var(--ui-text-scale, 1));
   }
 
   .table-toolbar {
@@ -1255,7 +1255,7 @@ body {
 .crm-switcher-icon {
   width: clamp(28px, 3.4vw, 40px);
   height: clamp(28px, 3.4vw, 40px);
-  font-size: clamp(13px, 1.6vw, 18px);
+  font-size: calc(clamp(13px, 1.6vw, 18px) * var(--ui-text-scale, 1));
 }
 
 /* Safety net for very narrow viewports where even the shrunk icons don't
@@ -1289,7 +1289,7 @@ body {
 }
 
 .master-title {
-  font-size: 24px;
+  font-size: calc(24px * var(--ui-text-scale, 1));
   font-weight: 800;
   letter-spacing: -0.01em;
   color: #1f2937;
@@ -1297,7 +1297,7 @@ body {
 
 .master-subtitle {
   margin-top: 4px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-text-scale, 1));
   color: #6b7280;
 }
 
@@ -1315,7 +1315,7 @@ body {
 }
 
 .master-kpi-label {
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-text-scale, 1));
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -1324,7 +1324,7 @@ body {
 
 .master-kpi-value {
   margin-top: 2px;
-  font-size: 28px;
+  font-size: calc(28px * var(--ui-text-scale, 1));
   font-weight: 800;
   color: #1f2937;
   line-height: 1.15;
@@ -1340,7 +1340,7 @@ body {
   text-align: center;
   text-transform: none;
   letter-spacing: 0;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-text-scale, 1));
   font-weight: 700;
   border-bottom: 0;
   border-right: 1px solid rgba(255, 255, 255, 0.12);
@@ -1366,7 +1366,7 @@ body {
 .excel-grid.master-theme .sheet-cell {
   text-align: center;
   font-weight: 500;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-text-scale, 1));
   color: #1f2937;
 }
 
@@ -1486,7 +1486,7 @@ body {
     border-radius: 999px;
     background: #f1f3f4;
     color: #1f2937;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-text-scale, 1));
     font-weight: 500;
     text-align: center;
     white-space: nowrap;
@@ -1589,7 +1589,7 @@ body {
 }
 
 .data-table-container>.table-header .table-title {
-  font-size: 24px;
+  font-size: calc(24px * var(--ui-text-scale, 1));
   font-weight: 800;
   letter-spacing: -0.01em;
   color: #1f2937;
@@ -1597,7 +1597,7 @@ body {
 
 .data-table-container>.table-header .table-subtitle {
   margin-top: 4px;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-text-scale, 1));
   color: #6b7280;
 }
 
@@ -1618,7 +1618,7 @@ body {
   color: #ffffff;
   text-transform: none;
   letter-spacing: 0;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-text-scale, 1));
   font-weight: 700;
   padding: 11px 10px;
   border-bottom: 0;
@@ -1734,7 +1734,7 @@ body {
     border-radius: 999px;
     background: #f1f3f4;
     color: #1f2937;
-    font-size: 13px;
+    font-size: calc(13px * var(--ui-text-scale, 1));
     font-weight: 500;
     text-align: center;
     white-space: nowrap;
@@ -1815,13 +1815,13 @@ label {
   :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
     select,
     textarea) {
-    font-size: 16px;
+    font-size: calc(16px * var(--ui-text-scale, 1));
   }
 
   /* Sheets: compact text sized for a phone. */
   .data-table,
   .excel-grid {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-text-scale, 1));
   }
 
   .data-table input:not([type="checkbox"]):not([type="radio"]),
@@ -1835,7 +1835,7 @@ label {
   .excel-grid input:not([type="checkbox"]):not([type="radio"]),
   .excel-grid select,
   .excel-grid textarea {
-    font-size: 12px;
+    font-size: calc(12px * var(--ui-text-scale, 1));
     padding-top: 6px;
     padding-bottom: 6px;
   }
@@ -1853,7 +1853,7 @@ label {
 
   .excel-grid th,
   .excel-grid.master-theme thead th {
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-text-scale, 1));
     padding: 8px 6px;
   }
 
@@ -1937,7 +1937,7 @@ label {
   .data-table th,
   .data-table-container .data-table th {
     padding: 8px 6px;
-    font-size: 11px;
+    font-size: calc(11px * var(--ui-text-scale, 1));
   }
 
   .data-table td {
@@ -1993,7 +1993,7 @@ label {
   border-radius: 6px;
   background: transparent;
   color: var(--muted);
-  font-size: 15px;
+  font-size: calc(15px * var(--ui-text-scale, 1));
   line-height: 1;
   cursor: pointer;
 }
@@ -2176,7 +2176,7 @@ table[data-col-ready] [data-col-hidden] {
   border: 1px solid var(--border);
   background: var(--secondary);
   color: var(--foreground);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-text-scale, 1));
   font-weight: 600;
   cursor: pointer;
   transition:
@@ -2203,7 +2203,7 @@ table[data-col-ready] [data-col-hidden] {
   border-radius: 999px;
   background: var(--primary);
   color: #fff;
-  font-size: 10px;
+  font-size: calc(10px * var(--ui-text-scale, 1));
   font-weight: 700;
   animation: col-pop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -2230,7 +2230,7 @@ table[data-col-ready] [data-col-hidden] {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 10px;
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-text-scale, 1));
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -2241,7 +2241,7 @@ table[data-col-ready] [data-col-hidden] {
   border: 0;
   background: transparent;
   color: var(--primary);
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-text-scale, 1));
   font-weight: 700;
   cursor: pointer;
 }
@@ -2251,7 +2251,7 @@ table[data-col-ready] [data-col-hidden] {
 }
 
 .col-popover-empty {
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-text-scale, 1));
   line-height: 1.5;
   color: var(--muted);
 }
@@ -2287,7 +2287,7 @@ table[data-col-ready] [data-col-hidden] {
   border: 1px solid var(--border);
   background: var(--secondary);
   color: var(--foreground);
-  font-size: 12px;
+  font-size: calc(12px * var(--ui-text-scale, 1));
   font-weight: 600;
   cursor: pointer;
   animation: col-pop 0.26s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
@@ -2311,7 +2311,7 @@ table[data-col-ready] [data-col-hidden] {
   border-radius: 999px;
   background: var(--primary);
   color: #fff;
-  font-size: 13px;
+  font-size: calc(13px * var(--ui-text-scale, 1));
   line-height: 1;
   transition: transform 0.2s ease;
 }

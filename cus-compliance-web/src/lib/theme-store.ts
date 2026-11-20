@@ -1,3 +1,5 @@
+import { BODY_WEIGHTS, HEADING_WEIGHTS, isFontId } from "./fonts";
+
 /**
  * Browser-only appearance preferences (theme, wallpaper, glass, icon colour).
  * Stored in localStorage; nothing is sent to the server.
@@ -16,7 +18,19 @@ export interface ThemeSettings {
   dim: number;
   /** accent / icon colour: "" = multicolour, otherwise #rrggbb */
   accent: string;
+  /** font family ids (see fonts.ts); "default" = the app's own font */
+  headFont: string;
+  bodyFont: string;
+  /** size multipliers: body text 0.8-1.4, headings 0.8-1.6 (1 = normal) */
+  textScale: number;
+  headScale: number;
+  /** font weights; 0 = keep the app's own weights */
+  bodyWeight: number;
+  headWeight: number;
 }
+
+export const TEXT_SCALE_RANGE = { min: 0.8, max: 1.4, step: 0.05 };
+export const HEAD_SCALE_RANGE = { min: 0.8, max: 1.6, step: 0.05 };
 
 /** Code-drawn wallpapers (no files needed). */
 export const GRADIENTS: Record<string, { label: string; css: string }> = {
@@ -97,6 +111,22 @@ export const DEFAULT_THEME: ThemeSettings = {
   fill: DEFAULT_PRESET.fill,
   dim: DEFAULT_PRESET.dim,
   accent: DEFAULT_PRESET.accent,
+  headFont: "default",
+  bodyFont: "default",
+  textScale: 1,
+  headScale: 1,
+  bodyWeight: 0,
+  headWeight: 0,
+};
+
+/** The typography part of the theme, for "reset typography". */
+export const DEFAULT_TYPOGRAPHY = {
+  headFont: DEFAULT_THEME.headFont,
+  bodyFont: DEFAULT_THEME.bodyFont,
+  textScale: DEFAULT_THEME.textScale,
+  headScale: DEFAULT_THEME.headScale,
+  bodyWeight: DEFAULT_THEME.bodyWeight,
+  headWeight: DEFAULT_THEME.headWeight,
 };
 
 const KEY = "crm.theme.v2";
@@ -132,6 +162,12 @@ function sanitize(raw: unknown): ThemeSettings {
       typeof r.accent === "string" && /^#[0-9a-fA-F]{6}$/.test(r.accent)
         ? r.accent
         : "",
+    headFont: isFontId(r.headFont) ? r.headFont : DEFAULT_THEME.headFont,
+    bodyFont: isFontId(r.bodyFont) ? r.bodyFont : DEFAULT_THEME.bodyFont,
+    textScale: clamp(r.textScale, TEXT_SCALE_RANGE.min, TEXT_SCALE_RANGE.max, 1),
+    headScale: clamp(r.headScale, HEAD_SCALE_RANGE.min, HEAD_SCALE_RANGE.max, 1),
+    bodyWeight: BODY_WEIGHTS.some((w) => w.value === r.bodyWeight) ? Number(r.bodyWeight) : 0,
+    headWeight: HEADING_WEIGHTS.some((w) => w.value === r.headWeight) ? Number(r.headWeight) : 0,
   };
 }
 

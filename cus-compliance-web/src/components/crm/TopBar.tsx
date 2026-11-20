@@ -12,7 +12,6 @@ import {
   Plus,
   Redo2,
   Save,
-  Search,
   Sparkles,
   Undo2,
   Upload,
@@ -20,7 +19,8 @@ import {
 import { useAuth } from "./AuthProvider";
 import { useCrm } from "./CrmProvider";
 import { clearCrmCache } from "@/lib/crm-cache";
-import { todayIso, statusExcluded } from "@/lib/crm";
+import { HeaderSearch } from "./HeaderSearch";
+import { TaskButton } from "./TaskCenter";
 import type { SyncStatus } from "@/lib/crm/sync-engine";
 
 function SaveButton({
@@ -99,16 +99,11 @@ export function TopBar({
   const router = useRouter();
   const { logoutLocal } = useAuth();
   const {
-    searchQuery,
-    setSearchQuery,
     sidebarCollapsed,
     toggleSidebar,
     undo,
     redo,
     showAddModal,
-    candidates,
-    setDailyCategory,
-    navigate,
     ready,
     syncStatus,
     flushSave,
@@ -118,15 +113,6 @@ export function TopBar({
     commitActiveEdit,
     toast,
   } = useCrm();
-
-  const overdueFollowups = ready
-    ? candidates.filter(
-        (c) =>
-          c.nextFollowUpDate &&
-          c.nextFollowUpDate < todayIso() &&
-          !statusExcluded(c.status)
-      ).length
-    : 0;
 
   const logout = async () => {
     // Commit any half-typed cell, then try to finish saving before leaving.
@@ -181,38 +167,11 @@ export function TopBar({
           </span>
         </button>
 
-        <div className="crm-search relative min-w-0 flex-1">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">
-            <Search className="h-4 w-4" />
-          </span>
-          <input
-            type="search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search candidates, PO, floor, status..."
-            className="h-9 w-full rounded-(--radius) border border-border bg-input py-1.5 pl-10 pr-3 text-sm text-foreground outline-none focus:border-primary sm:h-auto"
-            aria-label="Search candidates"
-          />
-        </div>
+        <HeaderSearch />
 
         {/* Full labels kept — scroll horizontally when space is tight */}
         <div className="order-last -mx-3 flex w-[calc(100%+1.5rem)] shrink-0 items-center px-3 md:order-none md:mx-0 md:w-auto md:px-0 gap-1.5 overflow-x-auto overscroll-x-contain pb-0.5 [-ms-overflow-style:none] scrollbar-none md:max-w-[55%] lg:max-w-none [&::-webkit-scrollbar]:hidden">
-          <button
-            type="button"
-            className={`${btn} rounded-full ${!ready ? "opacity-60" : ""}`}
-            onClick={() => {
-              setDailyCategory("followupsOverdue");
-              navigate("daily");
-            }}
-          >
-            <span className="h-2 w-2 rounded-full bg-success shadow-[0_0_10px_rgba(34,197,94,.55)]" />
-            Follow-ups
-            {overdueFollowups > 0 && (
-              <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-black text-white">
-                {overdueFollowups}
-              </span>
-            )}
-          </button>
+          <TaskButton className={btn} />
           <button
             type="button"
             className={`${btn} ${!ready ? "opacity-60" : ""}`}

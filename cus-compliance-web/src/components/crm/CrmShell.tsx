@@ -5,6 +5,9 @@ import { useAuth } from "./AuthProvider";
 import { useCrm } from "./CrmProvider";
 import { Sidebar, NAV } from "./Sidebar";
 import { TopBar } from "./TopBar";
+import { TasksProvider, TaskMarquee } from "./TaskCenter";
+import { WallpaperGuard } from "./WallpaperGuard";
+import { LoadingBar } from "./DataStates";
 import { SaveIndicator } from "./SaveIndicator";
 import { TableColumnManager } from "./ColumnVisibility";
 import { ToastContainer } from "./Toast";
@@ -33,6 +36,7 @@ function CrmShellInner() {
   const { canView, isAdmin } = useAuth();
   const {
     ready,
+    refreshing,
     error,
     currentView,
     candidates,
@@ -246,7 +250,10 @@ function CrmShellInner() {
     : null;
 
   return (
+    <TasksProvider>
     <div className="relative flex h-dvh overflow-hidden bg-background">
+      <WallpaperGuard />
+      <LoadingBar active={refreshing} label="Refreshing data" />
       <Sidebar />
       {ready && <TableColumnManager view={currentView} />}
       <div className="flex min-w-0 flex-1 flex-col">
@@ -267,6 +274,7 @@ function CrmShellInner() {
             setSmartOpen(true);
           }}
         />
+        <TaskMarquee />
         <main className="flex-1 overflow-auto overscroll-y-contain p-3 pb-18 sm:p-4 sm:pb-6 md:p-6">
           {error ? (
             <div className="mx-auto max-w-md rounded-(--radius) border border-danger/30 bg-card p-6 text-center shadow-sm">
@@ -349,6 +357,7 @@ function CrmShellInner() {
         </>
       )}
     </div>
+    </TasksProvider>
   );
 }
 

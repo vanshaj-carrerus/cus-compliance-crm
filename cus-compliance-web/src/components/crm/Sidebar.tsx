@@ -110,14 +110,14 @@ export function Sidebar() {
       >
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-4">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="brand-mark flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[15px] font-black text-white">
+            <span className="brand-mark flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[length:calc(15px*var(--ui-text-scale,1))] font-black text-white">
               C
             </span>
             <div className="min-w-0">
-              <h1 className="truncate text-[13.5px] font-bold tracking-tight text-(--ink)">
+              <h1 className="truncate text-[length:calc(13.5px*var(--ui-text-scale,1))] font-bold tracking-tight text-(--ink)">
                 CareerUS Solutions
               </h1>
-              <p className="mt-0.5 text-[9.5px] font-semibold uppercase tracking-[0.2em] text-muted">
+              <p className="mt-0.5 text-[length:calc(9.5px*var(--ui-text-scale,1))] font-semibold uppercase tracking-[0.2em] text-muted">
                 Compliance CRM
               </p>
             </div>
@@ -147,7 +147,7 @@ export function Sidebar() {
                 onClick={() => go(item.view)}
                 title={item.label}
                 style={{ "--i": i } as React.CSSProperties}
-                className={`nav-item mb-1 flex w-full items-center gap-3 px-2.5 py-2.5 text-left text-[13px] font-medium leading-tight md:py-2 ${
+                className={`nav-item mb-1 flex w-full items-center gap-3 px-2.5 py-2.5 text-left text-[length:calc(13px*var(--ui-text-scale,1))] font-medium leading-tight md:py-2 ${
                   active ? "is-active font-semibold" : "text-muted hover:text-foreground"
                 }`}
               >
@@ -160,7 +160,7 @@ export function Sidebar() {
                 </span>
                 <span className="min-w-0 flex-1">{item.label}</span>
                 {item.view === "daily" && overdueFollowups > 0 && (
-                  <span className="inline-flex min-w-5 shrink-0 items-center justify-center rounded-full bg-danger px-1.5 py-0.5 text-[10px] font-black text-white shadow-[0_4px_10px_-2px_rgba(224,74,90,0.6)]">
+                  <span className="inline-flex min-w-5 shrink-0 items-center justify-center rounded-full bg-danger px-1.5 py-0.5 text-[length:calc(10px*var(--ui-text-scale,1))] font-black text-white shadow-[0_4px_10px_-2px_rgba(224,74,90,0.6)]">
                     {overdueFollowups}
                   </span>
                 )}
@@ -169,7 +169,7 @@ export function Sidebar() {
           })}
         </div>
 
-        <div className="shrink-0 border-t border-border px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-[10px] leading-relaxed text-muted">
+        <div className="shrink-0 border-t border-border px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-[length:calc(10px*var(--ui-text-scale,1))] leading-relaxed text-muted">
           <div className="font-semibold text-(--ink-2)">v3.30 Priority Master</div>
           <div>MongoDB Mode · DB: {dbSizeKb} KB</div>
         </div>

@@ -89,7 +89,7 @@ export function DailyDigestModal({
                 key={card.label}
                 className="rounded-[14px] border border-border bg-secondary p-3"
               >
-                <div className="text-[10px] font-black uppercase tracking-wide text-muted">
+                <div className="text-[length:calc(10px*var(--ui-text-scale,1))] font-black uppercase tracking-wide text-muted">
                   {card.label}
                 </div>
                 <div className="mt-1 text-xl font-bold text-primary">

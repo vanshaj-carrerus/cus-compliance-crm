@@ -106,8 +106,16 @@ function syncTable(table: HTMLTableElement, scope: string, hiddenKeys: string[])
     return n > 1 ? `${label}#${n}` : label;
   });
 
+  // Fast path: no column of this table is hidden and no cell still carries the
+  // hidden flag, so the per-cell pass below would change nothing. (Only the
+  // header buttons still need to be present.)
+  const needsCellPass =
+    hiddenKeys.length > 0 || table.querySelector("[data-col-hidden]") !== null;
+
   const bodyRows: HTMLTableRowElement[] = [];
-  Array.from(table.tBodies).forEach((tb) => bodyRows.push(...Array.from(tb.rows)));
+  if (needsCellPass) {
+    Array.from(table.tBodies).forEach((tb) => bodyRows.push(...Array.from(tb.rows)));
+  }
 
   ths.forEach((th, i) => {
     const key = keys[i];
@@ -138,6 +146,7 @@ function syncTable(table: HTMLTableElement, scope: string, hiddenKeys: string[])
       th.appendChild(btn);
     }
 
+    if (!needsCellPass) return;
     const isHidden = hiddenKeys.includes(key);
     const cells: HTMLElement[] = [th];
     bodyRows.forEach((r) => {

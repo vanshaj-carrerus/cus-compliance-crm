@@ -47,3 +47,36 @@ export function EmptyDataNotice({ message }: { message: string }) {
     </div>
   );
 }
+
+/** Thin indeterminate bar pinned to the top of its (position: relative) parent. */
+export function LoadingBar({ active, label = "Loading" }: { active: boolean; label?: string }) {
+  if (!active) return null;
+  return (
+    <div className="ld-bar" role="progressbar" aria-busy="true" aria-label={label}>
+      <span />
+    </div>
+  );
+}
+
+/** Spinner + label with a few placeholder lines - shown instead of a blank area while data loads. */
+export function InlineLoading({
+  label = "Loading…",
+  lines = 5,
+}: {
+  label?: string;
+  lines?: number;
+}) {
+  return (
+    <div className="ld-inline" role="status" aria-live="polite">
+      <div className="ld-inline-head">
+        <Spinner className="h-5 w-5" />
+        <span>{label}</span>
+      </div>
+      <div className="ld-inline-lines" aria-hidden>
+        {Array.from({ length: lines }).map((_, i) => (
+          <span key={i} style={{ width: `${92 - ((i * 13) % 38)}%` }} />
+        ))}
+      </div>
+    </div>
+  );
+}

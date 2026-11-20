@@ -56,6 +56,15 @@ export async function ensureCrmBootstrap(): Promise<CrmBootstrap> {
       fetch("/api/history", { cache: "no-store" }),
       fetch("/api/settings", { cache: "no-store" }),
     ]);
+    if (cRes.status === 401 || hRes.status === 401 || sRes.status === 401) {
+      // The session cookie is signed fine (so /api/auth/me says "signed in")
+      // but its user no longer exists in this database. Drop the stale
+      // cookie - otherwise /login would bounce straight back to /dashboard.
+      await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+      clearCrmCache();
+      if (typeof window !== "undefined") window.location.replace("/login");
+      throw new Error("Session expired - please sign in again");
+    }
     if (!cRes.ok || !hRes.ok || !sRes.ok) {
       throw new Error("Failed to load CRM data from MongoDB");
     }
