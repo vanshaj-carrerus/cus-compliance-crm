@@ -14,8 +14,11 @@ export async function OPTIONS(request: Request) {
 }
 
 /**
- * Fast path: return JWT claims (no Mongo) when the token already has features.
- * Pass ?sync=1 to reload role/features from MongoDB (after admin edits).
+ * Always reads role / page access from MongoDB, so a change an admin makes in
+ * Admin Users (pages toggled, role changed) shows up without the user having
+ * to sign out and in again. (A JWT-only shortcut used to live here; it kept
+ * serving the pages from the day the user logged in, so sidebars went stale.)
+ * The session cookie is re-signed below whenever role/pages changed.
  */
 export async function GET(request: Request) {
   try {
@@ -28,27 +31,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const url = new URL(request.url);
-    const sync = url.searchParams.get("sync") === "1";
     const hasJwtFeatures = Array.isArray(session.features);
-
-    // Warm path — skip Atlas round-trip for normal page loads.
-    if (!sync && hasJwtFeatures) {
-      const role = normalizeRole(session.role);
-      const features = normalizeFeatures(session.features, role);
-      return jsonWithCors(request, {
-        authenticated: true,
-        user: {
-          id: session.sub,
-          email: session.email,
-          name: session.email.split("@")[0],
-          role,
-          status: "active",
-          features,
-        },
-        source: "session",
-      });
-    }
 
     await connectDB();
     const user = await User.findById(session.sub)

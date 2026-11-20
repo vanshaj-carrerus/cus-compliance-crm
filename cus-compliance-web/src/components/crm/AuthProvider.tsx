@@ -67,6 +67,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Pick up page-access / role changes an admin makes while this tab is open:
+  // re-check with the server whenever the tab regains focus (at most once a
+  // minute), so the sidebar never stays stale until the next sign-in.
+  useEffect(() => {
+    if (!user) return;
+    let last = Date.now();
+    const recheck = () => {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - last < 60_000) return;
+      last = Date.now();
+      void (async () => {
+        try {
+          const next = await ensureAuth({ sync: true });
+          // A failed check must never sign the user out of the UI.
+          if (next) setUser(next);
+        } catch {
+          /* offline - keep what we have */
+        }
+      })();
+    };
+    document.addEventListener("visibilitychange", recheck);
+    window.addEventListener("focus", recheck);
+    return () => {
+      document.removeEventListener("visibilitychange", recheck);
+      window.removeEventListener("focus", recheck);
+    };
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const logoutLocal = useCallback(() => {
     clearAuthCache();
     setUser(null);

@@ -1,5 +1,6 @@
 "use client";
 
+import { assigneeOptions, assigneeValue } from "@/lib/assignees";
 import { useCrm } from "../CrmProvider";
 import { FiltersBar } from "../FiltersBar";
 import {
@@ -137,15 +138,11 @@ export function Compliance() {
       render: (x) => (
         <select
           className="sheet-cell"
-          value={x.assignedTo || ""}
+          value={assigneeValue(assignableUsers, x.assignedTo)}
           onChange={(e) => updateMasterField(x.id, "assignedTo", e.target.value)}
         >
           <option value="">-</option>
-          {[
-            ...new Set(
-              x.assignedTo ? [...assignableUsers, x.assignedTo] : assignableUsers
-            ),
-          ].map((name) => (
+          {assigneeOptions(assignableUsers, x.assignedTo).map((name) => (
             <option key={name}>{name}</option>
           ))}
         </select>

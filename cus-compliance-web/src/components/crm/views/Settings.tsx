@@ -20,6 +20,7 @@ import {
   DEFAULT_TYPOGRAPHY,
   GLASS_PRESETS,
   HEAD_SCALE_RANGE,
+  TEXT_COLOR_PRESETS,
   TEXT_SCALE_RANGE,
   getServerTheme,
   getTheme,
@@ -114,6 +115,59 @@ function WeightChips({
             {o.label}
           </button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+/** Text colour: "Default" (the app's own colours), quick picks, or any colour. */
+function TextColorPicker({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (hex: string) => void;
+}) {
+  const current = value
+    ? (TEXT_COLOR_PRESETS.find((c) => c.value === value)?.label ?? value.toUpperCase())
+    : "Default";
+  return (
+    <div className="st-field">
+      <span className="st-slider-top">
+        <span>{label}</span>
+        <b>{current}</b>
+      </span>
+      <div className="st-swatches st-text-swatches" role="group" aria-label={label}>
+        <button
+          type="button"
+          className={`st-swatch is-default ${!value ? "is-active" : ""}`}
+          title="Default"
+          aria-label="Default colour"
+          aria-pressed={!value}
+          onClick={() => onChange("")}
+        />
+        {TEXT_COLOR_PRESETS.map((c) => (
+          <button
+            key={c.value}
+            type="button"
+            className={`st-swatch ${value === c.value ? "is-active" : ""}`}
+            style={{ background: c.value }}
+            title={c.label}
+            aria-label={c.label}
+            aria-pressed={value === c.value}
+            onClick={() => onChange(c.value)}
+          />
+        ))}
+        <label className="st-swatch is-picker" title="Custom colour">
+          <input
+            type="color"
+            value={value || "#ffffff"}
+            onChange={(e) => onChange(e.target.value)}
+            aria-label={`Custom ${label.toLowerCase()}`}
+          />
+        </label>
       </div>
     </div>
   );
@@ -657,6 +711,11 @@ export function SettingsPage() {
               options={HEADING_WEIGHTS}
               onChange={(v) => setTheme({ headWeight: v })}
             />
+            <TextColorPicker
+              label="Colour"
+              value={theme.headColor}
+              onChange={(hex) => setTheme({ headColor: hex })}
+            />
           </div>
 
           <div className="st-type-col">
@@ -681,6 +740,11 @@ export function SettingsPage() {
               value={theme.bodyWeight}
               options={BODY_WEIGHTS}
               onChange={(v) => setTheme({ bodyWeight: v })}
+            />
+            <TextColorPicker
+              label="Colour"
+              value={theme.bodyColor}
+              onChange={(hex) => setTheme({ bodyColor: hex })}
             />
           </div>
         </div>

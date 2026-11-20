@@ -60,7 +60,24 @@ export default function ThemeFX() {
     else root.style.removeProperty("--ui-head-weight");
     flag("data-ui-body-weight", !!t.bodyWeight);
     flag("data-ui-head-weight", !!t.headWeight);
-  }, [t.textScale, t.headScale, t.bodyFont, t.headFont, t.bodyWeight, t.headWeight]);
+
+    // Text colours - only applied once the user picks one (see extras.css).
+    if (t.bodyColor) root.style.setProperty("--ui-body-color", t.bodyColor);
+    else root.style.removeProperty("--ui-body-color");
+    if (t.headColor) root.style.setProperty("--ui-head-color", t.headColor);
+    else root.style.removeProperty("--ui-head-color");
+    flag("data-ui-body-color", !!t.bodyColor);
+    flag("data-ui-head-color", !!t.headColor);
+  }, [
+    t.textScale,
+    t.headScale,
+    t.bodyFont,
+    t.headFont,
+    t.bodyWeight,
+    t.headWeight,
+    t.bodyColor,
+    t.headColor,
+  ]);
 
   useEffect(() => {
     const root = document.documentElement;

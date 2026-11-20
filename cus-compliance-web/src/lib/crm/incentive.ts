@@ -48,7 +48,11 @@ export function filterCandidates(
     );
   if (activeFilters.po) r = r.filter((c) => c.po === activeFilters.po);
   if (activeFilters.assignedTo)
-    r = r.filter((c) => c.assignedTo === activeFilters.assignedTo);
+    r = r.filter(
+      (c) =>
+        String(c.assignedTo || "").trim().toLowerCase() ===
+        String(activeFilters.assignedTo).trim().toLowerCase()
+    );
   if (activeFilters.poMonth)
     r = r.filter((c) => c.poMonth === activeFilters.poMonth);
   if (q) {

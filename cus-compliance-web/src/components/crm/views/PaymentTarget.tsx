@@ -1,5 +1,6 @@
 "use client";
 
+import { assigneeOptions, assigneeValue } from "@/lib/assignees";
 import { useCrm } from "../CrmProvider";
 import { FiltersBar } from "../FiltersBar";
 import {
@@ -110,17 +111,11 @@ export function PaymentTarget() {
       render: (r) => (
         <select
           className="sheet-cell"
-          value={r.x.assignedTo || ""}
+          value={assigneeValue(assignableUsers, r.x.assignedTo)}
           onChange={(e) => updateMasterField(r.x.id, "assignedTo", e.target.value)}
         >
           <option value="">-</option>
-          {[
-            ...new Set(
-              r.x.assignedTo
-                ? [...assignableUsers, r.x.assignedTo]
-                : assignableUsers
-            ),
-          ].map((name) => (
+          {assigneeOptions(assignableUsers, r.x.assignedTo).map((name) => (
             <option key={name}>{name}</option>
           ))}
         </select>

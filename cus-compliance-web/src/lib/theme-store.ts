@@ -27,7 +27,22 @@ export interface ThemeSettings {
   /** font weights; 0 = keep the app's own weights */
   bodyWeight: number;
   headWeight: number;
+  /** text colours: "" = keep the app's own colours, otherwise #rrggbb */
+  bodyColor: string;
+  headColor: string;
 }
+
+/** Quick picks for the text colour (a custom colour picker sits next to them). */
+export const TEXT_COLOR_PRESETS: { label: string; value: string }[] = [
+  { label: "White", value: "#ffffff" },
+  { label: "Soft white", value: "#e9eeff" },
+  { label: "Light blue", value: "#bcd4ff" },
+  { label: "Mint", value: "#b4f0d4" },
+  { label: "Yellow", value: "#ffe28a" },
+  { label: "Pink", value: "#ffc2df" },
+  { label: "Dark navy", value: "#141b4d" },
+  { label: "Black", value: "#000000" },
+];
 
 export const TEXT_SCALE_RANGE = { min: 0.8, max: 1.4, step: 0.05 };
 export const HEAD_SCALE_RANGE = { min: 0.8, max: 1.6, step: 0.05 };
@@ -117,6 +132,8 @@ export const DEFAULT_THEME: ThemeSettings = {
   headScale: 1,
   bodyWeight: 0,
   headWeight: 0,
+  bodyColor: "",
+  headColor: "",
 };
 
 /** The typography part of the theme, for "reset typography". */
@@ -127,6 +144,8 @@ export const DEFAULT_TYPOGRAPHY = {
   headScale: DEFAULT_THEME.headScale,
   bodyWeight: DEFAULT_THEME.bodyWeight,
   headWeight: DEFAULT_THEME.headWeight,
+  bodyColor: DEFAULT_THEME.bodyColor,
+  headColor: DEFAULT_THEME.headColor,
 };
 
 const KEY = "crm.theme.v2";
@@ -168,6 +187,14 @@ function sanitize(raw: unknown): ThemeSettings {
     headScale: clamp(r.headScale, HEAD_SCALE_RANGE.min, HEAD_SCALE_RANGE.max, 1),
     bodyWeight: BODY_WEIGHTS.some((w) => w.value === r.bodyWeight) ? Number(r.bodyWeight) : 0,
     headWeight: HEADING_WEIGHTS.some((w) => w.value === r.headWeight) ? Number(r.headWeight) : 0,
+    bodyColor:
+      typeof r.bodyColor === "string" && /^#[0-9a-fA-F]{6}$/.test(r.bodyColor)
+        ? r.bodyColor
+        : "",
+    headColor:
+      typeof r.headColor === "string" && /^#[0-9a-fA-F]{6}$/.test(r.headColor)
+        ? r.headColor
+        : "",
   };
 }
 

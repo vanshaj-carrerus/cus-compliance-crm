@@ -1,5 +1,6 @@
 "use client";
 
+import { assigneeOptions, assigneeValue } from "@/lib/assignees";
 import { useEffect, useRef, useState } from "react";
 import { useCrm } from "../CrmProvider";
 import { useAuth } from "../AuthProvider";
@@ -340,17 +341,11 @@ export function CandidateModal() {
               <Field label="Assigned To">
                 <select
                   className={inputCls}
-                  value={form.assignedTo}
+                  value={assigneeValue(assignableUsers, form.assignedTo)}
                   onChange={(e) => setValue("assignedTo", e.target.value)}
                 >
                   <option value="">Select…</option>
-                  {[
-                    ...new Set(
-                      form.assignedTo
-                        ? [...assignableUsers, form.assignedTo]
-                        : assignableUsers
-                    ),
-                  ].map((name) => (
+                  {assigneeOptions(assignableUsers, form.assignedTo).map((name) => (
                     <option key={name}>{name}</option>
                   ))}
                 </select>

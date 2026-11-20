@@ -130,7 +130,12 @@ export function filteredDaily(
 ): DailyRow[] {
   return candidates
     .filter((c) => category === "all" || !statusExcluded(c.status))
-    .filter((c) => !filters.assignedTo || c.assignedTo === filters.assignedTo)
+    .filter(
+      (c) =>
+        !filters.assignedTo ||
+        String(c.assignedTo || "").trim().toLowerCase() ===
+          String(filters.assignedTo).trim().toLowerCase()
+    )
     .filter((c) => !filters.poMonth || c.poMonth === filters.poMonth)
     .filter(
       (c) =>

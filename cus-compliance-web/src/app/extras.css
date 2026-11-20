@@ -805,3 +805,47 @@ html body .data-table tbody td .target-input:focus {
   outline: 2px solid color-mix(in srgb, var(--primary, #3f676c) 80%, transparent);
   outline-offset: -2px;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Settings → Text & fonts → Colour
+   Only active once a colour is picked (html[data-ui-body-color] /
+   [data-ui-head-color]); with "Default" nothing here applies. Status colours
+   (green paid, red overdue, orange remaining, badges) are kept on purpose.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Headings - same set of elements the heading font / weight settings use. */
+html[data-ui-head-color] :is(h1, h2, h3, h4, h5, h6, .dg-title, .dg-card-title, .master-title, .table-title, .tk-title, .st-sub-title) {
+  color: var(--ui-head-color) !important;
+}
+.st .st-preview-head { color: var(--ui-head-color, inherit); }
+
+/* Body text - the app reads its text colours from these variables, so one
+   override recolours cards, dashboard, modals, sidebar and forms together. */
+html[data-ui-body-color] {
+  --foreground: var(--ui-body-color);
+  --ink: var(--ui-body-color);
+  --ink-2: var(--ui-body-color);
+  --card-foreground: var(--ui-body-color);
+  --secondary-foreground: var(--ui-body-color);
+  --muted: color-mix(in srgb, var(--ui-body-color) 72%, transparent);
+}
+html[data-ui-body-color] body,
+html[data-ui-body-color] .dg {
+  color: var(--ui-body-color);
+}
+html[data-ui-body-color] .dg {
+  --dg-text-dim: color-mix(in srgb, var(--ui-body-color) 75%, transparent);
+}
+.st .st-preview-body { color: var(--ui-body-color, inherit); }
+
+/* Table cells and the fields inside them force their own colour with
+   !important, so they are overridden explicitly (status colours excluded). */
+html[data-ui-body-color] :is(.excel-grid, .data-table) tbody td:not(.success-text):not(.danger-text):not(.warning-text):not(.accent-text),
+html[data-ui-body-color] :is(.excel-grid, .data-table) tbody :is(input, select, textarea, .sheet-cell, .target-input):not(.success-text):not(.danger-text):not(.warning-text):not(.accent-text):not(.text-primary):not(.inst-paid):not(.inst-overdue):not(.calc-cell) {
+  color: var(--ui-body-color) !important;
+}
+
+/* "Default" swatch in the colour pickers: neutral chip with a slash */
+.st .st-swatch.is-default {
+  background: linear-gradient(135deg, transparent 46%, rgba(255, 255, 255, 0.85) 46% 54%, transparent 54%), rgba(255, 255, 255, 0.14);
+}

@@ -1,5 +1,6 @@
 "use client";
 
+import { uniqueAssignees } from "@/lib/assignees";
 import type { ReactNode } from "react";
 import {
   BellRing,
@@ -64,12 +65,7 @@ export function FiltersBar({
   embedded?: boolean;
 }) {
   const { candidates, activeFilters, setActiveFilters, assignableUsers } = useCrm();
-  const assignees = [
-    ...new Set([
-      ...assignableUsers,
-      ...candidates.map((c) => c.assignedTo).filter(Boolean),
-    ]),
-  ].sort();
+  const assignees = uniqueAssignees(assignableUsers);
   const floors = [...new Set(candidates.map((c) => c.floor).filter(Boolean))].sort();
   const pos = [...new Set(candidates.map((c) => c.po).filter(Boolean))].sort();
   const months = [

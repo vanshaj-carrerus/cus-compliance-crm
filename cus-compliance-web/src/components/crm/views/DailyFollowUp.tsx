@@ -1,5 +1,6 @@
 "use client";
 
+import { assigneeOptions, assigneeValue, uniqueAssignees } from "@/lib/assignees";
 import { useCrm } from "../CrmProvider";
 import { EmptyDataNotice } from "../DataStates";
 import {
@@ -94,12 +95,7 @@ export function DailyFollowUp({
   const rows = filteredDaily(candidates, category, dailyFilters);
   const totalLeft = rows.reduce((s, r) => s + (isBalanceList ? r.amount : 0), 0);
 
-  const assignees = [
-    ...new Set([
-      ...assignableUsers,
-      ...candidates.map((c) => c.assignedTo).filter(Boolean),
-    ]),
-  ].sort();
+  const assignees = uniqueAssignees(assignableUsers);
   const poMonths = [
     ...new Set(candidates.map((c) => c.poMonth).filter(Boolean)),
   ].sort();
@@ -172,19 +168,13 @@ export function DailyFollowUp({
       render: (r) => (
         <select
           className="sheet-cell"
-          value={r.candidate.assignedTo || ""}
+          value={assigneeValue(assignableUsers, r.candidate.assignedTo)}
           onChange={(e) =>
             updateMasterField(r.candidate.id, "assignedTo", e.target.value)
           }
         >
           <option value="">-</option>
-          {[
-            ...new Set(
-              r.candidate.assignedTo
-                ? [...assignableUsers, r.candidate.assignedTo]
-                : assignableUsers
-            ),
-          ].map((name) => (
+          {assigneeOptions(assignableUsers, r.candidate.assignedTo).map((name) => (
             <option key={name}>{name}</option>
           ))}
         </select>

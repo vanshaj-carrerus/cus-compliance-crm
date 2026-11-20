@@ -1,5 +1,6 @@
 "use client";
 
+import { assigneeOptions, assigneeValue } from "@/lib/assignees";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useCrm } from "../CrmProvider";
 import { EmptyDataNotice, InlineLoading, LoadingBar } from "../DataStates";
@@ -1335,15 +1336,11 @@ export function MasterSheet() {
         <td key={col.key} {...cellProps} className={selectedCls}>
           <select
             className="sheet-cell"
-            value={c.assignedTo || ""}
+            value={assigneeValue(assignableUsers, c.assignedTo)}
             onChange={(e) => updateMasterField(c.id, "assignedTo", e.target.value)}
           >
             <option value="">-</option>
-            {[
-              ...new Set(
-                c.assignedTo ? [...assignableUsers, c.assignedTo] : assignableUsers
-              ),
-            ].map((name) => (
+            {assigneeOptions(assignableUsers, c.assignedTo).map((name) => (
               <option key={name}>{name}</option>
             ))}
           </select>
