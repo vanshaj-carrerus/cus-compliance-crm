@@ -1,6 +1,7 @@
 "use client";
 
 import { assigneeOptions, assigneeValue } from "@/lib/assignees";
+import { openCandidateCard } from "@/lib/candidate-card";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useCrm } from "../CrmProvider";
 import { EmptyDataNotice, InlineLoading, LoadingBar } from "../DataStates";
@@ -1423,6 +1424,8 @@ export function MasterSheet() {
         <td key={col.key} {...cellProps} className={`important-col ${selectedCls}`}>
           <input
             className="sheet-cell name-priority"
+            title="Double-click to open the quick card"
+            onDoubleClick={() => openCandidateCard(c.id)}
             defaultValue={c.name || ""}
             key={c.id + "-name-" + (c.name || "")}
             onBlur={(e) =>

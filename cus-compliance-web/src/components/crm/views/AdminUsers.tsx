@@ -128,8 +128,8 @@ export function AdminUsers() {
         features: has
           ? d.features.filter((f) => f !== feature)
           : CRM_FEATURES.filter(
-              (f) => d.features.includes(f) || f === feature
-            ),
+            (f) => d.features.includes(f) || f === feature
+          ),
       };
     });
   };
@@ -307,7 +307,7 @@ export function AdminUsers() {
                           type="button"
                           disabled={saving}
                           onClick={() => void resolveRequest(r.id, "approve")}
-                          className="rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground disabled:opacity-60"
+                          className="rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-black disabled:opacity-60"
                         >
                           Approve
                         </button>
@@ -384,7 +384,7 @@ export function AdminUsers() {
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex h-10 w-full items-center justify-center rounded-[var(--radius)] bg-primary px-4 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60"
+              className="inline-flex h-10 w-full items-center justify-center rounded-[var(--radius)] bg-primary px-4 text-sm font-semibold text-black hover:opacity-90 disabled:opacity-60"
             >
               {saving ? "Saving…" : "Invite"}
             </button>
@@ -490,10 +490,10 @@ export function AdminUsers() {
                               setEditDraft((d) =>
                                 d
                                   ? {
-                                      ...d,
-                                      role,
-                                      features: defaultFeaturesForRole(role),
-                                    }
+                                    ...d,
+                                    role,
+                                    features: defaultFeaturesForRole(role),
+                                  }
                                   : d
                               );
                             }}
@@ -562,11 +562,10 @@ export function AdminUsers() {
                       </td>
                       <td className="px-4 py-3 sm:px-5">
                         <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-[length:calc(11px*var(--ui-text-scale,1))] font-bold ${
-                            u.status === "invited"
-                              ? "bg-warning/15 text-warning"
-                              : "bg-success/15 text-success"
-                          }`}
+                          className={`inline-flex rounded-full px-2 py-0.5 text-[length:calc(11px*var(--ui-text-scale,1))] font-bold ${u.status === "invited"
+                            ? "bg-warning/15 text-warning"
+                            : "bg-success/15 text-success"
+                            }`}
                         >
                           {u.status === "invited" ? "Invited" : "Active"}
                         </span>
@@ -579,7 +578,7 @@ export function AdminUsers() {
                                 type="button"
                                 disabled={saving}
                                 onClick={() => void saveEdit(u.id)}
-                                className="rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground disabled:opacity-60"
+                                className="rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-black disabled:opacity-60"
                               >
                                 Save
                               </button>

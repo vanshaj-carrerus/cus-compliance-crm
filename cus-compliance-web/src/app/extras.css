@@ -849,3 +849,33 @@ html[data-ui-body-color] :is(.excel-grid, .data-table) tbody :is(input, select, 
 .st .st-swatch.is-default {
   background: linear-gradient(135deg, transparent 46%, rgba(255, 255, 255, 0.85) 46% 54%, transparent 54%), rgba(255, 255, 255, 0.14);
 }
+
+/* ── Candidate quick card: light dropdown list ──────────────────────────────
+   The global glass rule in aurora.css paints every <select> list white-on-
+   translucent, which is unreadable on the card's light glass. Scoped to the
+   card's own select only. */
+@supports (appearance: base-select) {
+  select.cc-select::picker(select) {
+    background: rgba(250, 251, 255, 0.97) !important;
+    background-color: rgba(250, 251, 255, 0.97) !important;
+    border: 1px solid rgba(106, 114, 200, 0.22) !important;
+    box-shadow: 0 18px 40px -12px rgba(60, 70, 160, 0.45) !important;
+  }
+  select.cc-select option {
+    color: #1b1f4b;
+    font-weight: 600;
+  }
+  select.cc-select option:hover,
+  select.cc-select option:focus {
+    background: #e8edff !important;
+  }
+  select.cc-select option:checked {
+    background: #d6e2ff !important;
+    color: #2456c8;
+    font-weight: 700;
+  }
+}
+select.cc-select option {
+  color: #1b1f4b;
+  background: #fff;
+}

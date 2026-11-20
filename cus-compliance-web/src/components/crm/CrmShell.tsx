@@ -12,6 +12,7 @@ import { SaveIndicator } from "./SaveIndicator";
 import { TableColumnManager } from "./ColumnVisibility";
 import { ToastContainer } from "./Toast";
 import { CandidateModal } from "./modals/CandidateModal";
+import { CandidateCard } from "./CandidateCard";
 import { ImportModal } from "./modals/ImportModal";
 import { SmartAssistModal } from "./modals/SmartAssistModal";
 import { WhatsAppModal } from "./modals/WhatsAppModal";
@@ -340,6 +341,7 @@ function CrmShellInner() {
       {ready && (
         <>
           <CandidateModal />
+          <CandidateCard />
           <ImportModal />
           <SmartAssistModal
             open={smartOpen}
